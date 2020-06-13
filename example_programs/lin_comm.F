@@ -9,8 +9,8 @@ c234567890
       program linear_communication
       include './mpif.h'
 
-      integer ierror, num_procs, proc_id
       integer sum, next_proc_id, message_item, parent_id
+      integer ierror, num_procs, proc_id
 
 c     parent process id set to 0
       parent_id = 0

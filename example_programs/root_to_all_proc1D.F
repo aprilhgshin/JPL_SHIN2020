@@ -9,8 +9,7 @@ c234567890
       program root_to_all_proc_communication
       include "./mpif.h"
 
-      integer ierror, num_procs
-      integer status(MPI_STATUS_SIZE), proc_id, count
+      integer ierror, num_procs, proc_id, count
       integer, parameter :: seed = 1000
 
 c     Specifying maximum number of processors because arrays cannot dynamically change
@@ -89,7 +88,7 @@ c       Goal: Work with pointers and don't accidentally modify pointer values.
      & message_arr,"to process", proc_id + 1
         else if (proc_id .eq. 2) then
           call MPI_RECV(message_arr, num_elem, MPI_INT, proc_id-1,
-     & proc_id-1 ,MPI_COMM_WORLD, status, ierror)
+     & proc_id-1 ,MPI_COMM_WORLD, MPI_STATUS_IGNORE, ierror)
           print *, "Process", proc_id, "Received message from ",
      & "process",proc_id - 1, "with message:",
      & message_arr
