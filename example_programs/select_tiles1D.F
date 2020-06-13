@@ -16,6 +16,7 @@ c           It has indices MPI_SOURCE, MPI_TAG, and more.
       integer, dimension(GLOBAL_SIZE) :: global_arr
       integer, dimension(SUB_SIZE) :: sub_arr
       integer, dimension(GLOBAL_SIZE) :: final_arr
+      integer, parameter :: seed = 1000
 
 
 c     initialize MPI environment
@@ -26,6 +27,7 @@ c     return process id (process_rank) of the process that called the function
       call MPI_COMM_RANK(MPI_COMM_WORLD, proc_id, ierror)
 
 c     initialize global_arr with 0's and 1's
+      call srand(seed)
       do count=1, GLOBAL_SIZE, 1
         global_arr(count) = mod(irand(),2)
       end do
@@ -68,8 +70,8 @@ c        MPI_RECV params: received_data, receive_count, receive_type, sender_ID,
 c                         tag, comm, status, ierr
           call MPI_RECV(sub_arr, SUB_SIZE, MPI_INT, MPI_ANY_SOURCE,
      & MPI_ANY_TAG ,MPI_COMM_WORLD, status, ierror)
-          print *, "Received from ", status(MPI_SOURCE), "with tag",
-     & status(MPI_TAG), "and sub array: ", sub_arr
+          print *, "Received from process", status(MPI_SOURCE),
+     & "with tag", status(MPI_TAG), "and sub array: ", sub_arr
 
 c         if received tag is 1, then append sub array to final array to save to disk
           if (status(MPI_TAG) .eq. 1) then
@@ -84,8 +86,8 @@ c         if received tag is 1, then append sub array to final array to save to 
 
         end do
 
-        print *, "Final array to save to disk with empty elements: ",
-     & final_arr
+c        print *, "Final array to save to disk with empty elements: ",
+c     & final_arr
 
       end if
 
