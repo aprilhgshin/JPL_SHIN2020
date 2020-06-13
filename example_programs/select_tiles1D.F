@@ -27,10 +27,13 @@ c     return process id (process_rank) of the process that called the function
       call MPI_COMM_RANK(MPI_COMM_WORLD, proc_id, ierror)
 
 c     initialize global_arr with 0's and 1's
+c     initialize final_arr with 0's
       call srand(seed)
       do count=1, GLOBAL_SIZE, 1
         global_arr(count) = mod(irand(),2)
+        final_arr(count) = 0
       end do
+
 
 c      MPI_Scatter(
 c              disperse_arr,   !Array we are scattering from
@@ -71,7 +74,8 @@ c                         tag, comm, status, ierr
           call MPI_RECV(sub_arr, SUB_SIZE, MPI_INT, MPI_ANY_SOURCE,
      & MPI_ANY_TAG ,MPI_COMM_WORLD, status, ierror)
           print *, "Received from process", status(MPI_SOURCE),
-     & "with tag", status(MPI_TAG), "and sub array: ", sub_arr
+     & "with tag", status(MPI_TAG), "and sub array: "
+          call PRINT_INT_ARR(sub_arr, SUB_SIZE)
 
 c         if received tag is 1, then append sub array to final array to save to disk
           if (status(MPI_TAG) .eq. 1) then
@@ -79,19 +83,34 @@ c         if received tag is 1, then append sub array to final array to save to 
               final_arr(final_count) = sub_arr(i)
               final_count = final_count + 1
             end do
-            print *, "final_arr: ",final_arr(1:final_count-1)
+            print *, "updated final_arr: "
+            call PRINT_INT_ARR(final_arr, final_count)
           else
             print *, "Tag is 0. Nothing to append to final_arr"
           end if
 
         end do
 
-c        print *, "Final array to save to disk with empty elements: ",
-c     & final_arr
+        print *, "Final array to save to disk with empty ",
+     & "elements: "
+        call PRINT_INT_ARR(final_arr, GLOBAL_SIZE)
 
       end if
 
 
       call MPI_FINALIZE(ierror)
+
+      end
+
+
+      SUBROUTINE PRINT_INT_ARR(array, arr_length)
+      integer arr_length
+      integer, dimension(arr_length) :: array
+      do, i=1, arr_length
+        write(*,"(I1,$)") array(i)
+          if (i .EQ. arr_length) then
+             write(*, '(A,/)') ''
+          endif
+      enddo
 
       end
