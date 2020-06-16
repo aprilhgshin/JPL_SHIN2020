@@ -35,6 +35,7 @@ c     Arrays to check if mask and temp are distributed to processes correctly:
 c     -1 for not being sent, 0,1,2,3 for corresponding process to which piece of array was sent
       integer, dimension(Ny, Nx) :: mask_correct
       integer, dimension(Ny, Nx) :: temp_correct
+      integer, dimension(Ny, Nx) :: final_correct
 
 c     In Parent Process 0: Used as arrays to store pieces of mask and temp to send to each process
 c     All Processes 0-3: Used as buffer arrays to store pieces of mask and temp each process receives
@@ -58,6 +59,7 @@ c     Initialize all arrays
             final_mask(row,col) = 0
             mask_correct(row,col) = 0
             temp_correct(row,col) = 0
+            final_correct(row,col) = 0
             if ((row .le. sNy) .and. (col .le. sNx)) then
               sub_mask(row,col) = 0
               sub_temp(row,col) = 0
@@ -129,8 +131,8 @@ c                        tag, comm, status, ierr
       call MPI_RECV(sub_temp, sNx*sNy, MPI_REAL, 0, 100, MPI_COMM_WORLD
      & ,status, ierror)
 
-      call VERIFY(sub_mask, sub_temp, mask, temp, proc_id, mask_correct,
-     & temp_correct, correct)
+      call VERIFY_SUBMASKS(sub_mask, sub_temp, mask, temp, proc_id,
+     & mask_correct, temp_correct, correct)
 
       print *, "Process",proc_id, "Received from parent with tag",
      & status(MPI_TAG)
@@ -188,7 +190,7 @@ c             to save into sub_mask and sub_temp for each process
           end if
 
         end do
-
+        call VERIFY_FINAL(mask, final_mask, final_correct)
         print *, "Final updated temperature array over mask: "
         call PRINT_FLOAT_ARR(final_mask, Ny*Nx)
 
@@ -208,8 +210,8 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
       integer arr_length
       integer, dimension(arr_length) :: array
       do, i=1, arr_length
-        !write(*,"(I5,$)") array(i)
-        write(*,"(I1,$)") array(i)
+        write(*,"(I5,$)") array(i)
+        !write(*,"(I1,$)") array(i)
           if (i .EQ. arr_length) then
              write(*, '(A,/)') ''
           endif
@@ -236,13 +238,13 @@ c       Reading/writing REALs Decimal form Fw.d
       end
 
 
-      SUBROUTINE VERIFY(sub_mask, sub_temp, mask, temp, proc_id,
-     & mask_correct, temp_correct, correct)
+      SUBROUTINE VERIFY_SUBMASKS(sub_mask, sub_temp, mask, temp,
+     & proc_id, mask_correct, temp_correct, correct)
 
         include "SIZE.h"
 
-        integer, dimension(int(sNy),int(sNx)) :: sub_mask
-        real, dimension(int(sNy),int(sNx)) :: sub_temp
+        integer, dimension(sNy,sNx) :: sub_mask
+        real, dimension(sNy,sNx) :: sub_temp
         integer, dimension(Ny,Nx) :: mask
         real, dimension(Ny,Nx) :: temp
         integer, dimension(Ny,Nx) :: mask_correct
@@ -252,10 +254,10 @@ c       Reading/writing REALs Decimal form Fw.d
 
         big_col = 0
 
-        do row=1, int(sNy), 1
-          do col=1, int(sNx), 1
+        do row=1, sNy, 1
+          do col=1, sNx, 1
 c           Adding proc_id*sNx to col allows us to move onto next portion of mask and temp
-            big_col = int(col+proc_id*int(sNx))
+            big_col = int(col+proc_id*sNx)
             if (sub_mask(row, col) .eq. mask(row, big_col)) then
               correct = 1
               mask_correct(row, big_col) = 1
@@ -279,9 +281,40 @@ c           Adding proc_id*sNx to col allows us to move onto next portion of mas
           print *, "Process", proc_id, "receieved correct data."
         else
           print *, "INCORRECTLY DISTRIBUTED FOR PROCESS", proc_id
-          print *, "mask: 1 for incorrect. 0 for correct: "
+          print *, "mask: 1 for correct. 0 for incorrect: "
           call PRINT_INT_ARR(mask_correct, Ny*Nx)
-          print *, "temp: 1 for incorrect. 0 for correct: "
+          print *, "temp: 1 for correct. 0 for incorrect: "
           call PRINT_INT_ARR(temp_correct, Ny*Nx)
+        end if
+      end
+
+      SUBROUTINE VERIFY_FINAL(mask, final_mask, final_correct)
+c       This subroutines is only valid under the assumption that the temperature will not be 0.0        
+        include "SIZE.h"
+        integer, dimension(Ny,Nx) :: mask
+        real, dimension(Ny,Nx) :: final_mask
+        integer, dimension(Ny,Nx) :: final_correct
+        integer row, col, correct
+        correct = 0
+
+        do row=1, Ny, 1
+          do col=1, Nx, 1
+            if (((mask(row,col) .eq. 1) .and.
+     & (final_mask(row,col) .ge. 0)) .or.
+     & ((mask(row,col) .eq. 0) .and. (final_mask(row,col) .eq. 0.0)))
+     & then
+              final_correct(row,col)=1
+              correct = 1
+            else
+              print *, "INCORRECT FINAL"
+              correct = 0
+              final_correct(row,col)=0
+            end if
+          end do
+        end do
+
+        if (correct .ne. 1) then
+          print *, "final_mask: 1 for correct, 0 for incorrect: "
+          call PRINT_INT_ARR(final_correct, Ny*Nx)
         end if
       end
