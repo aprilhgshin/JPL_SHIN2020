@@ -144,7 +144,7 @@ c     MPI_RECV params: received_data, receive_count, receive_type, sender_ID, ta
       call MPI_RECV(sub_temp, sNx*sNy, MPI_REAL, 0, 200, MPI_COMM_WORLD
      & ,status, ierror)
 
-      call VERIFY_SUBMASKS(sub_mask, sub_temp, mask, temp, proc_id,
+      call TEST_SUBMASKS(sub_mask, sub_temp, mask, temp, proc_id,
      & mask_correct, temp_correct, correct)
 
       call WRITE_SUB_BIN(sub_temp, sub_mask, proc_id)
@@ -206,12 +206,14 @@ c             to save into sub_mask and sub_temp for each process
           end if
 
         end do
-        call VERIFY_FINAL(mask, final_mask, final_correct)
+        call TEST_FINAL(mask, final_mask, final_correct)
         print *, "Final updated temperature array over mask: "
         call PRINT_FLOAT_ARR(final_mask, Ny*Nx)
 
         print *, "Mask array: "
         call PRINT_INT_ARR(mask, Ny*Nx)
+
+        call WRITE_GLOBAL_BIN(temp, mask, final_mask)
 
       end if
 
@@ -254,12 +256,13 @@ c       Reading/writing REALs Decimal form Fw.d
       enddo
       end
 
-      SUBROUTINE CREATE_FILENAME(proc_id, is_temp, is_child, filename)
+      SUBROUTINE CREATE_FILENAME(proc_id, is_temp, is_child, is_final,
+     & filename)
         include 'SIZE.h'
         integer, intent(in) :: proc_id
         integer, intent(in) :: is_temp
         integer, intent(in) :: is_child
-        character*18, intent(out) :: filename
+        character*20, intent(out) :: filename
 
         integer p_x, p_y
         character*4 str_px, str_py
@@ -301,6 +304,8 @@ c       Reading/writing REALs Decimal form Fw.d
         else
           if (is_temp .eq. 1) then
             write(filename, "(A12)") "T_global.bin"
+          else if (is_final .eq. 1) then
+            write(filename, "(A19)") "fin_mask_global.bin"
           else
             write(filename, "(A15)") "mask_global.bin"
           end if
@@ -318,9 +323,9 @@ c       Reading/writing REALs Decimal form Fw.d
         real, dimension(sNy,sNx) :: read_sub_temp
         integer, dimension(sNy,sNx) :: read_sub_mask
 
-        character*18 filename
-
-        call CREATE_FILENAME(proc_id, 1, 1, filename)
+        character*20 filename
+c       CREATE_FILENAME params: proc_id, is_temp, is_child, is_final, filename
+        call CREATE_FILENAME(proc_id, 1, 1, 0, filename)
         open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
         write(1) sub_temp
         print *, "Wrote sub_temp to ", filename
@@ -332,7 +337,7 @@ c       Reading/writing REALs Decimal form Fw.d
         call PRINT_FLOAT_ARR(read_sub_temp, sNx*sNy)
         close(1)
 
-        call CREATE_FILENAME(proc_id, 0, 1, filename)
+        call CREATE_FILENAME(proc_id, 0, 1, 0, filename)
         open(2, FILE=filename, FORM="unformatted", ACCESS="stream")
         write(2) sub_mask
         print *, "Wrote sub_mask to ", filename
@@ -347,7 +352,57 @@ c       Reading/writing REALs Decimal form Fw.d
       end
 
 
-      SUBROUTINE VERIFY_SUBMASKS(sub_mask, sub_temp, mask, temp,
+      SUBROUTINE WRITE_GLOBAL_BIN(temp, mask, final_mask)
+        include "SIZE.h"
+        real, dimension(Ny,Nx) :: temp
+        integer, dimension(Ny,Nx) :: mask
+        real, dimension(Ny,Nx) :: final_mask
+        real, dimension(Ny,Nx) :: read_temp
+        integer, dimension(Ny,Nx) :: read_mask
+        real, dimension(Ny,Nx) :: read_final_mask
+        character*20 filename
+
+c       CREATE_FILENAME params: proc_id, is_temp, is_child, is_final, filename
+        call CREATE_FILENAME(0, 1, 0, 0, filename)
+        open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+        write(1) temp
+        print *, "Wrote temp to ", filename
+        close(1)
+
+        open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+        print *, "Reading temp back from ", filename
+        read(1) read_temp
+        call PRINT_FLOAT_ARR(read_temp, Nx*Ny)
+        close(1)
+
+        call CREATE_FILENAME(0, 0, 0, 0, filename)
+        open(2, FILE=filename, FORM="unformatted", ACCESS="stream")
+        write(2) mask
+        print *, "Wrote mask to ", filename
+        close(2)
+
+        open(2, FILE=filename, FORM="unformatted", ACCESS="stream")
+        print *, "Reading temp back from ", filename
+        read(2) read_mask
+        call PRINT_INT_ARR(read_mask, Nx*Ny)
+        close(2)
+
+        call CREATE_FILENAME(0, 0, 0, 1, filename)
+        open(3, FILE=filename, FORM="unformatted", ACCESS="stream")
+        write(3) final_mask
+        print *, "Wrote final_mask to ", filename
+        close(3)
+
+        open(3, FILE=filename, FORM="unformatted", ACCESS="stream")
+        print *, "Reading final_mask back from ", filename
+        read(3) read_final_mask
+        call PRINT_FLOAT_ARR(read_final_mask, Nx*Ny)
+        close(3)
+
+      end
+
+
+      SUBROUTINE TEST_SUBMASKS(sub_mask, sub_temp, mask, temp,
      & proc_id, mask_correct, temp_correct, correct)
 
 c     NOTE: Tile number = process id. Therefore, tile numbers and process id's start from 0.
@@ -410,7 +465,7 @@ c       Determining p_x and p_y using proc_id using integer division and modulus
       end
 
 
-      SUBROUTINE VERIFY_FINAL(mask, final_mask, final_correct)
+      SUBROUTINE TEST_FINAL(mask, final_mask, final_correct)
 c       This subroutine is only valid under the assumption that the temperature will not be 0.0
         include "SIZE.h"
         integer, dimension(Ny,Nx) :: mask
