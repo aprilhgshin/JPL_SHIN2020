@@ -1,8 +1,8 @@
 c With Python, create initial temperature and location mask and save into a binary file
 c With Fortran, load the binary files
-c In a header file, initialize the domain and tile dimensions and number of processors
+c In a header file, initialize the domain and tile dimensions and number of processes
 c With MPI_SEND, send a piece of the domain to each process through a do loop
-c Have each process MPI_RECV and ____slack instructions for what each process will do____
+c Have each process MPI_RECV and do their job: listed in notepad
 c After process does what it should to the masks, output a .bin file of each mask it receives and creates
 
 c 1. 4 processor job.  each processor will have a 10x10 array of floats, representing temperature
