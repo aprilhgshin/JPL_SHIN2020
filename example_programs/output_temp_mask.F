@@ -1,11 +1,14 @@
+c External files:
 c With Python, create initial temperature and location mask and save into a binary file.
-c With Fortran, open and read the binary files.
 c In a header file, initialize the domain and tile dimensions and number of processes.
 
-c With MPI_SEND, send a piece of the domain to each process through a do loop.
+c In this program:
+c Open and read the binary files.c to extract global arrays, temp and mask
+c With MPI_SEND, send a piece of the global arrays to each process.
 c Have each process MPI_RECV and save temperature values only on mask points.
 c Output a .bin file of each sub mask.
-c Combine all messages with tag 1 and include in global final mask. Write to binary file.
+c Each process calls MPI SEND to send the masked sub temperature values to Parent process
+c Parent combines all messages with tag 1 and include in global final mask. Write to binary file.
 c NOTE: All binary files will be saved in the output_masks folder
 
 c In more detail:
