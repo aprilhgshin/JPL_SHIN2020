@@ -12,13 +12,17 @@ c 4. a 40x10 array of floats defining the 'temperature' will be read in and dist
 c    each will get 10x10
 c 5. the 40x10 mask array will be read in and distributed to the processes
 c 6. each process will determine whether they have any of the mask values in them
-c 7. where they do have the mask they will print out the 'temperature' at the mask points
+c 7. where they do have the mask they will print out the 'temperature' at the mask points --> save all to .bin files
 c 8. define temperature as T(row,col) = row*col
+
+c Wednesday, JUNE 17:
+c TODO: output bin files - construct corresponding filenames and write data
+c TODO: research for other read functions that specify dtype of data read
+c TODO: accomodate for processes along y-axis in loop
+c TODO: organize/clean code and better documentation
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 c234567890
-
-
 
 
       program create_output
@@ -42,9 +46,10 @@ c     All Processes 0-3: Used as buffer arrays to store pieces of mask and temp 
       integer, dimension(sNy,sNx) :: sub_mask
       real, dimension(sNy, sNx) :: sub_temp
 
-
+c     Store temperature values only on elements == 1 on each sub_mask
       real, dimension(sNy, sNx) :: sub_tempOnMask
 
+c      character(len=14) :: filename
       integer row, col, p_count, ierror, proc_id, num_ones
       integer status(MPI_STATUS_SIZE), final_col, correct
       integer, parameter :: debug = 0
@@ -115,11 +120,8 @@ c        print *, "To get the sub_mask: "
 c        call PRINT_INT_ARR(sub_mask, sNx*sNy)
         end do
 
-c       call PRINT_INT_ARR(mask(1:10, 21:30), 100)
-c
-c        print *, "final_mask: ", final_mask
-c      print *, "DONE sending."
       end if
+
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
 c     ALL Processes' task:
@@ -133,6 +135,7 @@ c                        tag, comm, status, ierr
 
       call VERIFY_SUBMASKS(sub_mask, sub_temp, mask, temp, proc_id,
      & mask_correct, temp_correct, correct)
+
 
       print *, "Process",proc_id, "Received from parent with tag",
      & status(MPI_TAG)
@@ -238,6 +241,7 @@ c       Reading/writing REALs Decimal form Fw.d
       end
 
 
+
       SUBROUTINE VERIFY_SUBMASKS(sub_mask, sub_temp, mask, temp,
      & proc_id, mask_correct, temp_correct, correct)
 
@@ -288,8 +292,9 @@ c           Adding proc_id*sNx to col allows us to move onto next portion of mas
         end if
       end
 
+
       SUBROUTINE VERIFY_FINAL(mask, final_mask, final_correct)
-c       This subroutines is only valid under the assumption that the temperature will not be 0.0        
+c       This subroutines is only valid under the assumption that the temperature will not be 0.0
         include "SIZE.h"
         integer, dimension(Ny,Nx) :: mask
         real, dimension(Ny,Nx) :: final_mask
@@ -316,5 +321,7 @@ c       This subroutines is only valid under the assumption that the temperature
         if (correct .ne. 1) then
           print *, "final_mask: 1 for correct, 0 for incorrect: "
           call PRINT_INT_ARR(final_correct, Ny*Nx)
+        else
+          print *, "Final mask is correct."
         end if
       end
