@@ -35,7 +35,7 @@ c234567890
       real, dimension(Ny,Nx) :: final_mask
 
 c     Arrays to check if mask and temp are distributed to processes correctly:
-c     -1 for not being sent, 0,1,2,3 for corresponding process to which piece of array was sent
+c     -1 for not being sent, 1 for being correct.
       integer, dimension(Ny, Nx) :: mask_correct
       integer, dimension(Ny, Nx) :: temp_correct
       integer, dimension(Ny, Nx) :: final_correct
@@ -48,7 +48,6 @@ c     All Processes 0-3: Used as buffer arrays to store pieces of mask and temp 
 c     Store temperature values only on elements == 1 on each sub_mask
       real, dimension(sNy, sNx) :: sub_tempOnMask
 
-c      character(len=14) :: filename
       integer row, col, p_count, p_x, p_y, ierror, proc_id, num_ones
       integer status(MPI_STATUS_SIZE), final_col, final_row, correct
       integer, parameter :: debug = 1
