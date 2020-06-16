@@ -54,9 +54,6 @@ c     return process id (process_rank) of the process that called the function
 
 
 c     Parent Process' task:
-
-c     Distribute pieces of mask and temp to each process
-c     Looping through tiles in mask and temp
       if (proc_id .eq. 0) then
 
 c     Initialize all arrays
@@ -82,7 +79,8 @@ c     Read mask and temp data from binary files
      & ,ACCESS="stream")
         read(2) temp
 
-
+c       Distribute pieces of mask and temp to each process
+c       Looping through tiles in mask and temp
         do p_count=0, nPx-1, 1
 
           do row=1, sNy, 1
