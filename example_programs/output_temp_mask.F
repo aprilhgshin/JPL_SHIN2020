@@ -33,8 +33,8 @@ c234567890
 
 c     Arrays to check if mask and temp are distributed to processes correctly:
 c     -1 for not being sent, 0,1,2,3 for corresponding process to which piece of array was sent
-      integer, dimension(Ny, Nx) :: mask_distr
-      real, dimension(Ny, Nx) :: temp_distr
+      integer, dimension(Ny, Nx) :: mask_correct
+      integer, dimension(Ny, Nx) :: temp_correct
 
 c     In Parent Process 0: Used as arrays to store pieces of mask and temp to send to each process
 c     All Processes 0-3: Used as buffer arrays to store pieces of mask and temp each process receives
@@ -45,8 +45,9 @@ c     All Processes 0-3: Used as buffer arrays to store pieces of mask and temp 
       real, dimension(sNy, sNx) :: sub_tempOnMask
 
       integer row, col, p_count, ierror, proc_id, num_ones
-      integer status(MPI_STATUS_SIZE), final_col
+      integer status(MPI_STATUS_SIZE), final_col, correct
       integer, parameter :: debug = 0
+      correct = 0
 
 
 c     Initialize all arrays
@@ -55,8 +56,8 @@ c     Initialize all arrays
             mask(row,col) = 0
             temp(row,col) = 0.0
             final_mask(row,col) = 0
-            mask_distr(row,col) = -1
-            temp_distr(row,col) = -1
+            mask_correct(row,col) = 0
+            temp_correct(row,col) = 0
             if ((row .le. sNy) .and. (col .le. sNx)) then
               sub_mask(row,col) = 0
               sub_temp(row,col) = 0
@@ -106,8 +107,8 @@ c             to save into sub_mask and sub_temp for each process
 c       Printing sub masks sent through MPI_SENT
         print *, "Sent to process", p_count, "with sub_mask ",
      & "dimensions: (", shape(sub_mask), ")"
-c        print *, "For column indices of full mask: ", 1+p_count*sNx,
-c     & "to ", 10+p_count*sNx, "and row indices: 1 to 10"
+        print *, "For column indices of full mask: ", 1+p_count*sNx,
+     & "to ", 10+p_count*sNx, "and row indices: 1 to 10"
 c        print *, "To get the sub_mask: "
 c        call PRINT_INT_ARR(sub_mask, sNx*sNy)
         end do
@@ -127,6 +128,9 @@ c                        tag, comm, status, ierr
      & status, ierror)
       call MPI_RECV(sub_temp, sNx*sNy, MPI_REAL, 0, 100, MPI_COMM_WORLD
      & ,status, ierror)
+
+      call VERIFY(sub_mask, sub_temp, mask, temp, proc_id, mask_correct,
+     & temp_correct, correct)
 
       print *, "Process",proc_id, "Received from parent with tag",
      & status(MPI_TAG)
@@ -156,6 +160,7 @@ c                        tag, comm, status, ierr
         print *, "process", proc_id, "sends tag 0 to 0"
       end if
 
+C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
       if (proc_id .eq. 0) then
 
@@ -196,30 +201,30 @@ c             to save into sub_mask and sub_temp for each process
 
       stop
       end
+
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
       SUBROUTINE PRINT_INT_ARR(array, arr_length)
       integer arr_length
       integer, dimension(arr_length) :: array
       do, i=1, arr_length
-        write(*,"(I5,$)") array(i)
+        !write(*,"(I5,$)") array(i)
+        write(*,"(I1,$)") array(i)
           if (i .EQ. arr_length) then
              write(*, '(A,/)') ''
           endif
       enddo
-
       end
 
 
-
-c          w: the number of positions to be used
-c          m: the minimum number of positions to be used
-c          d: the number of digits to the right of the decimal point
-c          e: the number of digits in the exponent part
-
-c          Reading/writing REALs 	Decimal form 	Fw.d
-
       SUBROUTINE PRINT_FLOAT_ARR(array, arr_length)
+c     Edit Descriptor:
+c       w: the number of positions to be used
+c       m: the minimum number of positions to be used
+c       d: the number of digits to the right of the decimal point
+c       e: the number of digits in the exponent part
+
+c       Reading/writing REALs Decimal form Fw.d
       integer arr_length
       real, dimension(arr_length) :: array
       do, i=1, arr_length
@@ -228,5 +233,55 @@ c          Reading/writing REALs 	Decimal form 	Fw.d
              write(*, '(A,/)') ''
           endif
       enddo
+      end
 
+
+      SUBROUTINE VERIFY(sub_mask, sub_temp, mask, temp, proc_id,
+     & mask_correct, temp_correct, correct)
+
+        include "SIZE.h"
+
+        integer, dimension(int(sNy),int(sNx)) :: sub_mask
+        real, dimension(int(sNy),int(sNx)) :: sub_temp
+        integer, dimension(Ny,Nx) :: mask
+        real, dimension(Ny,Nx) :: temp
+        integer, dimension(Ny,Nx) :: mask_correct
+        integer, dimension(Ny,Nx) :: temp_correct
+        integer proc_id, big_col, row, col
+        integer, intent(out) :: correct
+
+        big_col = 0
+
+        do row=1, int(sNy), 1
+          do col=1, int(sNx), 1
+c           Adding proc_id*sNx to col allows us to move onto next portion of mask and temp
+            big_col = int(col+proc_id*int(sNx))
+            if (sub_mask(row, col) .eq. mask(row, big_col)) then
+              correct = 1
+              mask_correct(row, big_col) = 1
+            else
+              correct = 0
+              mask_correct(row, big_col) = 0
+            end if
+
+            if (sub_temp(row, col) .eq. temp(row, big_col)) then
+              correct = 1
+              mask_correct(row, big_col) = 1
+            else
+              correct = 0
+              mask_correct(row, big_col) = 0
+            end if
+
+          end do
+        end do
+
+        if (correct .eq. 1) then
+          print *, "Process", proc_id, "receieved correct data."
+        else
+          print *, "INCORRECTLY DISTRIBUTED FOR PROCESS", proc_id
+          print *, "mask: 1 for incorrect. 0 for correct: "
+          call PRINT_INT_ARR(mask_correct, Ny*Nx)
+          print *, "temp: 1 for incorrect. 0 for correct: "
+          call PRINT_INT_ARR(temp_correct, Ny*Nx)
+        end if
       end
