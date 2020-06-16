@@ -349,7 +349,7 @@ c       0002 for index 2 in x axis
 
 
         else
-c         Creating a name for global arrays          
+c         Creating a filename for global arrays
           if (is_temp .eq. 1) then
             write(filename, "(A27)") "./output_masks/T_global.bin"
           else if (is_final .eq. 1) then
@@ -518,10 +518,12 @@ c       Determining p_x and p_y using proc_id using integer division and modulus
         big_col = 0
         big_row = 0
 
+c       Looping through sub arrays and comparing each element to corresponding elements of global arrays
         do row=1, sNy, 1
           do col=1, sNx, 1
             big_col = int(col+p_x*sNx)
             big_row = int(row+p_y*sNy)
+c           Comparing sub mask to corresponding piece of global mask
             if (sub_mask(row, col) .eq. mask(big_row, big_col)) then
               correct = 1
               mask_correct(big_row, big_col) = 1
@@ -529,7 +531,7 @@ c       Determining p_x and p_y using proc_id using integer division and modulus
               correct = 0
               mask_correct(big_row, big_col) = 0
             end if
-
+c           Comparing sub temp to corresponding piece of global temp
             if (sub_temp(row, col) .eq. temp(row, big_col)) then
               correct = 1
               mask_correct(big_row, big_col) = 1
@@ -541,6 +543,8 @@ c       Determining p_x and p_y using proc_id using integer division and modulus
           end do
         end do
 
+c       correct == 1 indicates sub arrays were correctly generated.
+c       correct == 0 indicates sub arrays are incorrect.
         if (print_correctness .eq. 1) then
           if (correct .eq. 1) then
             print *, "Process", proc_id, "receieved correct sub_mask",
