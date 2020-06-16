@@ -1,10 +1,13 @@
-c With Python, create initial temperature and location mask and save into a binary file
-c With Fortran, load the binary files
-c In a header file, initialize the domain and tile dimensions and number of processes
-c With MPI_SEND, send a piece of the domain to each process through a do loop
-c Have each process MPI_RECV and do their job: listed in notepad
-c After process does what it should to the masks, output a .bin file of each mask it receives and creates
+c With Python, create initial temperature and location mask and save into a binary file.
+c With Fortran, open and read the binary files.
+c In a header file, initialize the domain and tile dimensions and number of processes.
 
+c With MPI_SEND, send a piece of the domain to each process through a do loop.
+c Have each process MPI_RECV and save temperature values only on mask points.
+c Output a .bin file of each sub mask.
+c Combine all messages with tag 1 and include in global final mask. Write to binary file.
+
+c In more detail:
 c 1. 4 processor job.  each processor will have a 10x10 array of floats, representing temperature
 c 2. the "domain" will be 40x10,
 c 3. a 40x10 array of ints will define the 'mask',  all zeros except for 1s through the 20th row, columns 5:25
@@ -15,8 +18,6 @@ c 6. each process will determine whether they have any of the mask values in the
 c 7. where they do have the mask they will print out the 'temperature' at the mask points --> save all to .bin files
 c 8. define temperature as T(row,col) = row*col
 
-c TODO: research for other read functions that specify dtype of data read
-c TODO: organize/clean code and better documentation
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 c234567890
@@ -107,29 +108,33 @@ c      Distribute pieces of mask and temp to each process
 c               Adding p_x*sNx to col and p_y*sNy to row allows us to move onto next portion
 c               of mask and temp to save into sub_mask and sub_temp for each process.
                 sub_mask(row, col) = mask(int(row+p_y*sNy),
-     & int(col+p_x*sNx))
+     &                                    int(col+p_x*sNx))
                 sub_temp(row, col) = temp(int(row+p_y*sNy),
-     & int(col+p_x*sNx))
+     &                                    int(col+p_x*sNx))
               end do
             end do
 
 c           p_count here is equivalent to process id assigned to each tile in increasing order to the right and downwards
             p_count = p_x + (nPx*p_y)
 
+c           Parent sends pieces of temp and mask to each process
             !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
             call MPI_SEND(sub_temp, sNx*sNy, MPI_REAL, p_count, 200,
-     & MPI_COMM_WORLD, ierror)
-            call MPI_SEND(sub_mask, sNx*sNy, MPI_INT, p_count, 100,
-     & MPI_COMM_WORLD, ierror)
+     &                    MPI_COMM_WORLD, ierror)
+            print *, "Parent sent sub_temp to process", p_count,
+     &               "with tag 200"
 
-c           Printing sub masks sent through MPI_SENT
+            call MPI_SEND(sub_mask, sNx*sNy, MPI_INT, p_count, 100,
+     &                    MPI_COMM_WORLD, ierror)
+            print *, "Parent sent sub_mask to process", p_count,
+     &               "with tag 100"
+
+c           Printing more MPI_SENT details
             if (print_MPI_SEND .eq. 1) then
-              print *, "Sent to process", p_count, "with sub_mask ",
-     & "dimensions: (", shape(sub_mask), ")"
-              if (debug .eq. 1) then
-                print *, "For column indices of full mask: ",
+              print *, "Parent sent to process", p_count, "with",
+     &                 " sub_mask dimensions: (", shape(sub_mask), ")"
+              print *, "with column indices of full mask: ",
      & 1+p_count*sNx, "to ", 10+p_count*sNx, "and row indices: 1 to 10"
-              end if
             end if
 
           end do
@@ -140,23 +145,26 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
 c     ALL Processes' task:
 
+c     Each process receives a sub_mask and sub_temp from Parent.
 c     MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierr
       call MPI_RECV(sub_mask, sNx*sNy, MPI_INT, 0, 100, MPI_COMM_WORLD,
-     & status, ierror)
-      call MPI_RECV(sub_temp, sNx*sNy, MPI_REAL, 0, 200, MPI_COMM_WORLD
-     & ,status, ierror)
+     &              status, ierror)
 
-c     Verify if each proess receives the correct sub_mask and sub_temp
+      print *, "Process",proc_id, "Received from parent with tag",
+     &         status(MPI_TAG)
+
+      call MPI_RECV(sub_temp, sNx*sNy, MPI_REAL, 0, 200, MPI_COMM_WORLD
+     &             ,status, ierror)
+
+      print *, "Process",proc_id, "Received from parent with tag",
+     &         status(MPI_TAG)
+
+c     Verify if each proess received the correct sub_mask and sub_temp
       call TEST_SUBMASKS(sub_mask, sub_temp, mask, temp, proc_id,
-     & mask_correct, temp_correct, correct)
+     &                   mask_correct, temp_correct, correct)
 
 c     Write all sub_mask and sub_temp to binary file
       call WRITE_SUB_BIN(sub_temp, sub_mask, proc_id)
-
-      if (print_MPI_RECV .eq. 1) then
-        print *, "Process",proc_id, "Received from parent with tag",
-     & status(MPI_TAG)
-      end if
 
 c     Storing temperature values from sub_temp only on mask points (value 1) in sub_mask
       num_ones = 0
@@ -170,49 +178,49 @@ c     Storing temperature values from sub_temp only on mask points (value 1) in 
           end if
         end do
       end do
+
+c     Printing number of ones sub_mask has for each process
       print*, "Process", proc_id, "has", num_ones, "number of ones"
 
 c     If there are mask points (value 1) in the sub__mask, send sub_tempOnMask with message tag 1. Otherwise, send with message tag 0.
       if (num_ones .gt. 0) then
         !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
         call MPI_SEND(sub_tempOnMask, sNx*sNy, MPI_REAL, 0, 1,
-     & MPI_COMM_WORLD, ierror)
-        if (print_MPI_SEND .eq. 1) then
-          print *, "process", proc_id, "sends tag 1 to 0"
-        end if
+     &                MPI_COMM_WORLD, ierror)
+        print *, "process", proc_id, "sends tag 1 to Parent"
       else
         call MPI_SEND(sub_tempOnMask, sNx*sNy, MPI_REAL, 0, 0,
-     & MPI_COMM_WORLD, ierror)
-        if (print_MPI_SEND .eq. 1) then
-          print *, "process", proc_id, "sends tag 0 to 0"
-        end if
+     &                MPI_COMM_WORLD, ierror)
+        print *, "process", proc_id, "sends tag 0 to Parent"
       end if
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
-      if (proc_id .eq. 0) then
 c     Final tasks for parent process:
 c     - Receive sub arrays from all processes. Only include sub arrays with message tag 1 into global final mask array.
 c     - Write global mask, temp, and final mask array to binary file.
+      if (proc_id .eq. 0) then
 
 c       Receiving messages from all processes
         do p_count=0, nPx*nPy-1, 1
-          print *, "p_count in final: ", p_count
 c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierr
           call MPI_RECV(sub_tempOnMask, sNx*sNy, MPI_REAL, p_count,
-     & MPI_ANY_TAG ,MPI_COMM_WORLD, status, ierror)
+     &                  MPI_ANY_TAG ,MPI_COMM_WORLD, status, ierror)
           if (print_MPI_RECV .eq. 1) then
             print *, "Parent received from process", status(MPI_SOURCE),
-     & "with tag", status(MPI_TAG)
+     &               "with tag", status(MPI_TAG)
           end if
 
+c         If sub array comes with a message tag 1, include in global final mask.
           final_col = 0
           if (status(MPI_TAG) .eq. 1) then
-            if (debug .eq. 1) then
+            print *, "Parent receives Tag 1 from Process",
+     &                status(MPI_SOURCE), "with sub array:"
+            call PRINT_FLOAT_ARR(sub_tempOnMask, sNx*sNy)
+            print *, "Time to put Process",status(MPI_SOURCE),
+     &               "'s sub array in global final mask."
 
-              print *, "Tag is 1 from Process",status(MPI_SOURCE),
-     & "Time to append"
-            end if
+c           Values used to compute the corresponding indices in final_mask to indices of sub array
             p_y = (status(MPI_SOURCE) / nPx)     ! Integer division does not round.
             p_x = (mod(status(MPI_SOURCE), nPx))  ! The remainder is equivalent to tile(process) number along x_axis.
 
@@ -221,30 +229,35 @@ c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID
                 final_col = int(col+p_x*sNx)
                 final_row = int(row+p_y*sNy)
                 final_mask(final_row, final_col) =
-     & sub_tempOnMask(row, col)
+     &                               sub_tempOnMask(row, col)
               end do
             end do
 
 
           else
-            print *, "Tag is 0. Nothing to append to final_arr"
+            if (debug .eq. 1) then
+              print *, "Parent receives Tag 0 from Process",proc_id,
+     &                 ". Nothing to include in global final mask"
+            end if
           end if
 
         end do
 
-
+c       Verifying whether final mask is correctly generated.
         call TEST_FINAL(mask, final_mask, final_correct)
+
+c       Printing global final mask array and global mask array:
         print *, "Final updated temperature array over mask: "
         call PRINT_FLOAT_ARR(final_mask, Ny*Nx)
-
         print *, "Mask array: "
         call PRINT_INT_ARR(mask, Ny*Nx)
 
+c       Writing all global arrays to binary files
         call WRITE_GLOBAL_BIN(temp, mask, final_mask)
 
       end if
 
-
+c     End all MPI communication. Clean MPI environment.
       call MPI_FINALIZE(ierror)
 
       stop
@@ -282,6 +295,7 @@ c       Reading/writing REALs Decimal form Fw.d
           endif
       enddo
       end
+
 
       SUBROUTINE CREATE_FILENAME(proc_id, is_temp, is_child, is_final,
      & filename)
@@ -342,6 +356,7 @@ c       Reading/writing REALs Decimal form Fw.d
 
 
       SUBROUTINE WRITE_SUB_BIN(sub_temp, sub_mask, proc_id)
+c       Writing all sub arrays that each process receives from the Parent to binary files
         include 'SIZE.h'
 
         integer, intent(in) :: proc_id
@@ -349,18 +364,25 @@ c       Reading/writing REALs Decimal form Fw.d
         integer, dimension(sNy,sNx) :: sub_mask
         real, dimension(sNy,sNx) :: read_sub_temp
         integer, dimension(sNy,sNx) :: read_sub_mask
-        integer, parameter :: print_output = 0
+        integer, parameter :: print_write = 1
+        integer, parameter :: print_read = 0
 
         character*40 filename
+
+c       Writing sub_temp to binary file:
 c       CREATE_FILENAME params: proc_id, is_temp, is_child, is_final, filename
         call CREATE_FILENAME(proc_id, 1, 1, 0, filename)
         open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
         write(1) sub_temp
         close(1)
 
-        if (print_output .eq. 1) then
-          print *, "Wrote sub_temp to ", filename
+        if (print_write .eq. 1) then
+          print *, "Process", proc_id, "'s sub_temp written to ",
+     &             filename
+        end if
 
+        if (print_read .eq. 1) then
+c         Reading binary files to make sure sub temp is correctly written
           open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
           print *, "Reading sub_temp back from ", filename
           read(1) read_sub_temp
@@ -368,15 +390,19 @@ c       CREATE_FILENAME params: proc_id, is_temp, is_child, is_final, filename
           close(1)
         end if
 
-
+c       Writing sub_mask to binary file
         call CREATE_FILENAME(proc_id, 0, 1, 0, filename)
         open(2, FILE=filename, FORM="unformatted", ACCESS="stream")
         write(2) sub_mask
         close(2)
 
-        if (print_output .eq. 1) then
-          print *, "Wrote sub_mask to ", filename
+        if (print_write .eq. 1) then
+          print *, "Process", proc_id, "'s sub_mask written to ",
+     &             filename
+        end if
 
+c         Reading binary files to make sure sub mask is correctly written
+        if (print_read .eq. 1) then
           open(2, FILE=filename, FORM="unformatted", ACCESS="stream")
           print *, "Reading sub_mask back from ", filename
           read(2) read_sub_mask
@@ -384,10 +410,13 @@ c       CREATE_FILENAME params: proc_id, is_temp, is_child, is_final, filename
           close(2)
         end if
 
+
       end
 
 
       SUBROUTINE WRITE_GLOBAL_BIN(temp, mask, final_mask)
+c       Writing all global arrays to binary files
+
         include "SIZE.h"
         real, dimension(Ny,Nx) :: temp
         integer, dimension(Ny,Nx) :: mask
@@ -398,6 +427,7 @@ c       CREATE_FILENAME params: proc_id, is_temp, is_child, is_final, filename
         character*40 filename
         integer, parameter :: print_output = 0
 
+c       Writing global temp to binary file
 c       CREATE_FILENAME params: proc_id, is_temp, is_child, is_final, filename
         call CREATE_FILENAME(0, 1, 0, 0, filename)
         open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
@@ -406,7 +436,7 @@ c       CREATE_FILENAME params: proc_id, is_temp, is_child, is_final, filename
 
         if (print_output .eq. 1) then
           print *, "Wrote temp to ", filename
-
+c         Reading file to make sure global temp is correctly written to binary file
           open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
           print *, "Reading temp back from ", filename
           read(1) read_temp
@@ -414,6 +444,7 @@ c       CREATE_FILENAME params: proc_id, is_temp, is_child, is_final, filename
           close(1)
         end if
 
+c       Writing global mask to binary file
         call CREATE_FILENAME(0, 0, 0, 0, filename)
         open(2, FILE=filename, FORM="unformatted", ACCESS="stream")
         write(2) mask
@@ -421,7 +452,7 @@ c       CREATE_FILENAME params: proc_id, is_temp, is_child, is_final, filename
 
         if (print_output .eq. 1) then
           print *, "Wrote mask to ", filename
-
+c         Reading file to make sure global mask is correctly written to binary file
           open(2, FILE=filename, FORM="unformatted", ACCESS="stream")
           print *, "Reading temp back from ", filename
           read(2) read_mask
@@ -429,6 +460,7 @@ c       CREATE_FILENAME params: proc_id, is_temp, is_child, is_final, filename
           close(2)
         end if
 
+c       Writing global final mask to binary file
         call CREATE_FILENAME(0, 0, 0, 1, filename)
         open(3, FILE=filename, FORM="unformatted", ACCESS="stream")
         write(3) final_mask
@@ -436,7 +468,7 @@ c       CREATE_FILENAME params: proc_id, is_temp, is_child, is_final, filename
 
         if (print_output .eq. 1) then
           print *, "Wrote final_mask to ", filename
-
+c         Reading file to make sure global final mask is correctly written to binary file
           open(3, FILE=filename, FORM="unformatted", ACCESS="stream")
           print *, "Reading final_mask back from ", filename
           read(3) read_final_mask
@@ -449,6 +481,8 @@ c       CREATE_FILENAME params: proc_id, is_temp, is_child, is_final, filename
 
       SUBROUTINE TEST_SUBMASKS(sub_mask, sub_temp, mask, temp,
      & proc_id, mask_correct, temp_correct, correct)
+c    Checking if all sub_masks are correctly distributed to processes
+c    by comparing distributed sub arrays to manually created sub arrays from the global arrays
 
 c     NOTE: Tile number = process id. Therefore, tile numbers and process id's start from 0.
 c           In this subroutine: when separately counting tiles(procesess) along the x axis and y axis, we start from 0
@@ -467,6 +501,7 @@ c     NOTE: However, the Fortran convention of starting all array indices from 1
 c       p_x is the process number in x axis, p_y is the tile(process) number in y axis
         integer p_x, p_y
         integer, intent(out) :: correct
+        integer, parameter :: print_correctness = 1
 
 c       Determining p_x and p_y using proc_id using integer division and modulus:
         p_y = proc_id / nPx      ! Integer division does not round.
@@ -498,20 +533,26 @@ c       Determining p_x and p_y using proc_id using integer division and modulus
           end do
         end do
 
-        if (correct .eq. 1) then
-          print *, "Process", proc_id, "receieved correct data."
-        else
-          print *, "INCORRECTLY DISTRIBUTED FOR PROCESS", proc_id
-          print *, "mask: 1 for correct. 0 for incorrect: "
-          call PRINT_INT_ARR(mask_correct, Ny*Nx)
-          print *, "temp: 1 for correct. 0 for incorrect: "
-          call PRINT_INT_ARR(temp_correct, Ny*Nx)
+        if (print_correctness .eq. 1) then
+          if (correct .eq. 1) then
+            print *, "Process", proc_id, "receieved correct sub_mask",
+     &               " and sub_temp"
+          else
+            print *, "INCORRECTLY DISTRIBUTED FOR PROCESS", proc_id
+            print *, "mask: 1 for correct. 0 for incorrect: "
+            call PRINT_INT_ARR(mask_correct, Ny*Nx)
+            print *, "temp: 1 for correct. 0 for incorrect: "
+            call PRINT_INT_ARR(temp_correct, Ny*Nx)
+          end if
         end if
       end
 
 
       SUBROUTINE TEST_FINAL(mask, final_mask, final_correct)
+c       Checking if global final mask is correctly generated
+c       by comparing locations of positive elements in global mask and global final mask.
 c       This subroutine is only valid under the assumption that the temperature will not be 0.0
+
         include "SIZE.h"
         integer, dimension(Ny,Nx) :: mask
         real, dimension(Ny,Nx) :: final_mask
