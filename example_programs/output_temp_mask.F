@@ -6,6 +6,7 @@ c With MPI_SEND, send a piece of the domain to each process through a do loop.
 c Have each process MPI_RECV and save temperature values only on mask points.
 c Output a .bin file of each sub mask.
 c Combine all messages with tag 1 and include in global final mask. Write to binary file.
+c NOTE: All binary files will be saved in the output_masks folder
 
 c In more detail:
 c 1. 4 processor job.  each processor will have a 10x10 array of floats, representing temperature
