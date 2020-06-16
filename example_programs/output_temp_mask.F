@@ -113,26 +113,7 @@ c        call PRINT_INT_ARR(sub_mask, sNx*sNy)
         end do
 
 c       call PRINT_INT_ARR(mask(1:10, 21:30), 100)
-c        MPI_RECV params: received_data, receive_count, receive_type, sender_ID,
-c                         tag, comm, status, ierr
-
-
-c        final_col = 0
-c        if (status(MPI_TAG) .eq. 1) then
-c          print *, "Tag is 1. Time to append"
-c          do row=1, sNy, 1
-c            do col=1, sNx, 1
-c             Adding p_count*sNx to col allows us to move onto next portion of mask and temp
-c             to save into sub_mask and sub_temp for each process
-c              final_col = int(col+status(MPI_SOURCE)*sNx)
-c              final_mask(row, final_col) = sub_tempOnMask(row, col)
-c            end do
-c          end do
-
-c        else
-c          print *, "Tag is 0. Nothing to append to final_arr"
-c        end if
-
+c
 c        print *, "final_mask: ", final_mask
 c      print *, "DONE sending."
       end if
@@ -167,24 +148,52 @@ c                        tag, comm, status, ierr
         !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
         call MPI_SEND(sub_tempOnMask, sNx*sNy, MPI_REAL, 0, 1,
      & MPI_COMM_WORLD, ierror)
-        print *, "process", proc_id, "sends tag 1"
+        print *, "process", proc_id, "sends tag 1 to 0"
+
       else
         call MPI_SEND(sub_tempOnMask, sNx*sNy, MPI_REAL, 0, 0,
      & MPI_COMM_WORLD, ierror)
-        print *, "process", proc_id, "sends tag 0"
+        print *, "process", proc_id, "sends tag 0 to 0"
       end if
 
 
       if (proc_id .eq. 0) then
 
-        call MPI_RECV(sub_tempOnMask, sNx*sNy, MPI_REAL, p_count,
+        do p_count=0, 3, 1
+c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierr
+          call MPI_RECV(sub_tempOnMask, sNx*sNy, MPI_REAL, p_count,
      & MPI_ANY_TAG ,MPI_COMM_WORLD, status, ierror)
-        print *, "Received from process", status(MPI_SOURCE),
+          print *, "Parent received from process", status(MPI_SOURCE),
      & "with tag", status(MPI_TAG)
+
+          final_col = 0
+          if (status(MPI_TAG) .eq. 1) then
+            print *, "Tag is 1. Time to append"
+            do row=1, sNy, 1
+              do col=1, sNx, 1
+c             Adding p_count*sNx to col allows us to move onto next portion of mask and temp
+c             to save into sub_mask and sub_temp for each process
+                final_col = int(col+status(MPI_SOURCE)*sNx)
+                final_mask(row, final_col) = sub_tempOnMask(row, col)
+              end do
+            end do
+
+          else
+            print *, "Tag is 0. Nothing to append to final_arr"
+          end if
+
+        end do
+
+        print *, "Final updated temperature array over mask: "
+        call PRINT_FLOAT_ARR(final_mask, Ny*Nx)
+
+        print *, "Mask array: "
+        call PRINT_INT_ARR(mask, Ny*Nx)
+
       end if
 
-
       call MPI_FINALIZE(ierror)
+
       stop
       end
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
@@ -193,7 +202,7 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
       integer arr_length
       integer, dimension(arr_length) :: array
       do, i=1, arr_length
-        write(*,"(I1,$)") array(i)
+        write(*,"(I5,$)") array(i)
           if (i .EQ. arr_length) then
              write(*, '(A,/)') ''
           endif
@@ -203,11 +212,18 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
 
 
+c          w: the number of positions to be used
+c          m: the minimum number of positions to be used
+c          d: the number of digits to the right of the decimal point
+c          e: the number of digits in the exponent part
+
+c          Reading/writing REALs 	Decimal form 	Fw.d
+
       SUBROUTINE PRINT_FLOAT_ARR(array, arr_length)
       integer arr_length
-      integer, dimension(arr_length) :: array
+      real, dimension(arr_length) :: array
       do, i=1, arr_length
-        write(*,"(100g15.5,$)") array(i)
+        write(*,"(F5.0,$)") array(i)
           if (i .EQ. arr_length) then
              write(*, '(A,/)') ''
           endif
