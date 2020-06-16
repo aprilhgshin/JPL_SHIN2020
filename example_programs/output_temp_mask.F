@@ -15,10 +15,7 @@ c 6. each process will determine whether they have any of the mask values in the
 c 7. where they do have the mask they will print out the 'temperature' at the mask points --> save all to .bin files
 c 8. define temperature as T(row,col) = row*col
 
-c Wednesday, JUNE 17:
-c TODO: output bin files - construct corresponding filenames and write data
 c TODO: research for other read functions that specify dtype of data read
-c TODO: accomodate for processes along y-axis in loop
 c TODO: organize/clean code and better documentation
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
@@ -51,9 +48,11 @@ c     Store temperature values only on elements == 1 on each sub_mask
 
 c      character(len=14) :: filename
       integer row, col, p_count, p_x, p_y, ierror, proc_id, num_ones
-      integer status(MPI_STATUS_SIZE), final_col, correct
-      integer, parameter :: debug = 0
-      correct = 0
+      integer status(MPI_STATUS_SIZE), final_col, final_row, correct
+      integer, parameter :: debug = 1
+      integer, parameter :: print_MPI_SEND = 0
+      integer, parameter :: print_MPI_RECV = 0
+
 
 c     Initialize all arrays
         do row=1, Ny, 1
@@ -103,7 +102,6 @@ c           as a single massive grid cell in the full domain mask and temp. Thes
 c      Distribute pieces of mask and temp to each process
         do p_y=0, nPy-1, 1
           do p_x=0, nPx-1, 1
-
             do row=1, sNy, 1
               do col=1, sNx, 1
 c               Adding p_x*sNx to col and p_y*sNy to row allows us to move onto next portion
@@ -124,11 +122,15 @@ c           p_count here is equivalent to process id assigned to each tile in in
             call MPI_SEND(sub_mask, sNx*sNy, MPI_INT, p_count, 100,
      & MPI_COMM_WORLD, ierror)
 
-c         Printing sub masks sent through MPI_SENT
-          print *, "Sent to process", p_count, "with sub_mask ",
+c           Printing sub masks sent through MPI_SENT
+            if (print_MPI_SEND .eq. 1) then
+              print *, "Sent to process", p_count, "with sub_mask ",
      & "dimensions: (", shape(sub_mask), ")"
-          print *, "For column indices of full mask: ", 1+p_count*sNx,
-     & "to ", 10+p_count*sNx, "and row indices: 1 to 10"
+              if (debug .eq. 1) then
+                print *, "For column indices of full mask: ",
+     & 1+p_count*sNx, "to ", 10+p_count*sNx, "and row indices: 1 to 10"
+              end if
+            end if
 
           end do
         end do
@@ -144,15 +146,19 @@ c     MPI_RECV params: received_data, receive_count, receive_type, sender_ID, ta
       call MPI_RECV(sub_temp, sNx*sNy, MPI_REAL, 0, 200, MPI_COMM_WORLD
      & ,status, ierror)
 
+c     Verify if each proess receives the correct sub_mask and sub_temp
       call TEST_SUBMASKS(sub_mask, sub_temp, mask, temp, proc_id,
      & mask_correct, temp_correct, correct)
 
+c     Write all sub_mask and sub_temp to binary file
       call WRITE_SUB_BIN(sub_temp, sub_mask, proc_id)
 
-
-      print *, "Process",proc_id, "Received from parent with tag",
+      if (print_MPI_RECV .eq. 1) then
+        print *, "Process",proc_id, "Received from parent with tag",
      & status(MPI_TAG)
+      end if
 
+c     Storing temperature values from sub_temp only on mask points (value 1) in sub_mask
       num_ones = 0
       do row=1, sNy, 1
         do col=1, sNx, 1
@@ -166,46 +172,67 @@ c     MPI_RECV params: received_data, receive_count, receive_type, sender_ID, ta
       end do
       print*, "Process", proc_id, "has", num_ones, "number of ones"
 
+c     If there are mask points (value 1) in the sub__mask, send sub_tempOnMask with message tag 1. Otherwise, send with message tag 0.
       if (num_ones .gt. 0) then
         !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
         call MPI_SEND(sub_tempOnMask, sNx*sNy, MPI_REAL, 0, 1,
      & MPI_COMM_WORLD, ierror)
-        print *, "process", proc_id, "sends tag 1 to 0"
-
+        if (print_MPI_SEND .eq. 1) then
+          print *, "process", proc_id, "sends tag 1 to 0"
+        end if
       else
         call MPI_SEND(sub_tempOnMask, sNx*sNy, MPI_REAL, 0, 0,
      & MPI_COMM_WORLD, ierror)
-        print *, "process", proc_id, "sends tag 0 to 0"
+        if (print_MPI_SEND .eq. 1) then
+          print *, "process", proc_id, "sends tag 0 to 0"
+        end if
       end if
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
       if (proc_id .eq. 0) then
+c     Final tasks for parent process:
+c     - Receive sub arrays from all processes. Only include sub arrays with message tag 1 into global final mask array.
+c     - Write global mask, temp, and final mask array to binary file.
 
-        do p_count=0, 3, 1
+c       Receiving messages from all processes
+        do p_count=0, nPx*nPy-1, 1
+          print *, "p_count in final: ", p_count
 c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierr
           call MPI_RECV(sub_tempOnMask, sNx*sNy, MPI_REAL, p_count,
      & MPI_ANY_TAG ,MPI_COMM_WORLD, status, ierror)
-          print *, "Parent received from process", status(MPI_SOURCE),
+          if (print_MPI_RECV .eq. 1) then
+            print *, "Parent received from process", status(MPI_SOURCE),
      & "with tag", status(MPI_TAG)
+          end if
 
           final_col = 0
           if (status(MPI_TAG) .eq. 1) then
-            print *, "Tag is 1. Time to append"
+            if (debug .eq. 1) then
+
+              print *, "Tag is 1 from Process",status(MPI_SOURCE),
+     & "Time to append"
+            end if
+            p_y = (status(MPI_SOURCE) / nPx)     ! Integer division does not round.
+            p_x = (mod(status(MPI_SOURCE), nPx))  ! The remainder is equivalent to tile(process) number along x_axis.
+
             do row=1, sNy, 1
               do col=1, sNx, 1
-c             Adding p_count*sNx to col allows us to move onto next portion of mask and temp
-c             to save into sub_mask and sub_temp for each process
-                final_col = int(col+status(MPI_SOURCE)*sNx)
-                final_mask(row, final_col) = sub_tempOnMask(row, col)
+                final_col = int(col+p_x*sNx)
+                final_row = int(row+p_y*sNy)
+                final_mask(final_row, final_col) =
+     & sub_tempOnMask(row, col)
               end do
             end do
+
 
           else
             print *, "Tag is 0. Nothing to append to final_arr"
           end if
 
         end do
+
+
         call TEST_FINAL(mask, final_mask, final_correct)
         print *, "Final updated temperature array over mask: "
         call PRINT_FLOAT_ARR(final_mask, Ny*Nx)
@@ -262,7 +289,7 @@ c       Reading/writing REALs Decimal form Fw.d
         integer, intent(in) :: proc_id
         integer, intent(in) :: is_temp
         integer, intent(in) :: is_child
-        character*20, intent(out) :: filename
+        character*40, intent(out) :: filename
 
         integer p_x, p_y
         character*4 str_px, str_py
@@ -292,22 +319,22 @@ c       Reading/writing REALs Decimal form Fw.d
           end if
 
           if (is_temp .eq. 1) then
-            write(filename, "(A2, A4, A1, A4, A4)") "T.",
-     &  str_px(1:4), ".", str_py(1:4), ".bin"
+            write(filename, "(A17, A4, A1, A4, A4)")
+     &  "./output_masks/T.", str_px(1:4), ".", str_py(1:4), ".bin"
           else
-            write(filename, "(A5, A4, A1, A4, A4)") "mask.",
-     &  str_px(1:4), ".", str_py(1:4), ".bin"
+            write(filename, "(A20, A4, A1, A4, A4)")
+     &  "./output_masks/mask.", str_px(1:4), ".", str_py(1:4), ".bin"
           end if
 
-          print *, "filename:",filename
 
         else
           if (is_temp .eq. 1) then
-            write(filename, "(A12)") "T_global.bin"
+            write(filename, "(A27)") "./output_masks/T_global.bin"
           else if (is_final .eq. 1) then
-            write(filename, "(A19)") "fin_mask_global.bin"
+            write(filename, "(A34)")
+     & "./output_masks/fin_mask_global.bin"
           else
-            write(filename, "(A15)") "mask_global.bin"
+            write(filename, "(A30)") "./output_masks/mask_global.bin"
           end if
 
         end if
@@ -322,32 +349,40 @@ c       Reading/writing REALs Decimal form Fw.d
         integer, dimension(sNy,sNx) :: sub_mask
         real, dimension(sNy,sNx) :: read_sub_temp
         integer, dimension(sNy,sNx) :: read_sub_mask
+        integer, parameter :: print_output = 0
 
-        character*20 filename
+        character*40 filename
 c       CREATE_FILENAME params: proc_id, is_temp, is_child, is_final, filename
         call CREATE_FILENAME(proc_id, 1, 1, 0, filename)
         open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
         write(1) sub_temp
-        print *, "Wrote sub_temp to ", filename
         close(1)
 
-        open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
-        print *, "Reading sub_temp back from ", filename
-        read(1) read_sub_temp
-        call PRINT_FLOAT_ARR(read_sub_temp, sNx*sNy)
-        close(1)
+        if (print_output .eq. 1) then
+          print *, "Wrote sub_temp to ", filename
+
+          open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+          print *, "Reading sub_temp back from ", filename
+          read(1) read_sub_temp
+          call PRINT_FLOAT_ARR(read_sub_temp, sNx*sNy)
+          close(1)
+        end if
+
 
         call CREATE_FILENAME(proc_id, 0, 1, 0, filename)
         open(2, FILE=filename, FORM="unformatted", ACCESS="stream")
         write(2) sub_mask
-        print *, "Wrote sub_mask to ", filename
         close(2)
 
-        open(2, FILE=filename, FORM="unformatted", ACCESS="stream")
-        print *, "Reading sub_mask back from ", filename
-        read(2) read_sub_mask
-        call PRINT_INT_ARR(read_sub_mask, sNx*sNy)
-        close(2)
+        if (print_output .eq. 1) then
+          print *, "Wrote sub_mask to ", filename
+
+          open(2, FILE=filename, FORM="unformatted", ACCESS="stream")
+          print *, "Reading sub_mask back from ", filename
+          read(2) read_sub_mask
+          call PRINT_INT_ARR(read_sub_mask, sNx*sNy)
+          close(2)
+        end if
 
       end
 
@@ -360,44 +395,54 @@ c       CREATE_FILENAME params: proc_id, is_temp, is_child, is_final, filename
         real, dimension(Ny,Nx) :: read_temp
         integer, dimension(Ny,Nx) :: read_mask
         real, dimension(Ny,Nx) :: read_final_mask
-        character*20 filename
+        character*40 filename
+        integer, parameter :: print_output = 0
 
 c       CREATE_FILENAME params: proc_id, is_temp, is_child, is_final, filename
         call CREATE_FILENAME(0, 1, 0, 0, filename)
         open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
         write(1) temp
-        print *, "Wrote temp to ", filename
         close(1)
 
-        open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
-        print *, "Reading temp back from ", filename
-        read(1) read_temp
-        call PRINT_FLOAT_ARR(read_temp, Nx*Ny)
-        close(1)
+        if (print_output .eq. 1) then
+          print *, "Wrote temp to ", filename
+
+          open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+          print *, "Reading temp back from ", filename
+          read(1) read_temp
+          call PRINT_FLOAT_ARR(read_temp, Nx*Ny)
+          close(1)
+        end if
 
         call CREATE_FILENAME(0, 0, 0, 0, filename)
         open(2, FILE=filename, FORM="unformatted", ACCESS="stream")
         write(2) mask
-        print *, "Wrote mask to ", filename
         close(2)
 
-        open(2, FILE=filename, FORM="unformatted", ACCESS="stream")
-        print *, "Reading temp back from ", filename
-        read(2) read_mask
-        call PRINT_INT_ARR(read_mask, Nx*Ny)
-        close(2)
+        if (print_output .eq. 1) then
+          print *, "Wrote mask to ", filename
+
+          open(2, FILE=filename, FORM="unformatted", ACCESS="stream")
+          print *, "Reading temp back from ", filename
+          read(2) read_mask
+          call PRINT_INT_ARR(read_mask, Nx*Ny)
+          close(2)
+        end if
 
         call CREATE_FILENAME(0, 0, 0, 1, filename)
         open(3, FILE=filename, FORM="unformatted", ACCESS="stream")
         write(3) final_mask
-        print *, "Wrote final_mask to ", filename
         close(3)
 
-        open(3, FILE=filename, FORM="unformatted", ACCESS="stream")
-        print *, "Reading final_mask back from ", filename
-        read(3) read_final_mask
-        call PRINT_FLOAT_ARR(read_final_mask, Nx*Ny)
-        close(3)
+        if (print_output .eq. 1) then
+          print *, "Wrote final_mask to ", filename
+
+          open(3, FILE=filename, FORM="unformatted", ACCESS="stream")
+          print *, "Reading final_mask back from ", filename
+          read(3) read_final_mask
+          call PRINT_FLOAT_ARR(read_final_mask, Nx*Ny)
+          close(3)
+        end if
 
       end
 
