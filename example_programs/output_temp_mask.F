@@ -35,7 +35,7 @@ c234567890
       real, dimension(Ny,Nx) :: final_mask
 
 c     Arrays to check if mask and temp are distributed to processes correctly:
-c     -1 for not being sent, 1 for being correct.
+c     -1 for not being sent, 1 for being correct, 0 for incorrect.
       integer, dimension(Ny, Nx) :: mask_correct
       integer, dimension(Ny, Nx) :: temp_correct
       integer, dimension(Ny, Nx) :: final_correct
@@ -61,9 +61,9 @@ c     Initialize all arrays
             mask(row,col) = 0
             temp(row,col) = 0.0
             final_mask(row,col) = 0
-            mask_correct(row,col) = 0
-            temp_correct(row,col) = 0
-            final_correct(row,col) = 0
+            mask_correct(row,col) = -1
+            temp_correct(row,col) = -1
+            final_correct(row,col) = -1
             if ((row .le. sNy) .and. (col .le. sNx)) then
               sub_mask(row,col) = 0
               sub_temp(row,col) = 0
