@@ -52,7 +52,6 @@ c     Store temperature values only on elements == 1 on each sub_mask
 c      character(len=14) :: filename
       integer row, col, p_count, p_x, p_y, ierror, proc_id, num_ones
       integer status(MPI_STATUS_SIZE), final_col, correct
-      character*18 filename
       integer, parameter :: debug = 0
       correct = 0
 
@@ -77,10 +76,12 @@ c     Read mask and temp data from binary files
        open(1, FILE="input_domains/domain_mask.bin", FORM="unformatted"
      & ,ACCESS="stream")
        read(1) mask
+       close(1)
 
        open(2, FILE="input_domains/domain_temp.bin", FORM="unformatted"
      & ,ACCESS="stream")
        read(2) temp
+       close(1)
 
 c     Initialize MPI environment
       call MPI_INIT(ierror)
@@ -146,7 +147,8 @@ c     MPI_RECV params: received_data, receive_count, receive_type, sender_ID, ta
       call VERIFY_SUBMASKS(sub_mask, sub_temp, mask, temp, proc_id,
      & mask_correct, temp_correct, correct)
 
-      call CREATE_FILENAME(proc_id, 1, 1, filename)
+      call WRITE_SUB_BIN(sub_temp, sub_mask, proc_id)
+
 
       print *, "Process",proc_id, "Received from parent with tag",
      & status(MPI_TAG)
@@ -262,10 +264,9 @@ c       Reading/writing REALs Decimal form Fw.d
         integer p_x, p_y
         character*4 str_px, str_py
 
-        p_y = proc_id / nPx      ! Integer division does not round.
-        p_x = mod(proc_id, nPx)  ! The remainder is equivalent to tile(process) number along x_axis.
+        p_y = (proc_id / nPx) + 1     ! Integer division does not round.
+        p_x = (mod(proc_id, nPx)) + 1  ! The remainder is equivalent to tile(process) number along x_axis.
 
-        print *, "is child: ", is_child, "is temp: ", is_temp
         if (is_child .eq. 1) then
           if (p_x .lt. 10) then
             write(str_px, "(A3, I1)") "000", p_x
@@ -303,8 +304,46 @@ c       Reading/writing REALs Decimal form Fw.d
           else
             write(filename, "(A15)") "mask_global.bin"
           end if
-          
+
         end if
+      end
+
+
+      SUBROUTINE WRITE_SUB_BIN(sub_temp, sub_mask, proc_id)
+        include 'SIZE.h'
+
+        integer, intent(in) :: proc_id
+        real, dimension(sNy,sNx) :: sub_temp
+        integer, dimension(sNy,sNx) :: sub_mask
+        real, dimension(sNy,sNx) :: read_sub_temp
+        integer, dimension(sNy,sNx) :: read_sub_mask
+
+        character*18 filename
+
+        call CREATE_FILENAME(proc_id, 1, 1, filename)
+        open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+        write(1) sub_temp
+        print *, "Wrote sub_temp to ", filename
+        close(1)
+
+        open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+        print *, "Reading sub_temp back from ", filename
+        read(1) read_sub_temp
+        call PRINT_FLOAT_ARR(read_sub_temp, sNx*sNy)
+        close(1)
+
+        call CREATE_FILENAME(proc_id, 0, 1, filename)
+        open(2, FILE=filename, FORM="unformatted", ACCESS="stream")
+        write(2) sub_mask
+        print *, "Wrote sub_mask to ", filename
+        close(2)
+
+        open(2, FILE=filename, FORM="unformatted", ACCESS="stream")
+        print *, "Reading sub_mask back from ", filename
+        read(2) read_sub_mask
+        call PRINT_INT_ARR(read_sub_mask, sNx*sNy)
+        close(2)
+
       end
 
 
