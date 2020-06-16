@@ -50,11 +50,11 @@ c     Store temperature values only on elements == 1 on each sub_mask
       real, dimension(sNy, sNx) :: sub_tempOnMask
 
 c      character(len=14) :: filename
-      integer row, col, p_count, ierror, proc_id, num_ones
+      integer row, col, p_count, p_x, p_y, ierror, proc_id, num_ones
       integer status(MPI_STATUS_SIZE), final_col, correct
+      character*18 filename
       integer, parameter :: debug = 0
       correct = 0
-
 
 c     Initialize all arrays
         do row=1, Ny, 1
@@ -92,50 +92,61 @@ c     Return (current) process id of the process that called the function
 c     Parent Process' task:
       if (proc_id .eq. 0) then
 
-c       Distribute pieces of mask and temp to each process
-c       Looping through tiles in mask and temp
-        do p_count=0, nPx-1, 1
+c     NOTE: Tile number = process id. Therefore, tile numbers and process id's start from 0.
+c           In this do loop: when separately counting tiles(procesess) along the x axis and y axis, denoted as p_x and p_y, we start from 0
+c           in order to correctly compute the row and col of mask and temp corresponding to the row and col of sub_mask and sub_temp.
+c     NOTE: However, the Fortran convention of starting all array indices from 1 is held.
+c           Additionally, when writing to binary files, we index sub_masks and sub_temps by treating each of them
+c           as a single massive grid cell in the full domain mask and temp. These indices start from 1 as per the Fortran convention.
 
-          do row=1, sNy, 1
-            do col=1, sNx, 1
-c             Adding p_count*sNx to col allows us to move onto next portion of mask and temp
-c             to save into sub_mask and sub_temp for each process
-              sub_mask(row, col) = mask(row, int(col+p_count*sNx))
-              sub_temp(row, col) = temp(row, int(col+p_count*sNx))
+c      Distribute pieces of mask and temp to each process
+        do p_y=0, nPy-1, 1
+          do p_x=0, nPx-1, 1
+
+            do row=1, sNy, 1
+              do col=1, sNx, 1
+c               Adding p_x*sNx to col and p_y*sNy to row allows us to move onto next portion
+c               of mask and temp to save into sub_mask and sub_temp for each process.
+                sub_mask(row, col) = mask(int(row+p_y*sNy),
+     & int(col+p_x*sNx))
+                sub_temp(row, col) = temp(int(row+p_y*sNy),
+     & int(col+p_x*sNx))
+              end do
             end do
-          end do
 
-          !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
-          call MPI_SEND(sub_temp, sNx*sNy, MPI_REAL, p_count, 100,
+c           p_count here is equivalent to process id assigned to each tile in increasing order to the right and downwards
+            p_count = p_x + (nPx*p_y)
+
+            !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
+            call MPI_SEND(sub_temp, sNx*sNy, MPI_REAL, p_count, 200,
      & MPI_COMM_WORLD, ierror)
-          call MPI_SEND(sub_mask, sNx*sNy, MPI_INT, p_count, 200,
+            call MPI_SEND(sub_mask, sNx*sNy, MPI_INT, p_count, 100,
      & MPI_COMM_WORLD, ierror)
 
-c       Printing sub masks sent through MPI_SENT
-        print *, "Sent to process", p_count, "with sub_mask ",
+c         Printing sub masks sent through MPI_SENT
+          print *, "Sent to process", p_count, "with sub_mask ",
      & "dimensions: (", shape(sub_mask), ")"
-        print *, "For column indices of full mask: ", 1+p_count*sNx,
+          print *, "For column indices of full mask: ", 1+p_count*sNx,
      & "to ", 10+p_count*sNx, "and row indices: 1 to 10"
-c        print *, "To get the sub_mask: "
-c        call PRINT_INT_ARR(sub_mask, sNx*sNy)
-        end do
 
+          end do
+        end do
       end if
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
 c     ALL Processes' task:
 
-c       MPI_RECV params: received_data, receive_count, receive_type, sender_ID,
-c                        tag, comm, status, ierr
-      call MPI_RECV(sub_mask, sNx*sNy, MPI_INT, 0, 200, MPI_COMM_WORLD,
+c     MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierr
+      call MPI_RECV(sub_mask, sNx*sNy, MPI_INT, 0, 100, MPI_COMM_WORLD,
      & status, ierror)
-      call MPI_RECV(sub_temp, sNx*sNy, MPI_REAL, 0, 100, MPI_COMM_WORLD
+      call MPI_RECV(sub_temp, sNx*sNy, MPI_REAL, 0, 200, MPI_COMM_WORLD
      & ,status, ierror)
 
       call VERIFY_SUBMASKS(sub_mask, sub_temp, mask, temp, proc_id,
      & mask_correct, temp_correct, correct)
 
+      call CREATE_FILENAME(proc_id, 1, 1, filename)
 
       print *, "Process",proc_id, "Received from parent with tag",
      & status(MPI_TAG)
@@ -202,6 +213,7 @@ c             to save into sub_mask and sub_temp for each process
 
       end if
 
+
       call MPI_FINALIZE(ierror)
 
       stop
@@ -240,10 +252,69 @@ c       Reading/writing REALs Decimal form Fw.d
       enddo
       end
 
+      SUBROUTINE CREATE_FILENAME(proc_id, is_temp, is_child, filename)
+        include 'SIZE.h'
+        integer, intent(in) :: proc_id
+        integer, intent(in) :: is_temp
+        integer, intent(in) :: is_child
+        character*18, intent(out) :: filename
+
+        integer p_x, p_y
+        character*4 str_px, str_py
+
+        p_y = proc_id / nPx      ! Integer division does not round.
+        p_x = mod(proc_id, nPx)  ! The remainder is equivalent to tile(process) number along x_axis.
+
+        print *, "is child: ", is_child, "is temp: ", is_temp
+        if (is_child .eq. 1) then
+          if (p_x .lt. 10) then
+            write(str_px, "(A3, I1)") "000", p_x
+          else if (p_x .ge. 10) then
+            write(str_px, "(A2, I2)") "00", p_x
+          else if ((p_x .ge. 100) .and. p_x .le. 999) then
+            write(str_px, "(A1, I3)") "0", p_x
+          else if ((p_x .ge. 1000) .and. (p_x .le. 9999)) then
+            write(str_px, "(I4)") p_x
+          end if
+
+          if (p_y .lt. 10) then
+            write(str_py, "(A3, I1)") "000", p_y
+          else if (p_y .ge. 10) then
+            write(str_py, "(A2, I2)") "00", p_y
+          else if ((p_y .ge. 100) .and. p_y .le. 999) then
+            write(str_py, "(A1, I3)") "0", p_y
+          else if ((p_y .ge. 1000) .and. (p_y .le. 9999)) then
+            write(str_py, "(I4)") p_y
+          end if
+
+          if (is_temp .eq. 1) then
+            write(filename, "(A2, A4, A1, A4, A4)") "T.",
+     &  str_px(1:4), ".", str_py(1:4), ".bin"
+          else
+            write(filename, "(A5, A4, A1, A4, A4)") "mask.",
+     &  str_px(1:4), ".", str_py(1:4), ".bin"
+          end if
+
+          print *, "filename:",filename
+
+        else
+          if (is_temp .eq. 1) then
+            write(filename, "(A12)") "T_global.bin"
+          else
+            write(filename, "(A15)") "mask_global.bin"
+          end if
+          
+        end if
+      end
 
 
       SUBROUTINE VERIFY_SUBMASKS(sub_mask, sub_temp, mask, temp,
      & proc_id, mask_correct, temp_correct, correct)
+
+c     NOTE: Tile number = process id. Therefore, tile numbers and process id's start from 0.
+c           In this subroutine: when separately counting tiles(procesess) along the x axis and y axis, we start from 0
+c           in order to correctly compute the row and col of mask and temp corresponding to the row and col of sub_mask and sub_temp
+c     NOTE: However, the Fortran convention of starting all array indices from 1 is held.
 
         include "SIZE.h"
 
@@ -253,29 +324,36 @@ c       Reading/writing REALs Decimal form Fw.d
         real, dimension(Ny,Nx) :: temp
         integer, dimension(Ny,Nx) :: mask_correct
         integer, dimension(Ny,Nx) :: temp_correct
-        integer proc_id, big_col, row, col
+        integer proc_id, big_col, big_row, row, col
+c       p_x is the process number in x axis, p_y is the tile(process) number in y axis
+        integer p_x, p_y
         integer, intent(out) :: correct
 
+c       Determining p_x and p_y using proc_id using integer division and modulus:
+        p_y = proc_id / nPx      ! Integer division does not round.
+        p_x = mod(proc_id, nPx)  ! The remainder is equivalent to tile(process) number along x_axis.
+
         big_col = 0
+        big_row = 0
 
         do row=1, sNy, 1
           do col=1, sNx, 1
-c           Adding proc_id*sNx to col allows us to move onto next portion of mask and temp
-            big_col = int(col+proc_id*sNx)
-            if (sub_mask(row, col) .eq. mask(row, big_col)) then
+            big_col = int(col+p_x*sNx)
+            big_row = int(row+p_y*sNy)
+            if (sub_mask(row, col) .eq. mask(big_row, big_col)) then
               correct = 1
-              mask_correct(row, big_col) = 1
+              mask_correct(big_row, big_col) = 1
             else
               correct = 0
-              mask_correct(row, big_col) = 0
+              mask_correct(big_row, big_col) = 0
             end if
 
             if (sub_temp(row, col) .eq. temp(row, big_col)) then
               correct = 1
-              mask_correct(row, big_col) = 1
+              mask_correct(big_row, big_col) = 1
             else
               correct = 0
-              mask_correct(row, big_col) = 0
+              mask_correct(big_row, big_col) = 0
             end if
 
           end do
@@ -294,7 +372,7 @@ c           Adding proc_id*sNx to col allows us to move onto next portion of mas
 
 
       SUBROUTINE VERIFY_FINAL(mask, final_mask, final_correct)
-c       This subroutines is only valid under the assumption that the temperature will not be 0.0
+c       This subroutine is only valid under the assumption that the temperature will not be 0.0
         include "SIZE.h"
         integer, dimension(Ny,Nx) :: mask
         real, dimension(Ny,Nx) :: final_mask
