@@ -298,7 +298,9 @@ c       Reading/writing REALs Decimal form Fw.d
 
 
       SUBROUTINE CREATE_FILENAME(proc_id, is_temp, is_child, is_final,
-     & filename)
+     &                           filename)
+c     Creating filenames for all binary files.
+
         include 'SIZE.h'
         integer, intent(in) :: proc_id
         integer, intent(in) :: is_temp
@@ -308,9 +310,14 @@ c       Reading/writing REALs Decimal form Fw.d
         integer p_x, p_y
         character*4 str_px, str_py
 
+c       Indices for each process with respect to global mask divided by the number of processes
         p_y = (proc_id / nPx) + 1     ! Integer division does not round.
         p_x = (mod(proc_id, nPx)) + 1  ! The remainder is equivalent to tile(process) number along x_axis.
 
+c       If creating a filename for a child process, create a name in the format: T.0001.0002.bin
+c       T for temp or mask for mask
+c       0001 for index 1 in x axis
+c       0002 for index 2 in x axis
         if (is_child .eq. 1) then
           if (p_x .lt. 10) then
             write(str_px, "(A3, I1)") "000", p_x
@@ -342,6 +349,7 @@ c       Reading/writing REALs Decimal form Fw.d
 
 
         else
+c         Creating a name for global arrays          
           if (is_temp .eq. 1) then
             write(filename, "(A27)") "./output_masks/T_global.bin"
           else if (is_final .eq. 1) then
