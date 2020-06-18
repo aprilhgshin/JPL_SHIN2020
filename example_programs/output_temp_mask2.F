@@ -42,7 +42,7 @@ c     Arrays to check if mask and temp are distributed to processes correctly:
 c     -1 for not being sent, 1 for being correct, 0 for incorrect.
       integer, dimension(Ny, Nx) :: mask_correct
       integer, dimension(Ny, Nx) :: temp_correct
-      integer, dimension((sNy+sNx)*(nPx*nPy)) :: tempOnMask_correct
+      !integer, dimension((sNy+sNx)*(nPx*nPy)) :: tempOnMask_correct
 
 c     In Parent Process 0: Used as arrays to store pieces of mask and temp to send to each process
 c     All Processes 0-3: Used as buffer arrays to store pieces of mask and temp each process receives
@@ -55,8 +55,8 @@ c     Store temperature values only on elements == 1 on each sub_mask
 
       integer row, col, p_count, p_x, p_y, ierror, proc_id, num_ones
       integer status(MPI_STATUS_SIZE), final_col, correct
-      integer s_row, e_row, s_col, e_col, sub_count, global_row,
-     & global_col
+      integer s_row, e_row, s_col, e_col, sub_count !,global_row,
+c     & global_col
       integer, parameter :: debug = 1
       integer, parameter :: print_MPI_SEND = 0
       integer, parameter :: print_MPI_RECV = 0
@@ -153,7 +153,7 @@ c           Parent sends pieces of temp and mask to each process
             print *, "Parent sent sub_mask to process", p_count,
      &               "with tag 100"
 
-            call MPI_BARRIER(MPI_COMM_WORLD, ierror)
+            !call MPI_BARRIER(MPI_COMM_WORLD, ierror)
 
 c           Printing more MPI_SENT details
             if (print_MPI_SEND .eq. 1) then
@@ -487,10 +487,12 @@ c         Reading file to make sure global final mask is correctly written to bi
 
         do row=1, Ny, 1
           do col=1, Nx, 1
-            if (temp(row, col) .eq. row*col) then
+            if (temp(row,col) .eq. row*col) then
               correct = 1
+              temp_correct(row,col) = 1
             else
               correct = 0
+              temp_correct(row,col) = 0
               if (print_correctness .eq. 1) then
                 print *, "TEST_TEMP_READ: global temp read ",
      &                   "incorrectly."
