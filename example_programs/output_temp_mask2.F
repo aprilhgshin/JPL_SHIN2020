@@ -119,6 +119,7 @@ c       Read temp binary file
         read(2) temp
         close(1)
 
+c       For double checking: 
 c       call PRINT_FLOAT_ARR(temp, Ny*Nx)
 c       print *, temp(1,12)
 
