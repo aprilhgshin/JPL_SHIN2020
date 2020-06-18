@@ -12,10 +12,11 @@ def load_domain_mask(filename):
 
     # initializing mask:
     for col in range(5, 26):
-        mask[5][col] = 1
+        mask[4][col] = 1
 
-    mask.astype('int32').tofile(filename)
-    print("mask: ", np.fromfile(filename, dtype=np.int32))
+    mask.ravel(order='F').astype('int32').tofile(filename)
+    print("mask column ordered: ", np.fromfile(filename, dtype=np.int32))
+    print("mask row ordered: ", mask.ravel(order='C'))
 
 def load_domain_temp(filename):
     temp  = np.zeros([10,40])
@@ -23,11 +24,10 @@ def load_domain_temp(filename):
 
     for row in range(len(temp)):
         for col in range(col_len):
-            temp[row][col] = row*col
-
-    temp.astype('float32').tofile(filename)
-    print("temp: ", np.fromfile(filename, dtype=np.float32))
-
+            temp[row][col] = (row+1)*(col+1)
+    temp.ravel(order='F').astype('float32').tofile(filename)
+    print("temp column ordered: ", np.fromfile(filename, dtype=np.float32))
+    print("temp row ordered: ", temp.ravel(order='C'))
 
 def main():
     filename_mask = "./input_domains/domain_mask.bin"
