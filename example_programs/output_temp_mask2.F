@@ -42,7 +42,7 @@ c     Arrays to check if mask and temp are distributed to processes correctly:
 c     -1 for not being sent, 1 for being correct, 0 for incorrect.
       integer, dimension(Ny, Nx) :: mask_correct
       integer, dimension(Ny, Nx) :: temp_correct
-c      integer, dimension((sNy+sNx)*(nPx*nPy)) :: tempOnMask_correct
+      integer, dimension((sNy+sNx)*(nPx*nPy)) :: tempOnMask_correct
 
 c     In Parent Process 0: Used as arrays to store pieces of mask and temp to send to each process
 c     All Processes 0-3: Used as buffer arrays to store pieces of mask and temp each process receives
@@ -214,8 +214,6 @@ c     Storing temperature values from sub_temp only on mask points (value 1) in 
           if (sub_mask(row,col) .eq. 1) then
             big_row = int(row+p_y*sNy)
             big_col = int(col+p_x*sNx)
-            print *, "Global index:", big_row, big_col, "num:",
-     & int((Nx*(big_row-1))+ big_col)
 
             sub_tempOnMask(sub_count) = sub_temp(row,col)
 c           Saving corresponding global index
@@ -269,6 +267,10 @@ c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID
 c         Receive message tag 2 first.
           call MPI_RECV(sub_global_indices, sNx*sNy+1, MPI_REAL, p_count
      &                  ,2 ,MPI_COMM_WORLD, status, ierror)
+          if (print_MPI_RECV .eq. 1) then
+            print *, "Parent received from process", status(MPI_SOURCE),
+     &               "with tag", status(MPI_TAG)
+          end if
 c         Then receive all other messages sent to parent process.
           call MPI_RECV(sub_tempOnMask, sNx*sNy+1, MPI_REAL, p_count,
      &                  MPI_ANY_TAG ,MPI_COMM_WORLD, status, ierror)
@@ -277,8 +279,6 @@ c         Then receive all other messages sent to parent process.
      &               "with tag", status(MPI_TAG)
           end if
 
-          print *, "Received sub_global_indices from",status(MPI_SOURCE)
-          call PRINT_INT_ARR(sub_global_indices, sNx*sNy+1)
 
 c         If sub array comes with a message tag 1, include in global final mask.
           if (status(MPI_TAG) .eq. 1) then
@@ -301,7 +301,6 @@ c           Values used to compute the corresponding indices in final_mask to in
             do col=2, sub_num_ones+1, 1
               temp_on_mask(final_col) = sub_tempOnMask(col)
               global_indices(final_col) = sub_global_indices(col)
-              print *, "index: ", sub_global_indices(col)
               final_col = final_col + 1
             end do
 
@@ -315,8 +314,8 @@ c           Values used to compute the corresponding indices in final_mask to in
         end do
 
 c       Verifying whether final mask is correctly generated. Test to be corrected.
-c        call TEST_FINAL(num_elem, temp_on_mask,
-c     &                  global_indices, tempOnMask_correct)
+        call TEST_FINAL(num_ones, temp_on_mask,
+     &                  global_indices, tempOnMask_correct)
 
 c       Printing global final mask array and global mask array:
         print *, "Total number of valid elements in final:", num_ones
@@ -637,21 +636,20 @@ c       Checking if global temp on mask is correctly generated
           if (temp_on_mask(i) .eq. row*col) then
             correct = 1
             if (print_correctness .eq. 1) then
-              print *, "TEST_FINAL: ", temp_on_mask(i), row*col
+              print *, "TEST_FINAL Co: ", temp_on_mask(i), row*col
             end if
           else
             correct = 0
-            if (print_correctness .eq. 1) then
-              print *, "TEST_FINAL: INCORRECT", temp_on_mask(i),
-     &                  row*col
-            end if
+            print *, "TEST_FINAL: INCORRECT", temp_on_mask(i),
+     &                row*col
           end if
         end do
 
         if (correct .ne. 1) then
-          print *, "tempOnMask_mask: 1 for correct, 0 for incorrect:"
+          print *, "TEST_FINAL: tempOnMask_mask: 1 for correct, ",
+     & "0 for incorrect:"
           call PRINT_INT_ARR(tempOnMask_correct,(sNy+sNx)*(nPx*nPy))
         else
-          print *, "Global temp on mask is correct."
+          print *, "TEST_FINAL: Global temp on mask is correct."
         end if
       end
