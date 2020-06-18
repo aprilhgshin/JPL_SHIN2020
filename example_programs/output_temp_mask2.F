@@ -119,7 +119,7 @@ c       Read temp binary file
         read(2) temp
         close(1)
 
-c       For double checking: 
+c       For double checking:
 c       call PRINT_FLOAT_ARR(temp, Ny*Nx)
 c       print *, temp(1,12)
 
@@ -214,6 +214,8 @@ c     Storing temperature values from sub_temp only on mask points (value 1) in 
           if (sub_mask(row,col) .eq. 1) then
             big_row = int(row+p_y*sNy)
             big_col = int(col+p_x*sNx)
+            print *, "Global index:", big_row, big_col, "num:",
+     & int((Nx*(big_row-1))+ big_col)
 
             sub_tempOnMask(sub_count) = sub_temp(row,col)
 c           Saving corresponding global index
@@ -231,6 +233,8 @@ c     Printing number of ones sub_mask has for each process
 c     Saving number of valid elements in each sub array
       sub_tempOnMask(1) = num_ones
       sub_global_indices(1) = num_ones
+      print *, "Global indices: "
+      call PRINT_INT_ARR(sub_global_indices, sNy+sNx+1)
 
 c     If there are mask points (value 1) in the sub__mask, send sub_tempOnMask with message tag 1. Otherwise, send with message tag 0.
       if (num_ones .gt. 0) then
@@ -262,12 +266,19 @@ c     - Write global mask, temp, and final mask array to binary file.
 c       Receiving messages from all processes
         do p_count=0, nPx*nPy-1, 1
 c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierr
-          call MPI_RECV(sub_tempOnMask, sNx*sNy, MPI_REAL, p_count,
+c         Receive message tag 2 first.
+          call MPI_RECV(sub_global_indices, sNx*sNy+1, MPI_REAL, p_count
+     &                  ,2 ,MPI_COMM_WORLD, status, ierror)
+c         Then receive all other messages sent to parent process.
+          call MPI_RECV(sub_tempOnMask, sNx*sNy+1, MPI_REAL, p_count,
      &                  MPI_ANY_TAG ,MPI_COMM_WORLD, status, ierror)
           if (print_MPI_RECV .eq. 1) then
             print *, "Parent received from process", status(MPI_SOURCE),
      &               "with tag", status(MPI_TAG)
           end if
+
+          print *, "Received sub_global_indices from",status(MPI_SOURCE)
+          call PRINT_INT_ARR(sub_global_indices, sNx*sNy+1)
 
 c         If sub array comes with a message tag 1, include in global final mask.
           if (status(MPI_TAG) .eq. 1) then
