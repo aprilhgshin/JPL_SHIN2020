@@ -66,7 +66,7 @@ c     Initialize all arrays
           do col=1, Nx, 1
             mask(row,col) = 0
             mask_correct(row,col) = -1
-c             temp_correct(row,col) = -1
+            temp_correct(row,col) = -1
             if ((row .le. sNy) .and. (col .le. sNx)) then
               sub_mask(row,col) = 0
               sub_temp(row,col) = 0
