@@ -38,12 +38,6 @@ c234567890
       real, dimension((sNy+sNx)*(nPx*nPy)) :: temp_on_mask
       integer, dimension((sNy+sNx)*(nPx*nPy)) :: global_indices
 
-c     Arrays to check if mask and temp are distributed to processes correctly:
-c     -1 for not being sent, 1 for being correct, 0 for incorrect.
-      integer, dimension(Ny, Nx) :: mask_correct
-      integer, dimension(Ny, Nx) :: temp_correct
-      integer, dimension((sNy+sNx)*(nPx*nPy)) :: tempOnMask_correct
-
 c     In Parent Process 0: Used as arrays to store pieces of mask and temp to send to each process
 c     All Processes 0-3: Used as buffer arrays to store pieces of mask and temp each process receives
       integer, dimension(sNy,sNx) :: sub_mask
@@ -54,19 +48,21 @@ c     Store temperature values only on elements == 1 on each sub_mask
       integer, dimension(sNy+sNx+1) :: sub_global_indices
 
       integer row, col, p_count, p_x, p_y, ierror, proc_id, num_ones
-      integer status(MPI_STATUS_SIZE), final_col, correct
+      integer status(MPI_STATUS_SIZE), final_col
       integer s_row, e_row, s_col, e_col, sub_count, sub_num_ones
       integer, parameter :: debug = 1
       integer, parameter :: print_MPI_SEND = 0
       integer, parameter :: print_MPI_RECV = 0
+
+      common /sub_arr_pid/ sub_mask, sub_temp, proc_id
 
 
 c     Initialize all arrays
         do row=1, Ny, 1
           do col=1, Nx, 1
             mask(row,col) = 0
-            mask_correct(row,col) = -1
-            temp_correct(row,col) = -1
+c            mask_correct(row,col) = -1
+c            temp_correct(row,col) = -1
             if ((row .le. sNy) .and. (col .le. sNx)) then
               sub_mask(row,col) = 0
               sub_temp(row,col) = 0
@@ -123,7 +119,7 @@ c       For double checking:
 c       call PRINT_FLOAT_ARR(temp, Ny*Nx)
 c       print *, temp(1,12)
 
-        call TEST_TEMP_READ(temp, temp_correct)
+        call TEST_TEMP_READ(temp)
 
 c     NOTE: Tile number = process id. Therefore, tile numbers and process id's start from 0.
 c           When separately counting tiles(procesess) along the x axis and y axis, denoted as p_x and p_y, we start from 0
@@ -195,11 +191,10 @@ c     MPI_RECV params: received_data, receive_count, receive_type, sender_ID, ta
      &         status(MPI_TAG)
 
 c     Verify if each proess received the correct sub_mask and sub_temp
-      call TEST_SUBMASKS(sub_mask, sub_temp, mask, proc_id,
-     &                   mask_correct, temp_correct, correct)
+      call TEST_SUBMASKS(mask)
 
 c     Write all sub_mask and sub_temp to binary file
-      call WRITE_SUB_BIN(sub_temp, sub_mask, proc_id)
+      call WRITE_SUB_BIN()
 
       p_y = proc_id / nPx
       p_x = mod(proc_id, nPx)
@@ -313,9 +308,9 @@ c           Values used to compute the corresponding indices in final_mask to in
 
         end do
 
-c       Verifying whether final mask is correctly generated. Test to be corrected.
+c       Verifying whether final mask is correctly generated.
         call TEST_FINAL(num_ones, temp_on_mask,
-     &                  global_indices, tempOnMask_correct)
+     &                  global_indices)
 
 c       Printing global final mask array and global mask array:
         print *, "Total number of valid elements in final:", num_ones
@@ -418,17 +413,19 @@ c         Creating a filename for global arrays
       end
 
 
-      SUBROUTINE WRITE_SUB_BIN(sub_temp, sub_mask, proc_id)
+      SUBROUTINE WRITE_SUB_BIN()
 c       Writing all sub arrays that each process receives from the Parent to binary files
         include 'SIZE.h'
 
-        integer, intent(in) :: proc_id
+        integer proc_id
         real, dimension(sNy,sNx) :: sub_temp
         integer, dimension(sNy,sNx) :: sub_mask
         real, dimension(sNy,sNx) :: read_sub_temp
         integer, dimension(sNy,sNx) :: read_sub_mask
         integer, parameter :: print_write = 1
         integer, parameter :: print_read = 0
+
+        common /sub_arr_pid/ sub_mask, sub_temp, proc_id
 
         character*30 prefix
         character*50 filename
@@ -509,12 +506,15 @@ c         Reading file to make sure global final mask is correctly written to bi
 
       end
 
-      SUBROUTINE TEST_TEMP_READ(temp, temp_correct)
+      SUBROUTINE TEST_TEMP_READ(temp)
         include "SIZE.h"
         real, dimension(Ny, Nx) :: temp
         integer row, col
         integer correct
         integer, parameter :: print_correctness=1
+
+c      Array to check if mask and temp are distributed to processes correctly:
+c     -1 for not being sent, 1 for being correct, 0 for incorrect.
         integer, dimension(Ny, Nx) :: temp_correct
 
         do row=1, Ny, 1
@@ -541,8 +541,7 @@ c         Reading file to make sure global final mask is correctly written to bi
       end
 
 
-      SUBROUTINE TEST_SUBMASKS(sub_mask, sub_temp, mask,
-     & proc_id, mask_correct, temp_correct, correct)
+      SUBROUTINE TEST_SUBMASKS(mask)
 c    Checking if all sub_masks are correctly distributed to processes
 c    by comparing distributed sub arrays to manually created sub arrays from the global arrays
 
@@ -556,13 +555,26 @@ c     NOTE: However, the Fortran convention of starting all array indices from 1
         integer, dimension(sNy,sNx) :: sub_mask
         real, dimension(sNy,sNx) :: sub_temp
         integer, dimension(Ny,Nx) :: mask
-        integer, dimension(Ny,Nx) :: mask_correct
-        integer, dimension(Ny,Nx) :: temp_correct
+
+c       Arrays to check if mask and temp are distributed to processes correctly:
+c       1 for being correct, 0 for incorrect.
+        integer, dimension(sNy,sNx) :: sub_mask_correct
+        integer, dimension(sNy,sNx) :: sub_temp_correct
+
         integer proc_id, big_col, big_row, row, col
+        common /sub_arr_pid/ sub_mask, sub_temp, proc_id
 c       p_x is the process number in x axis, p_y is the tile(process) number in y axis
         integer p_x, p_y
-        integer, intent(out) :: correct
-        integer, parameter :: print_correctness = 1
+        integer correct
+        integer, parameter :: print_correctness = 0
+
+c       Initialize mask_correct and temp_correct
+        do row=1, sNy, 1
+          do col=1, sNx, 1
+            sub_mask_correct(row,col) = -1
+            sub_temp_correct(row,col) = -1
+          end do
+        end do
 
 c       Determining p_x and p_y using proc_id using integer division and modulus:
         p_y = proc_id / nPx      ! Integer division does not round.
@@ -579,18 +591,18 @@ c       Looping through sub arrays and comparing each element to corresponding e
 c           Comparing sub mask to corresponding piece of global mask
             if (sub_mask(row, col) .eq. mask(big_row, big_col)) then
               correct = 1
-              mask_correct(big_row, big_col) = 1
+              sub_mask_correct(row, col) = 1
             else
               correct = 0
-              mask_correct(big_row, big_col) = 0
+              sub_mask_correct(row, col) = 0
             end if
 c           Comparing sub temp to corresponding piece of global temp which  is defined by the function global row * global col
             if (sub_temp(row, col) .eq. big_row*big_col) then
               correct = 1
-              temp_correct(big_row, big_col) = 1
+              sub_temp_correct(row, col) = 1
             else
               correct = 0
-              temp_correct(big_row, big_col) = 0
+              sub_temp_correct(row, col) = 0
             end if
 
           end do
@@ -598,33 +610,44 @@ c           Comparing sub temp to corresponding piece of global temp which  is d
 
 c       correct == 1 indicates sub arrays were correctly generated.
 c       correct == 0 indicates sub arrays are incorrect.
-        if (print_correctness .eq. 1) then
-          if (correct .eq. 1) then
-            print *, "Process", proc_id, "receieved correct sub_mask",
-     &               " and sub_temp"
-          else
-            print *, "INCORRECTLY DISTRIBUTED FOR PROCESS", proc_id
-            print *, "mask: 1 for correct. 0 for incorrect: "
-            call PRINT_INT_ARR(mask_correct, Ny*Nx)
-            print *, "temp: 1 for correct. 0 for incorrect: "
-            call PRINT_INT_ARR(temp_correct, Ny*Nx)
+        if (correct .eq. 1) then
+          if (print_correctness .eq. 1) then
+            print *, "TEST_SUBMASKS: Process", proc_id, "received ",
+     &               "correct sub_mask and sub_temp"
           end if
+        else
+          print *, "TEST_SUBMASKS: INCORRECTLY DISTRIBUTED FOR PROCESS"
+     &              , proc_id
+          print *, "TEST_SUBMASKS: sub_mask: 1 for correct. 0 for ",
+     &             "incorrect: "
+          call PRINT_INT_ARR(sub_mask_correct, Ny*Nx)
+          print *, "TEST_SUBMASKS: sub_temp: 1 for correct. 0 for ",
+     &             "incorrect: "
+          call PRINT_INT_ARR(sub_temp_correct, Ny*Nx)
         end if
       end
 
 
       SUBROUTINE TEST_FINAL(num_elem, temp_on_mask,
-     &                      global_indices, tempOnMask_correct)
+     &                      global_indices)
 c       Checking if global temp on mask is correctly generated
 
         include "SIZE.h"
         integer, dimension((sNy+sNx)*(nPx*nPy)) :: global_indices
         real, dimension((sNy+sNx)*(nPx*nPy)) :: temp_on_mask
+
+c       Array to check if mask and temp are distributed to processes correctly:
+c       -1 for not being sent, 1 for being correct, 0 for incorrect.
         integer, dimension((sNy+sNx)*(nPx*nPy)) :: tempOnMask_correct
         integer i, correct, num_elem, global_index
         integer row, col
         integer, parameter :: print_correctness = 0
         correct = 0
+
+c       initialize tempOnMask_correct
+        do i=1, (sNy+sNx)*(nPx*nPy), 1
+          tempOnMask_correct = -1
+        end do
 
         call PRINT_INT_ARR(global_indices, (sNy+sNx)*(nPx*nPy))
 
@@ -635,11 +658,13 @@ c       Checking if global temp on mask is correctly generated
           !print *, "TEST_FINAL row col: ", row, col
           if (temp_on_mask(i) .eq. row*col) then
             correct = 1
+            tempOnMask_correct(i) = 1
             if (print_correctness .eq. 1) then
               print *, "TEST_FINAL Co: ", temp_on_mask(i), row*col
             end if
           else
             correct = 0
+            tempOnMask_correct(i) = 0
             print *, "TEST_FINAL: INCORRECT", temp_on_mask(i),
      &                row*col
           end if
