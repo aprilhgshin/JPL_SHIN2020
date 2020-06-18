@@ -61,8 +61,6 @@ c     Initialize all arrays
         do row=1, Ny, 1
           do col=1, Nx, 1
             mask(row,col) = 0
-c            mask_correct(row,col) = -1
-c            temp_correct(row,col) = -1
             if ((row .le. sNy) .and. (col .le. sNx)) then
               sub_mask(row,col) = 0
               sub_temp(row,col) = 0
@@ -85,6 +83,7 @@ c     Read mask and temp data from binary files
      & ,ACCESS="stream")
        read(1) mask
        close(1)
+c      For double checking:
 c       call PRINT_INT_ARR(mask, Ny*Nx)
 c       row = 5
 c       do col=1, Nx, 1
@@ -226,8 +225,8 @@ c     Printing number of ones sub_mask has for each process
 c     Saving number of valid elements in each sub array
       sub_tempOnMask(1) = num_ones
       sub_global_indices(1) = num_ones
-      print *, "Global indices: "
-      call PRINT_INT_ARR(sub_global_indices, sNy+sNx+1)
+c      print *, "Global indices: "
+c      call PRINT_INT_ARR(sub_global_indices, sNy+sNx+1)
 
 c     If there are mask points (value 1) in the sub__mask, send sub_tempOnMask with message tag 1. Otherwise, send with message tag 0.
       if (num_ones .gt. 0) then
@@ -278,8 +277,8 @@ c         Then receive all other messages sent to parent process.
 c         If sub array comes with a message tag 1, include in global final mask.
           if (status(MPI_TAG) .eq. 1) then
             print *, "Parent receives Tag 1 from Process",
-     &                status(MPI_SOURCE), "with sub array:"
-            call PRINT_FLOAT_ARR(sub_tempOnMask, sNx+sNy)
+     &                status(MPI_SOURCE)!, "with sub array:"
+            !call PRINT_FLOAT_ARR(sub_tempOnMask, sNx+sNy)
             print *, "Time to put Process",status(MPI_SOURCE),
      &               "'s sub array in global final mask."
             print *, "There are ", sub_tempOnMask(1), "valid elements",
@@ -309,8 +308,7 @@ c           Values used to compute the corresponding indices in final_mask to in
         end do
 
 c       Verifying whether final mask is correctly generated.
-        call TEST_FINAL(num_ones, temp_on_mask,
-     &                  global_indices)
+        call TEST_FINAL(num_ones, temp_on_mask, global_indices)
 
 c       Printing global final mask array and global mask array:
         print *, "Total number of valid elements in final:", num_ones
@@ -628,8 +626,7 @@ c       correct == 0 indicates sub arrays are incorrect.
       end
 
 
-      SUBROUTINE TEST_FINAL(num_elem, temp_on_mask,
-     &                      global_indices)
+      SUBROUTINE TEST_FINAL(num_elem, temp_on_mask, global_indices)
 c       Checking if global temp on mask is correctly generated
 
         include "SIZE.h"
@@ -648,8 +645,6 @@ c       initialize tempOnMask_correct
         do i=1, (sNy+sNx)*(nPx*nPy), 1
           tempOnMask_correct = -1
         end do
-
-        call PRINT_INT_ARR(global_indices, (sNy+sNx)*(nPx*nPy))
 
         do i=1, num_elem, 1
           global_index = global_indices(i)
