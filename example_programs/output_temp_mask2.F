@@ -42,7 +42,7 @@ c     Arrays to check if mask and temp are distributed to processes correctly:
 c     -1 for not being sent, 1 for being correct, 0 for incorrect.
       integer, dimension(Ny, Nx) :: mask_correct
       integer, dimension(Ny, Nx) :: temp_correct
-      integer, dimension((sNy+sNx)*(nPx*nPy)) :: tempOnMask_correct
+c      integer, dimension((sNy+sNx)*(nPx*nPy)) :: tempOnMask_correct
 
 c     In Parent Process 0: Used as arrays to store pieces of mask and temp to send to each process
 c     All Processes 0-3: Used as buffer arrays to store pieces of mask and temp each process receives
@@ -66,7 +66,7 @@ c     Initialize all arrays
           do col=1, Nx, 1
             mask(row,col) = 0
             mask_correct(row,col) = -1
-            temp_correct(row,col) = -1
+c             temp_correct(row,col) = -1
             if ((row .le. sNy) .and. (col .le. sNx)) then
               sub_mask(row,col) = 0
               sub_temp(row,col) = 0
@@ -604,8 +604,6 @@ c       correct == 0 indicates sub arrays are incorrect.
 
       SUBROUTINE TEST_FINAL(num_elem, temp_on_mask,
      &                      global_indices, tempOnMask_correct)
-c       NOTE: This subroutine is created for the 2D final array. Changes must be made for the new 1D final array.
-
 c       Checking if global temp on mask is correctly generated
 
         include "SIZE.h"
