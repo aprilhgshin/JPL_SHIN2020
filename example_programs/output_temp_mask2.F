@@ -118,12 +118,13 @@ c     Parent Process' task:
         call TEST_TEMP_READ(temp, temp_correct)
 
 c     NOTE: Tile number = process id. Therefore, tile numbers and process id's start from 0.
-c           In this do loop: when separately counting tiles(procesess) along the x axis and y axis, denoted as p_x and p_y, we start from 0
+c           When separately counting tiles(procesess) along the x axis and y axis, denoted as p_x and p_y, we start from 0
 c           in order to correctly compute the row and col of mask and temp corresponding to the row and col of sub_mask and sub_temp.
 c     NOTE: However, the Fortran convention of starting all array indices from 1 is held.
 c           Additionally, when writing to binary files, we index sub_masks and sub_temps by treating each of them
 c           as a single massive grid cell in the full domain mask and temp. These indices start from 1 as per the Fortran convention.
-c      NOTE: new edit: We do not have to loop throught the global arrays. We can simply index to get tiles from global arrays
+c     NOTE: We do not have to loop throught the global arrays. We can simply index to get tiles from global arrays
+
 c      Distribute pieces of mask and temp to each process
         do p_y=0, nPy-1, 1
           do p_x=0, nPx-1, 1
@@ -286,7 +287,7 @@ c           Values used to compute the corresponding indices in final_mask to in
         end do
 
 c       Verifying whether final mask is correctly generated.
-c        call TEST_FINAL(mask, final_mask, final_correct)
+c        call TEST_FINAL(mask, final_mask, final_correct) !Must be adjusted to do the 1D final array
 
 c       Printing global final mask array and global mask array:
         print *, "Final updated temperature array over mask: "
@@ -582,6 +583,8 @@ c       correct == 0 indicates sub arrays are incorrect.
 
 
       SUBROUTINE TEST_FINAL(mask, final_mask, final_correct)
+c       NOTE: This subroutine is created for the 2D final array. Changes must be made for the new 1D final array.
+
 c       Checking if global final mask is correctly generated
 c       by comparing locations of positive elements in global mask and global final mask.
 c       This subroutine is only valid under the assumption that the temperature will not be 0.0
