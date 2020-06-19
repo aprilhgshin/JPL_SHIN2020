@@ -26,6 +26,9 @@ c 8. define temperature as T(row,col) = row*col
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 c234567890
 
+c NOTE: Additional changes to be made: Don't pass array addresses to subroutine. Creating copies of the passed in arrays will slow down the program.
+c This is an issue of Fortran subroutines possibly requiring contiguous arrays. Change to pointers (array descriptors) to speed up runtime.
+
 
       program create_output
 
@@ -210,8 +213,10 @@ c     Storing temperature values from sub_temp only on mask points (value 1) in 
       sub_count = 2
       big_row = 0
       big_col = 0
-      do row=1, sNy, 1
-        do col=1, sNx, 1
+
+      ! Looping column-major order
+      do col=1, sNx, 1
+        do row=1, sNy, 1
           if (sub_mask(row,col) .eq. 1) then
             big_row = int(row+p_y*sNy)
             big_col = int(col+p_x*sNx)
