@@ -31,17 +31,11 @@ c234567890
 
       include "SIZE.h"
       include "mpif.h"
-      !include "/home/mitgcm/Work/MITgcm/pkg/mdsio/MDSIO_OPTIONS.h"
 
-      !integer, dimension(Ny,Nx) :: mask
-      !real, dimension(Ny,Nx) :: temp
-      !real, dimension((sNy+sNx)*(nPx*nPy)) :: temp_on_mask
-      !integer, dimension((sNy+sNx)*(nPx*nPy)) :: global_indices
       integer, allocatable :: mask(:,:)
       real, allocatable :: temp(:,:)
       real, allocatable :: temp_on_mask(:)
       integer, allocatable :: global_indices(:)
-
 
 c     In Parent Process 0: Used as arrays to store pieces of mask and temp to send to each process
 c     All Processes 0-3: Used as buffer arrays to store pieces of mask and temp each process receives
@@ -63,12 +57,9 @@ c     Store temperature values only on elements == 1 on each sub_mask
 
       common /sub_arr_pid/ sub_mask, sub_temp, proc_id
 
+
 c     Allocate space for mask
       allocate(mask(Ny,Nx))
-
-c     Creating output file to store all print statements in file instead of printing to terminal
-      output_file = "output.txt"
-      open(10, FILE=output_file, FORM="unformatted", ACCESS="stream")
 
 c     Initialize arrays used by all processes
       mask = 0
@@ -98,6 +89,8 @@ c     Return (current) process id of the process that called the function
       call MPI_COMM_RANK(MPI_COMM_WORLD, proc_id, ierror)
 
 
+C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
+
 c     Parent Process' task:
       if (proc_id .eq. 0) then
 
@@ -112,10 +105,12 @@ c       Read temp binary file
         read(2) temp
         close(1)
 
+c     Creating output file to store all print statements in file instead of printing to terminal
+      output_file = "output.txt"
+      open(10, FILE=output_file, FORM="formatted")
+
 c       For double checking:
-       print *, "printing temp: two ways:"
-       call PRINT_FLOAT_ARR(temp, Ny*Nx)
-       print *, temp
+c       call PRINT_FLOAT_ARR(temp, Ny*Nx)
 c       print *, temp(1,12)
 
         call TEST_TEMP_READ(temp)
@@ -145,52 +140,67 @@ c           of mask and temp to save into sub_mask and sub_temp for each process
 
 c           p_count here is equivalent to process id assigned to each tile in increasing order to the right and downwards
             p_count = p_x + (nPx*p_y)
+            write(10, FMT=*) "Message SEND status from Parent to ",
+     &                        "Process", p_count, ": "
 
 c           Parent sends pieces of temp and mask to each process
             !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
             call MPI_SEND(sub_temp, sNx*sNy, MPI_REAL, p_count, 200,
      &                    MPI_COMM_WORLD, ierror)
-            print *, "Parent sent sub_temp to process", p_count,
+c            print *, "Parent sent sub_temp to process", p_count,
+c     &               "with tag 200"
+            write(10, FMT=*) "Parent sent sub_temp to process", p_count,
      &               "with tag 200"
 
             call MPI_SEND(sub_mask, sNx*sNy, MPI_INT, p_count, 100,
      &                    MPI_COMM_WORLD, ierror)
-            print *, "Parent sent sub_mask to process", p_count,
+
+            write(10, FMT=*) "Parent sent sub_mask to process", p_count,
      &               "with tag 100"
 
             !call MPI_BARRIER(MPI_COMM_WORLD, ierror)
 
 c           Printing more MPI_SENT details
-            if (print_MPI_SEND .eq. 1) then
-              print *, "Parent sent to process", p_count, "with",
-     &                 " sub_mask dimensions: (", shape(sub_mask), ")"
-              print *, "with column indices of full mask: ",
+            if (print_MPI_SEND .eq. 0) then
+              write(10, FMT=*) "Parent sent to process", p_count,
+     &              "with sub_mask dimensions: (", shape(sub_mask), ")"
+              write(10, FMT=*) "with column indices of full mask: ",
      & 1+p_count*sNx, "to ", 10+p_count*sNx, "and row indices: 1 to 10"
+              write(10, FMT=*) "  "
             end if
 
           end do
         end do
 
+        write(10, FMT=*) "Parent completed distribution to each ",
+     &                   "process."
+        write(10, FMT=*) " "
+        write(10, FMT=*) " "
+        close(10)
         deallocate(temp)
       end if
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
 c     ALL Processes' task:
+c      open(11, FILE=output_file, status="old", position="append"
+c     &       ,action="write")
 
 c     Each process receives a sub_mask and sub_temp from Parent.
 c     MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierr
       call MPI_RECV(sub_mask, sNx*sNy, MPI_INT, 0, 100, MPI_COMM_WORLD,
      &              status, ierror)
-
-      print *, "Process",proc_id, "Received from parent with tag",
-     &         status(MPI_TAG)
+      if (print_MPI_RECV .eq. 1) then
+        print*,"Process",proc_id, "Received from parent "
+     &                ,"with tag", status(MPI_TAG)
+      end if
 
       call MPI_RECV(sub_temp, sNx*sNy, MPI_REAL, 0, 200, MPI_COMM_WORLD
      &             ,status, ierror)
-
-      print *, "Process",proc_id, "Received from parent with tag",
-     &         status(MPI_TAG)
+      if (print_MPI_RECV .eq. 1) then
+        print *,"Process",proc_id, "Received from parent with"
+     &      ," tag" ,status(MPI_TAG)
+      end if
 
 c     Verify if each proess received the correct sub_mask and sub_temp
       call TEST_SUBMASKS(mask)
@@ -225,7 +235,8 @@ c           Saving corresponding global index
       end do
 
 c     Printing number of ones sub_mask has for each process
-      print*, "Process", proc_id, "has", num_ones, "number of ones"
+      print *,"Process", proc_id, "has", num_ones,
+     &                "number of ones"
 
 c     Saving number of valid elements in each sub array
       sub_tempOnMask(1) = num_ones
@@ -236,20 +247,25 @@ c      call PRINT_INT_ARR(sub_global_indices, sNy+sNx+1)
 c     If there are mask points (value 1) in the sub__mask, send sub_tempOnMask with message tag 1. Otherwise, send with message tag 0.
       if (num_ones .gt. 0) then
         !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
-        print *, "A tag one subarray from", proc_id
+        print *,"A tag one subarray from", proc_id
         call PRINT_FLOAT_ARR(sub_tempOnMask, sNx+sNy)
         call MPI_SEND(sub_tempOnMask, sNx+sNy, MPI_REAL, 0, 1,
      &                MPI_COMM_WORLD, ierror)
-        print *, "process", proc_id, "sends tag 1 to Parent"
+        print *,"process", proc_id, "sends tag 1 to Parent"
       else
         call MPI_SEND(sub_tempOnMask, sNx+sNy, MPI_REAL, 0, 0,
      &                MPI_COMM_WORLD, ierror)
-        print *, "process", proc_id, "sends tag 0 to Parent"
+        print *,"process", proc_id, "sends tag 0 to Parent"
       end if
 
 c     Send sub global indices array to parent process.
       call MPI_SEND(sub_global_indices, sNx+sNy, MPI_INT, 0, 2,
      &              MPI_COMM_WORLD, ierror)
+
+
+
+
+
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
@@ -257,6 +273,9 @@ c     Final tasks for parent process:
 c     - Receive sub arrays from all processes. Only include sub arrays with message tag 1 into global final mask array.
 c     - Write global mask, temp, and final mask array to binary file.
       if (proc_id .eq. 0) then
+        open(100, FILE=output_file, status="old", position="append",
+     &       action="write")
+
 
 c       Allocate space
         allocate(temp_on_mask((sNy+sNx)*(nPx*nPy)))
@@ -266,6 +285,8 @@ c       Initialize arrays
         global_indices = 0
 c       Initializing temp_on_mask and global_indices array counter
         final_col = 1
+        write(100,FMT=*) "Parent Message Recieve Status: "
+        write(100,FMT=*) " "
 
 c       Receiving messages from all processes
         do p_count=0, nPx*nPy-1, 1
@@ -273,28 +294,24 @@ c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID
 c         Receive message tag 2 first.
           call MPI_RECV(sub_global_indices, sNx*sNy+1, MPI_REAL, p_count
      &                  ,2 ,MPI_COMM_WORLD, status, ierror)
-          if (print_MPI_RECV .eq. 1) then
-            print *, "Parent received from process", status(MPI_SOURCE),
-     &               "with tag", status(MPI_TAG)
-          end if
+          write(100,FMT=*)"Parent received from process",
+     &              status(MPI_SOURCE), "with tag", 2
 c         Then receive all other messages sent to parent process.
           call MPI_RECV(sub_tempOnMask, sNx*sNy+1, MPI_REAL, p_count,
      &                  MPI_ANY_TAG ,MPI_COMM_WORLD, status, ierror)
-          if (print_MPI_RECV .eq. 1) then
-            print *, "Parent received from process", status(MPI_SOURCE),
-     &               "with tag", status(MPI_TAG)
-          end if
+          write(100,FMT=*)"Parent received from process",
+     &              status(MPI_SOURCE), "with tag", status(MPI_TAG)
 
 
 c         If sub array comes with a message tag 1, include in global final mask.
           if (status(MPI_TAG) .eq. 1) then
-            print *, "Parent receives Tag 1 from Process",
+            write(100,FMT=*)"Parent receives Tag 1 from Process",
      &                status(MPI_SOURCE)!, "with sub array:"
             !call PRINT_FLOAT_ARR(sub_tempOnMask, sNx+sNy)
-            print *, "Time to put Process",status(MPI_SOURCE),
+            write(100,FMT=*)"Time to put Process",status(MPI_SOURCE),
      &               "'s sub array in global final mask."
-            print *, "There are ", sub_tempOnMask(1), "valid elements",
-     &               " to save into global final mask"
+            write(100,FMT=*)"There are ", sub_global_indices(1),
+     &               "valid elements to save into global final mask"
 
 
 c           Values used to compute the corresponding indices in final_mask to indices of sub array
@@ -302,7 +319,7 @@ c           Values used to compute the corresponding indices in final_mask to in
             p_x = (mod(status(MPI_SOURCE), nPx))  ! The remainder is equivalent to tile(process) number along x_axis.
 
 
-            sub_num_ones = int(sub_tempOnMask(1))
+            sub_num_ones = sub_global_indices(1)
             num_ones = num_ones + sub_num_ones
             do col=2, sub_num_ones+1, 1
               temp_on_mask(final_col) = sub_tempOnMask(col)
@@ -311,10 +328,8 @@ c           Values used to compute the corresponding indices in final_mask to in
             end do
 
           else
-            if (debug .eq. 1) then
-              print *, "Parent receives Tag 0 from Process",proc_id,
-     &                 ". Nothing to include in global temp on mask"
-            end if
+            write(100,FMT=*)"Parent receives Tag 0 from Process",
+     &        proc_id, ". Nothing to include in global temp on mask"
           end if
 
         end do
@@ -336,6 +351,8 @@ c       Writing final T_on_mask global array to binary files
         deallocate(global_indices)
 
       end if
+      close(100)
+
 
 c     End all MPI communication. Clean MPI environment.
       call MPI_FINALIZE(ierror)
@@ -344,6 +361,8 @@ c     End all MPI communication. Clean MPI environment.
       end
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
+C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
+
 
       SUBROUTINE PRINT_INT_ARR(array, arr_length)
       integer arr_length
