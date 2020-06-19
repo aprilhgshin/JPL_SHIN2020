@@ -67,6 +67,8 @@ c     Store temperature values only on elements == 1 on each sub_mask
 
       common /sub_arr_pid/ sub_mask, sub_temp, proc_id
 
+c     Allocate space for mask
+      allocate(mask(Ny,Nx))
 
 c     Initialize arrays used by all processes
       mask = 0
@@ -75,8 +77,6 @@ c     Initialize arrays used by all processes
       sub_tempOnMask = 0.0
       sub_global_indices = 0
 
-c     Allocate space for mask
-      allocate(mask(Ny,Nx))
 
 c     Read mask and temp data from binary files
        open(1, FILE="input_domains/domain_mask.bin", FORM="unformatted"
@@ -331,6 +331,9 @@ c       Printing global final mask array and global mask array:
 
 c       Writing final T_on_mask global array to binary files
         call WRITE_GLOBAL_BIN(temp_on_mask)
+
+        deallocate(temp_on_mask)
+        deallocate(global_indices)
 
       end if
 
