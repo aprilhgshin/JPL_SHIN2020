@@ -56,27 +56,36 @@ c     Store temperature values only on elements == 1 on each sub_mask
 
       common /sub_arr_pid/ sub_mask, sub_temp, proc_id
 
+      mask = 99
 
 c     Initialize all arrays
-        do row=1, Ny, 1
-          do col=1, Nx, 1
-            mask(row,col) = 0
-            if ((row .le. sNy) .and. (col .le. sNx)) then
-              sub_mask(row,col) = 0
-              sub_temp(row,col) = 0
-            end if
-          end do
-        end do
+      mask = 0
+      sub_mask = 0
+      sub_temp = 0
+      temp_on_mask = 0.0
+      global_indices = 0
+      sub_tempOnMask = 0.0
+      sub_global_indices = 0
 
-        do col=1, (sNy+sNx)*(nPx*nPy), 1
-          temp_on_mask(col) = 0.0
-          global_indices = 0
-        end do
+c        do row=1, Ny, 1
+c          do col=1, Nx, 1
+c            !mask(row,col) = 0
+c            if ((row .le. sNy) .and. (col .le. sNx)) then
+c              sub_mask(row,col) = 0
+c              sub_temp(row,col) = 0
+c            end if
+c          end do
+c        end do
 
-        do col=1,sNx+sNy+1, 1
-          sub_tempOnMask(col) = 0.0
-          sub_global_indices = 0
-        end do
+c        do col=1, (sNy+sNx)*(nPx*nPy), 1
+c          temp_on_mask(col) = 0.0
+c          global_indices = 0
+c        end do
+
+c        do col=1,sNx+sNy+1, 1
+c          sub_tempOnMask(col) = 0.0
+c          sub_global_indices = 0
+c        end do
 
 c     Read mask and temp data from binary files
        open(1, FILE="input_domains/domain_mask.bin", FORM="unformatted"
@@ -102,11 +111,7 @@ c     Parent Process' task:
       if (proc_id .eq. 0) then
 
 c       Initialize global temp array
-        do row=1, Ny, 1
-          do col=1, Nx, 1
-            temp(row,col) = 0.0
-          end do
-        end do
+        temp = 0.0
 
 c       Read temp binary file
         open(2, FILE="input_domains/domain_temp.bin", FORM="unformatted"
@@ -115,7 +120,9 @@ c       Read temp binary file
         close(1)
 
 c       For double checking:
-c       call PRINT_FLOAT_ARR(temp, Ny*Nx)
+       print *, "printing temp: two ways:"
+       call PRINT_FLOAT_ARR(temp, Ny*Nx)
+       print *, temp
 c       print *, temp(1,12)
 
         call TEST_TEMP_READ(temp)
@@ -567,12 +574,14 @@ c       p_x is the process number in x axis, p_y is the tile(process) number in 
         integer, parameter :: print_correctness = 0
 
 c       Initialize mask_correct and temp_correct
-        do row=1, sNy, 1
-          do col=1, sNx, 1
-            sub_mask_correct(row,col) = -1
-            sub_temp_correct(row,col) = -1
-          end do
-        end do
+        sub_mask_correct = -1
+        sub_temp_correct = -1
+        !do row=1, sNy, 1
+        !  do col=1, sNx, 1
+        !      sub_mask_correct(row,col) = -1
+        !    sub_temp_correct(row,col) = -1
+        !  end do
+        !end do
 
 c       Determining p_x and p_y using proc_id using integer division and modulus:
         p_y = proc_id / nPx      ! Integer division does not round.
@@ -642,9 +651,10 @@ c       -1 for not being sent, 1 for being correct, 0 for incorrect.
         correct = 0
 
 c       initialize tempOnMask_correct
-        do i=1, (sNy+sNx)*(nPx*nPy), 1
-          tempOnMask_correct = -1
-        end do
+        tempOnMask_correct = -1
+        !do i=1, (sNy+sNx)*(nPx*nPy), 1
+        !  tempOnMask_correct = -1
+        !end do
 
         do i=1, num_elem, 1
           global_index = global_indices(i)
