@@ -26,12 +26,6 @@ c 8. define temperature as T(row,col) = row*col
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 c234567890
 
-c NOTE: Additional changes to be made: Don't pass array addresses to subroutine. Creating copies of the passed in arrays will slow down the program.
-c This is an issue of Fortran subroutines possibly requiring contiguous arrays. Change to pointers (array descriptors) to speed up runtime.
-c Also think about dynamically allocating and deallocating memory to have enough space in stack for all the massive datasets soon to come.
-c This may help with the possible issue of MPI_SEND not having enough memory to save messages in buffers while they aren't yet received. Then MPI_SEND
-c will never return and the program will linger forever.
-
 
       program create_output
 
