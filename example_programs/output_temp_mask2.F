@@ -59,10 +59,16 @@ c     Store temperature values only on elements == 1 on each sub_mask
       integer, parameter :: print_MPI_SEND = 0
       integer, parameter :: print_MPI_RECV = 0
 
+      character*10 output_file
+
       common /sub_arr_pid/ sub_mask, sub_temp, proc_id
 
 c     Allocate space for mask
       allocate(mask(Ny,Nx))
+
+c     Creating output file to store all print statements in file instead of printing to terminal
+      output_file = "output.txt"
+      open(10, FILE=output_file, FORM="unformatted", ACCESS="stream")
 
 c     Initialize arrays used by all processes
       mask = 0
