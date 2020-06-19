@@ -30,7 +30,7 @@ c NOTE: Additional changes to be made: Don't pass array addresses to subroutine.
 c This is an issue of Fortran subroutines possibly requiring contiguous arrays. Change to pointers (array descriptors) to speed up runtime.
 c Also think about dynamically allocating and deallocating memory to have enough space in stack for all the massive datasets soon to come.
 c This may help with the possible issue of MPI_SEND not having enough memory to save messages in buffers while they aren't yet received. Then MPI_SEND
-c will never return and the program will linger forever. 
+c will never return and the program will linger forever.
 
 
       program create_output
@@ -39,10 +39,12 @@ c will never return and the program will linger forever.
       include "mpif.h"
       !include "/home/mitgcm/Work/MITgcm/pkg/mdsio/MDSIO_OPTIONS.h"
 
-      integer, dimension(Ny,Nx) :: mask
+      integer, allocatable :: mask(:,:)
+      !integer, dimension(Ny,Nx) :: mask
       real, dimension(Ny,Nx) :: temp
       real, dimension((sNy+sNx)*(nPx*nPy)) :: temp_on_mask
       integer, dimension((sNy+sNx)*(nPx*nPy)) :: global_indices
+
 
 c     In Parent Process 0: Used as arrays to store pieces of mask and temp to send to each process
 c     All Processes 0-3: Used as buffer arrays to store pieces of mask and temp each process receives
@@ -62,7 +64,8 @@ c     Store temperature values only on elements == 1 on each sub_mask
 
       common /sub_arr_pid/ sub_mask, sub_temp, proc_id
 
-      mask = 99
+      allocate(mask(Ny,Nx))
+
 
 c     Initialize all arrays
       mask = 0
@@ -73,25 +76,6 @@ c     Initialize all arrays
       sub_tempOnMask = 0.0
       sub_global_indices = 0
 
-c        do row=1, Ny, 1
-c          do col=1, Nx, 1
-c            !mask(row,col) = 0
-c            if ((row .le. sNy) .and. (col .le. sNx)) then
-c              sub_mask(row,col) = 0
-c              sub_temp(row,col) = 0
-c            end if
-c          end do
-c        end do
-
-c        do col=1, (sNy+sNx)*(nPx*nPy), 1
-c          temp_on_mask(col) = 0.0
-c          global_indices = 0
-c        end do
-
-c        do col=1,sNx+sNy+1, 1
-c          sub_tempOnMask(col) = 0.0
-c          sub_global_indices = 0
-c        end do
 
 c     Read mask and temp data from binary files
        open(1, FILE="input_domains/domain_mask.bin", FORM="unformatted"
@@ -204,7 +188,7 @@ c     MPI_RECV params: received_data, receive_count, receive_type, sender_ID, ta
 
 c     Verify if each proess received the correct sub_mask and sub_temp
       call TEST_SUBMASKS(mask)
-
+      deallocate(mask)
 c     Write all sub_mask and sub_temp to binary file
       call WRITE_SUB_BIN()
 
@@ -331,8 +315,6 @@ c       Printing global final mask array and global mask array:
         call PRINT_FLOAT_ARR(temp_on_mask, (sNy+sNx)*(nPx*nPy))
         print *, "Final global index array over mask: "
         call PRINT_INT_ARR(global_indices, (sNy+sNx)*(nPx*nPy))
-        print *, "Mask array: "
-        call PRINT_INT_ARR(mask, Ny*Nx)
 
 c       Writing final T_on_mask global array to binary files
         call WRITE_GLOBAL_BIN(temp_on_mask)
@@ -568,6 +550,7 @@ c     NOTE: However, the Fortran convention of starting all array indices from 1
         integer, dimension(sNy,sNx) :: sub_mask
         real, dimension(sNy,sNx) :: sub_temp
         integer, dimension(Ny,Nx) :: mask
+        !integer, allocatable :: mask(Ny,Nx)
 
 c       Arrays to check if mask and temp are distributed to processes correctly:
 c       1 for being correct, 0 for incorrect.
