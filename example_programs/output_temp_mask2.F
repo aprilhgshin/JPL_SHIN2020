@@ -39,11 +39,14 @@ c will never return and the program will linger forever.
       include "mpif.h"
       !include "/home/mitgcm/Work/MITgcm/pkg/mdsio/MDSIO_OPTIONS.h"
 
-      integer, allocatable :: mask(:,:)
       !integer, dimension(Ny,Nx) :: mask
-      real, dimension(Ny,Nx) :: temp
-      real, dimension((sNy+sNx)*(nPx*nPy)) :: temp_on_mask
-      integer, dimension((sNy+sNx)*(nPx*nPy)) :: global_indices
+      !real, dimension(Ny,Nx) :: temp
+      !real, dimension((sNy+sNx)*(nPx*nPy)) :: temp_on_mask
+      !integer, dimension((sNy+sNx)*(nPx*nPy)) :: global_indices
+      integer, allocatable :: mask(:,:)
+      real, allocatable :: temp(:,:)
+      real, allocatable :: temp_on_mask(:)
+      integer, allocatable :: global_indices(:)
 
 
 c     In Parent Process 0: Used as arrays to store pieces of mask and temp to send to each process
@@ -64,18 +67,16 @@ c     Store temperature values only on elements == 1 on each sub_mask
 
       common /sub_arr_pid/ sub_mask, sub_temp, proc_id
 
-      allocate(mask(Ny,Nx))
 
-
-c     Initialize all arrays
+c     Initialize arrays used by all processes
       mask = 0
       sub_mask = 0
       sub_temp = 0
-      temp_on_mask = 0.0
-      global_indices = 0
       sub_tempOnMask = 0.0
       sub_global_indices = 0
 
+c     Allocate space for mask
+      allocate(mask(Ny,Nx))
 
 c     Read mask and temp data from binary files
        open(1, FILE="input_domains/domain_mask.bin", FORM="unformatted"
@@ -100,6 +101,8 @@ c     Return (current) process id of the process that called the function
 c     Parent Process' task:
       if (proc_id .eq. 0) then
 
+c       Allocate space for temp
+        allocate(temp(Ny,Nx))
 c       Initialize global temp array
         temp = 0.0
 
@@ -139,6 +142,7 @@ c           of mask and temp to save into sub_mask and sub_temp for each process
             sub_temp = temp(s_row:e_row,
      &                      s_col:e_row)
 
+
 c           p_count here is equivalent to process id assigned to each tile in increasing order to the right and downwards
             p_count = p_x + (nPx*p_y)
 
@@ -166,6 +170,8 @@ c           Printing more MPI_SENT details
 
           end do
         end do
+
+        deallocate(temp)
       end if
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
@@ -252,6 +258,13 @@ c     - Receive sub arrays from all processes. Only include sub arrays with mess
 c     - Write global mask, temp, and final mask array to binary file.
       if (proc_id .eq. 0) then
 
+c       Allocate space
+        allocate(temp_on_mask((sNy+sNx)*(nPx*nPy)))
+        allocate(global_indices((sNy+sNx)*(nPx*nPy)))
+c       Initialize arrays
+        temp_on_mask = 0.0
+        global_indices = 0
+c       Initializing temp_on_mask and global_indices array counter
         final_col = 1
 
 c       Receiving messages from all processes
