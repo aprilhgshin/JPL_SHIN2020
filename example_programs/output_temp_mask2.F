@@ -48,7 +48,7 @@ c     Store temperature values only on elements == 1 on each sub_mask
 
       integer row, col, p_count, p_x, p_y, ierror, proc_id, num_ones
       integer status(MPI_STATUS_SIZE), final_col
-      integer s_row, e_row, s_col, e_col, sub_count, sub_num_ones
+      integer sub_count, sub_num_ones
       integer, parameter :: debug = 1
       integer, parameter :: print_MPI_SEND = 0
       integer, parameter :: print_MPI_RECV = 0
