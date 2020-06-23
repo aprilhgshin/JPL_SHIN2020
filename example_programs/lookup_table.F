@@ -295,9 +295,9 @@ c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID
           call MPI_RECV(sub_tempOnMask, num_openB*(sNx*sNy+1), MPI_REAL,
      &                  p_count, 1 ,MPI_COMM_WORLD, status, ierror)
 
-          print *, "sub_tempOnMask 1:"
+          print *, "sub_tempOnMask 1 from piece", p_count
           call PRINT_FLOAT_ARR(sub_tempOnMask(1, 1:), sNx*sNy+1)
-          print *, "sub_tempOnMask 2:"
+          print *, "sub_tempOnMask 2 from piece", p_count
           call PRINT_FLOAT_ARR(sub_tempOnMask(2, 1:), sNx*sNy+1)
 
 
