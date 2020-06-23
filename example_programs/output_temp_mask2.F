@@ -34,13 +34,8 @@ c234567890
 
       integer, dimension(Ny, Nx) :: mask
       real, dimension(Ny, Nx) :: temp
-      real, dimension (Ny, Nx) :: temp_on_mask
-      integer, dimension(Ny, Nx) :: global_indices
-
-      pointer (mask_ptr, mask),
-     &        (temp_ptr, temp),
-     &        (temp_on_mask_ptr, temp_on_mask),
-     &        (global_indices_ptr, global_indices)
+      real, dimension ((sNy+sNx)*(nPx*nPy)) :: temp_on_mask
+      integer, dimension((sNy+sNx)*(nPx*nPy)) :: global_indices
 
 c     In Parent Process 0: Used as arrays to store pieces of mask and temp to send to each process
 c     All Processes 0-3: Used as buffer arrays to store pieces of mask and temp each process receives
@@ -61,11 +56,6 @@ c     Store temperature values only on elements == 1 on each sub_mask
       character*10 output_file
 
       common /sub_arr_pid/ sub_mask, sub_temp, proc_id
-
-
-c     Allocate space for mask
-      !allocate(mask(Ny,Nx))
-      mask_ptr = malloc(4*Ny*Nx)
 
 c     Initialize arrays used by all processes
       do row=1, Ny, 1
@@ -110,13 +100,10 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 c     Parent Process' task:
       if (proc_id .eq. 0) then
 
-c       Allocate space for temp
-        !allocate(temp(Ny,Nx))
-        temp_ptr = malloc(4*Ny*Nx)
 c       Initialize global temp array
         do row=1, Ny, 1
           do col=1, Nx, 1
-            mask(row,col) = 0
+            temp(row,col) = 0
           end do
         end do
 
@@ -145,19 +132,19 @@ c           as a single massive grid cell in the full domain mask and temp. Thes
 c     NOTE: We do not have to loop throught the global arrays. We can simply index to get tiles from global arrays
 
 c      Distribute pieces of mask and temp to each process
-        do p_y=0, nPy-1, 1
-          do p_x=0, nPx-1, 1
-c           Adding p_x*sNx to col and p_y*sNy to row allows us to move onto next portion
-c           of mask and temp to save into sub_mask and sub_temp for each process.
-            s_row = int(1+p_y*sNy)
-            e_row = int(sNy+p_y*sNy)
-            s_col = int(1+p_x*sNx)
-            e_col = int(sNx+p_x*sNx)
-            sub_mask = mask(s_row:e_row,
-     &                      s_col:e_row)
-            sub_temp = temp(s_row:e_row,
-     &                      s_col:e_row)
 
+       do p_y=0, nPy-1, 1
+         do p_x=0, nPx-1, 1
+           do row=1, sNy, 1
+             do col=1, sNx, 1
+c               Adding p_x*sNx to col and p_y*sNy to row allows us to move onto next portion
+c               of mask and temp to save into sub_mask and sub_temp for each process.
+                sub_mask(row, col) = mask(int(row+p_y*sNy),
+     &                                    int(col+p_x*sNx))
+                sub_temp(row, col) = temp(int(row+p_y*sNy),
+     &                                    int(col+p_x*sNx))
+              end do
+            end do
 
 c           p_count here is equivalent to process id assigned to each tile in increasing order to the right and downwards
             p_count = p_x + (nPx*p_y)
@@ -198,7 +185,6 @@ c           Printing more MPI_SENT details
         write(10, FMT=*) " "
         write(10, FMT=*) " "
         close(10)
-        call free(temp_ptr)
       end if
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
@@ -225,7 +211,6 @@ c     MPI_RECV params: received_data, receive_count, receive_type, sender_ID, ta
 
 c     Verify if each proess received the correct sub_mask and sub_temp
       call TEST_SUBMASKS(mask)
-      call free(mask)
 c     Write all sub_mask and sub_temp to binary file
       call WRITE_SUB_BIN()
 
@@ -239,6 +224,7 @@ c     Storing temperature values from sub_temp only on mask points (value 1) in 
       big_col = 0
 
       ! Looping column-major order
+
       do col=1, sNx, 1
         do row=1, sNy, 1
           if (sub_mask(row,col) .eq. 1) then
@@ -298,13 +284,10 @@ c     - Write global mask, temp, and final mask array to binary file.
      &       action="write")
 
 
-c       Allocate space
-        temp_on_mask_ptr = malloc(4*((sNy+sNx)*(nPx*nPy)))
-        global_indices_ptr = malloc(4*((sNy+sNx)*(nPx*nPy)))
 c       Initialize arrays
-        do col=1, (sNy+sNx)*(nPx*nPy), 1
+        do col=1, ((sNy+sNx)*(nPx*nPy)), 1
           temp_on_mask(col) = 0.0
-          global_indices = 0
+          global_indices(col) = 0
         end do
 
 c       Initializing temp_on_mask and global_indices array counter
@@ -371,8 +354,6 @@ c       Printing global final mask array and global mask array:
 c       Writing final T_on_mask global array to binary files
         call WRITE_GLOBAL_BIN(temp_on_mask)
 
-        call free(temp_on_mask_ptr)
-        call free(global_indices_ptr)
 
       end if
       close(100)
@@ -560,10 +541,9 @@ c         Reading file to make sure global final mask is correctly written to bi
 
       end
 
-      SUBROUTINE TEST_TEMP_READ(temp_ptr)
+      SUBROUTINE TEST_TEMP_READ(temp)
         include "SIZE.h"
         real, dimension(Ny, Nx) :: temp
-        pointer (temp_ptr, temp)
         integer row, col
         integer correct
         integer, parameter :: print_correctness=1
@@ -601,7 +581,7 @@ c     -1 for not being sent, 1 for being correct, 0 for incorrect.
       end
 
 
-      SUBROUTINE TEST_SUBMASKS(mask_ptr)
+      SUBROUTINE TEST_SUBMASKS(mask)
 c    Checking if all sub_masks are correctly distributed to processes
 c    by comparing distributed sub arrays to manually created sub arrays from the global arrays
 
@@ -615,7 +595,6 @@ c     NOTE: However, the Fortran convention of starting all array indices from 1
         integer, dimension(sNy,sNx) :: sub_mask
         real, dimension(sNy,sNx) :: sub_temp
         integer, dimension(Ny,Nx) :: mask
-        pointer (mask_ptr, mask)
 
 c       Arrays to check if mask and temp are distributed to processes correctly:
 c       1 for being correct, 0 for incorrect.
