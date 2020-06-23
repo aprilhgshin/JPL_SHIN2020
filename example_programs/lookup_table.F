@@ -1,6 +1,5 @@
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 c234567890
-c TODO: Now figure out how to send each sub_masks to processes.
 
       program lookup_table
 
