@@ -111,7 +111,7 @@ c       Read temp binary file
         open(2, FILE="input_domains/domain_temp.bin", FORM="unformatted"
      &       ,ACCESS="stream")
         read(2) temp
-        close(1)
+        close(2)
 
 c     Creating output file to store all print statements in file instead of printing to terminal
       output_file = "output.txt"
