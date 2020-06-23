@@ -36,7 +36,9 @@ c     Store temperature values only on elements == 1 on each sub_mask
       integer proc_id, ierror, status(MPI_STATUS_SIZE)
       integer row, col, p_x, p_y, p_count, ob, lookup_col, infomask_id
       integer global_row, global_col, counter1, counter2
-      integer num_valid1, num_valid2, counter
+      integer num_valid1, num_valid2, counter, ob_index
+
+      integer, parameter :: PRINT_PARENT_SEND = 0
 
       global_row = 1
       global_col = 1
@@ -79,7 +81,7 @@ c     Read global_ob_masks and temp data from binary files
      & ,ACCESS="stream")
        read(1) global_ob_masks(1, 1:Ny, 1:Nx)
        close(1)
-       !call PRINT_INT_ARR(global_ob_masks, Ny*Nx)
+       !call PRINT_INT_ARR(global_ob_masks(1,1:,1:), Ny*Nx)
 
 
        open(2, FILE="input_domains/domain_mask2.bin", FORM="unformatted"
@@ -152,7 +154,7 @@ c     Parent Process' task:
 c      Distribute pieces of mask and temp of each open boundary to each process
 
         do p_y=0, 0,1!nPy-1, 1
-          do p_x=0, 0,1!nPx-1, 1
+          do p_x=0, 1,1!nPx-1, 1
             do row=1, sNy, 1
               do col=1, sNx, 1
 c               Adding p_x*sNx to col and p_y*sNy to row allows us to move onto next portion
@@ -176,23 +178,25 @@ c               In this program there are 2 open boundaries. Therefore, we defin
             end do
             !global_ob_index defined at row=1, col=1 of each open boundary
             global_ob_index = int((Nx*(p_y*sNy)) + (1+p_x*sNx))
-            p_count = p_x + (1*p_y)!(nPx*p_y)
+            p_count = p_x + (2*p_y)!(nPx*p_y)
 
-            print *, "Piece ", p_count
-            print *, "global_ob_index: ", global_ob_index
-            print *, "sub_mask1: ob_mask"
-            call PRINT_FLOAT_ARR(sub_masks1(1, 1:sNy, 1:sNx), sNy*sNx)
+            if (PRINT_PARENT_SEND .eq. 1) then
+              print *, "Piece ", p_count
+              print *, "global_ob_index: ", global_ob_index
+              print *, "sub_mask1: ob_mask"
+              call PRINT_FLOAT_ARR(sub_masks1(1, 1:sNy, 1:sNx), sNy*sNx)
 
-            print *, "sub_mask1: temp"
-            call PRINT_FLOAT_ARR(sub_masks1(2, 1:sNy, 1:sNx), sNy*sNx)
+              print *, "sub_mask1: temp"
+              call PRINT_FLOAT_ARR(sub_masks1(2, 1:sNy, 1:sNx), sNy*sNx)
 
-            print *, "sub_mask2: ob_mask"
-            call PRINT_FLOAT_ARR(sub_masks2(1, 1:sNy, 1:sNx), sNy*sNx)
+              print *, "sub_mask2: ob_mask"
+              call PRINT_FLOAT_ARR(sub_masks2(1, 1:sNy, 1:sNx), sNy*sNx)
 
-            print *, "sub_mask2: temp"
-            call PRINT_FLOAT_ARR(sub_masks2(2, 1:sNy, 1:sNx), sNy*sNx)
+              print *, "sub_mask2: temp"
+              call PRINT_FLOAT_ARR(sub_masks2(2, 1:sNy, 1:sNx), sNy*sNx)
 
-            print *, " "
+              print *, " "
+            end if
 
 
 c           Parent sends pieces of masks of each open boundary to each process
@@ -222,6 +226,18 @@ c     MPI_RECV params: received_data, receive_count, receive_type, sender_ID, ta
       call MPI_RECV(sub_masks2, num_info_masks*sNx*sNy, MPI_REAL,0,200,
      &              MPI_COMM_WORLD, status, ierror)
 
+      print *, "Received sub_masks1 mask for piece", proc_id
+      call PRINT_FLOAT_ARR(sub_masks1(1, 1:, 1:), sNx*sNy)
+      print *, "Received global_ob_index mask1 for piece", proc_id
+      print *, global_ob_index
+      print *, "Received sub_masks1 temp for piece", proc_id
+      call PRINT_FLOAT_ARR(sub_masks1(2, 1:, 1:), sNx*sNy)
+      print *, "Received sub_masks2 mask for piece", proc_id
+      call PRINT_FLOAT_ARR(sub_masks2(1, 1:, 1:), sNx*sNy)
+      print *, "Received sub_masks2 temp for piece", proc_id
+      call PRINT_FLOAT_ARR(sub_masks2(2, 1:, 1:), sNx*sNy)
+
+      print *, " "
       counter1 = 2
       counter2 = 2
       num_valid1 = 0
@@ -283,10 +299,9 @@ c     - Receive sub arrays from all processes. Only include sub arrays with mess
           end do
         end do
 
-        counter1 = 1
-        counter2 = 1
+        ob_index = 1
 c       Receiving messages from all processes
-        do p_count=0, 0,1!nPx*nPy-1, 1
+        do p_count=0, 1,1!nPx*nPy-1, 1
 c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierr
           call MPI_RECV(sub_global_indices, num_openB*(sNx*sNy+1),
      &                  MPI_REAL, p_count, 2, MPI_COMM_WORLD, status,
@@ -294,9 +309,11 @@ c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID
           call MPI_RECV(sub_tempOnMask, num_openB*(sNx*sNy+1), MPI_REAL,
      &                  p_count, 1 ,MPI_COMM_WORLD, status, ierror)
 
-          print *, "sub_tempOnMask 1 from piece", p_count
+          print *, "Parent received sub_tempOnMask 1 from piece",
+     &              p_count
           call PRINT_FLOAT_ARR(sub_tempOnMask(1, 1:), sNx*sNy+1)
-          print *, "sub_tempOnMask 2 from piece", p_count
+          print *, "Parent received sub_tempOnMask 2 from piece",
+     &              p_count
           call PRINT_FLOAT_ARR(sub_tempOnMask(2, 1:), sNx*sNy+1)
 
 
@@ -305,18 +322,9 @@ c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID
             !if there exists open boundary points in the mask, then append values to final array
             if (sub_global_indices(ob,1) .ge. 1) then
               do col=2,num_valid+1, 1
-
-                if (ob .eq. 1) then
-                  temp_on_mask(ob,counter1) = sub_tempOnMask(ob,col)
-                  global_indices(ob, counter1)
-     &                               = sub_global_indices(ob, col)
-                  counter1 = counter1 + 1
-                else if (ob .eq. 2) then
-                  temp_on_mask(ob,counter2) = sub_tempOnMask(ob,col)
-                  global_indices(ob, counter2)
-     &                               = sub_global_indices(ob, col)
-                  counter2 = counter2 + 1
-                end if
+                ob_index = lookup(ob, sub_global_indices(ob, col))
+                print *, "ob_index", ob_index
+                temp_on_mask(ob,ob_index) = sub_tempOnMask(ob,col)
               end do
             end if
           end do
@@ -327,6 +335,8 @@ c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID
       print *, "temp_on_mask: 2"
       call PRINT_FLOAT_ARR(temp_on_mask(2,1:),(sNy+sNx)*(nPx*nPy))
       end if
+
+
 
       call MPI_FINALIZE(ierror)
 
