@@ -29,12 +29,33 @@ def load_domain_temp(filename):
     print("temp column ordered: ", np.fromfile(filename, dtype=np.float32))
     print("temp row ordered: ", temp.ravel(order='C'))
 
+def create_two_masks(filename1, filename2):
+    mask1 = np.zeros([10, 40])
+    mask2 = np.zeros([10, 40])
+
+    for col in range(20):
+        mask1[0][col] = col+1
+        mask2[0][col] = 20 - col    
+
+    mask1.ravel(order='F').astype('int32').tofile(filename1)
+    mask2.ravel(order='F').astype('int32').tofile(filename2)
+    print("mask1 column ordered: ", np.fromfile(filename1, dtype=np.int32))
+    print("mask1 row ordered: ", mask1.ravel(order='C'))
+    print("mask2 column ordered: ", np.fromfile(filename2, dtype=np.int32))
+    print("mask2 row ordered: ", mask2.ravel(order='C'))
+
+
+
+
 def main():
     filename_mask = "./input_domains/domain_mask.bin"
     filename_temp = "./input_domains/domain_temp.bin"
+    filename1 = "./input_domains/domain_mask1.bin"
+    filename2 = "./input_domains/domain_mask2.bin"
 
-    load_domain_mask(filename_mask)
-    load_domain_temp(filename_temp)
+    #load_domain_mask(filename_mask)
+    #load_domain_temp(filename_temp)
+    create_two_masks(filename1, filename2)
 
 if __name__ == "__main__":
     main()
