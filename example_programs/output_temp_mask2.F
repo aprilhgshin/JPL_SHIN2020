@@ -541,16 +541,13 @@ c     -1 for not being sent, 1 for being correct, 0 for incorrect.
         integer, dimension(Ny, Nx) :: temp_correct
         do row=1, Ny, 1
           do col=1, Nx, 1
-            temp_correct(row,col) = 0
+            temp_correct(row,col) = 1
           end do
         end do
 
         do row=1, Ny, 1
           do col=1, Nx, 1
-            if (temp(row,col) .eq. row*col) then
-              correct = 1
-              temp_correct(row,col) = 1
-            else
+            if (temp(row,col) .ne. row*col) then
               correct = 0
               temp_correct(row,col) = 0
               if (print_correctness .eq. 1) then
