@@ -41,14 +41,17 @@ c     Store temperature values only on elements == 1 on each sub_mask
       integer sub_global_indices(num_openB, sNy+sNx+1)
 
       integer proc_id, ierror, status(MPI_STATUS_SIZE)
-      integer row, col, p_x, p_y, p_count, ob, lookup_col, infomask_id
+      integer row, col, p_count, ob, lookup_col, infomask_id
       integer global_row, global_col, counter1, counter2
       integer num_valid1, num_valid2, counter, ob_index
+      integer total_valid1, total_valid2
+      integer  subtile_x, subtile_y, subtile_id
 
       integer, parameter :: PRINT_PARENT_SEND = 0
       integer, parameter :: PRINT_SUB_RECV = 0
       integer ,parameter :: PRINT_SUB_SEND = 0
       integer, parameter :: PRINT_PARENT_RECV = 1
+      integer, parameter :: debug = 1
 
       common /sub_arr_info/ sub_masks1, sub_masks2, global_ob_index
 
@@ -165,18 +168,18 @@ c     Parent Process' task:
 
 
 
-c      Distribute pieces of mask and temp of each open boundary to each process
-
-        do p_y=0, 0,1!nPy-1, 1
-          do p_x=0, 1,1!nPx-1, 1
+c      Distribute pieces(tiles) of mask and temp of each open boundary to each process
+        p_count = 0
+        do subtile_y=0, nPy-1, 1
+          do subtile_x=0, nPx-1, 1
             do row=1, sNy, 1
               do col=1, sNx, 1
-c               Adding p_x*sNx to col and p_y*sNy to row allows us to move onto next portion
+c               Adding subtile_x*sNx to col and subtile_y*sNy to row allows us to move onto next portion
 c               of mask and temp to save into sub_mask and sub_temp for each process.
 c               Each process will split each open boundary on global domain.
 c               In this program there are 2 open boundaries. Therefore, we define two sub_masks buffers.
-                global_row = int(row+p_y*sNy)
-                global_col = int(col+p_x*sNx)
+                global_row = int(row+subtile_y*sNy)
+                global_col = int(col+subtile_x*sNx)
 
                 sub_masks1(1, row, col) = global_ob_masks(1,
      &                                    global_row, global_col)
@@ -191,11 +194,12 @@ c               In this program there are 2 open boundaries. Therefore, we defin
               end do
             end do
             !global_ob_index defined at row=1, col=1 of each open boundary
-            global_ob_index = int((Nx*(p_y*sNy)) + (1+p_x*sNx))
-            p_count = p_x + (2*p_y)!(nPx*p_y)
+            global_ob_index = int((Nx*(subtile_y*sNy)) +
+     &                        (1+subtile_x*sNx))
+            subtile_id = subtile_x + (nPx*subtile_y)
 
             if (PRINT_PARENT_SEND .eq. 1) then
-              print *, "Piece ", p_count
+              print *, "subtile_id ", subtile_id
               print *, "global_ob_index: ", global_ob_index
               print *, "sub_mask1: ob_mask"
               call PRINT_FLOAT_ARR(sub_masks1(1, 1:sNy, 1:sNx), sNy*sNx)
@@ -212,15 +216,21 @@ c               In this program there are 2 open boundaries. Therefore, we defin
               print *, " "
             end if
 
-
-c           Parent sends pieces of masks of each open boundary to each process
-            !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
+c             Parent sends pieces of masks of each open boundary to each process other than itself - zero.
+              !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
             call MPI_SEND(global_ob_index, 1, MPI_INT, p_count, 300,
      &                    MPI_COMM_WORLD, ierror)
             call MPI_SEND(sub_masks1, num_info_masks*sNx*sNy, MPI_REAL,
      &                    p_count, 100, MPI_COMM_WORLD, ierror)
             call MPI_SEND(sub_masks2, num_info_masks*sNx*sNy, MPI_REAL,
      &                    p_count, 200, MPI_COMM_WORLD, ierror)
+
+            !else if (p_count .eq. 0) then
+
+
+            !We are sending each subtile to each process by incrementing the destination process id at each loop.
+            !No computation is dependent on the process id.
+            p_count = p_count + 1
 
           end do
         end do
@@ -230,83 +240,88 @@ c           Parent sends pieces of masks of each open boundary to each process
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
 c     ALL Processes' task:
+c      if (proc_id .gt. 0) then
 
-c     Each process receives masks of each open boundary from Parent.
-c     MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierr
-      call MPI_RECV(global_ob_index, 1, MPI_INT,0,300,MPI_COMM_WORLD,
-     &              status, ierror)
-      call MPI_RECV(sub_masks1, num_info_masks*sNx*sNy, MPI_REAL,0,100,
-     &              MPI_COMM_WORLD, status, ierror)
-      call MPI_RECV(sub_masks2, num_info_masks*sNx*sNy, MPI_REAL,0,200,
-     &              MPI_COMM_WORLD, status, ierror)
+c       Each process receives masks of each open boundary from Parent.
+c       MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierr
+        call MPI_RECV(global_ob_index, 1, MPI_INT,0,300,MPI_COMM_WORLD,
+     &                status, ierror)
+        call MPI_RECV(sub_masks1, num_info_masks*sNx*sNy, MPI_REAL,0,100
+     &                ,MPI_COMM_WORLD, status, ierror)
+        call MPI_RECV(sub_masks2, num_info_masks*sNx*sNy, MPI_REAL,0,200
+     &                ,MPI_COMM_WORLD, status, ierror)
 
-      print *, "Testing sub_masks of all ob, piece ", proc_id, ":"
-      call TEST_SUBMASKS(global_ob_masks)
-
-
-      if (PRINT_SUB_RECV .eq. 1) then
-        print *, "Received sub_masks1 ob 1,  piece", proc_id
-        call PRINT_FLOAT_ARR(sub_masks1(1, 1:, 1:), sNx*sNy)
-        print *, "Received global_ob_index,", global_ob_index,
-     &           ", for ob 1, piece", proc_id
-        print *, "Received sub_masks1 temp for ob 1, piece", proc_id
-        call PRINT_FLOAT_ARR(sub_masks1(2, 1:, 1:), sNx*sNy)
-        print *, "Received sub_masks2 ob 2, piece", proc_id
-        call PRINT_FLOAT_ARR(sub_masks2(1, 1:, 1:), sNx*sNy)
-        print *, "Received sub_masks2 temp for ob 2, piece", proc_id
-        call PRINT_FLOAT_ARR(sub_masks2(2, 1:, 1:), sNx*sNy)
-        print *, " "
-      end if
-
-      counter1 = 2
-      counter2 = 2
-      num_valid1 = 0
-      num_valid2 = 0
+        print *, "Testing sub_masks of all ob from process", proc_id,":"
+        call TEST_SUBMASKS(global_ob_masks)
 
 
-      do row=1, sNy, 1
-        do col=1, sNx, 1
-          if (sub_masks1(1,row,col) .ge. 1) then
-            sub_tempOnMask(1,counter1) = sub_masks1(2,row,col)
-            sub_global_indices(1,counter1) = global_ob_index
-            counter1 = counter1 + 1
-            num_valid1 = num_valid1 + 1
-          end if
-          if (sub_masks2(1,row,col) .ge. 1) then
-            sub_tempOnMask(2,counter2) = sub_masks2(2,row,col)
-            sub_global_indices(2,counter2) = global_ob_index
-            counter2 = counter2 + 1
-            num_valid2 = num_valid2 + 1
-          end if
+        if (PRINT_SUB_RECV .eq. 1) then
+          print *, "Received sub_masks1 ob 1 with global_ob_index",
+     &              global_ob_index
+          call PRINT_FLOAT_ARR(sub_masks1(1, 1:, 1:), sNx*sNy)
+          print *, "Received sub_masks1 temp for ob 1"
+          call PRINT_FLOAT_ARR(sub_masks1(2, 1:, 1:), sNx*sNy)
 
-          global_ob_index = global_ob_index + 1
+          print *, "Received sub_masks2 ob 2 with global_ob_index",
+     &              global_ob_index
+          call PRINT_FLOAT_ARR(sub_masks2(1, 1:, 1:), sNx*sNy)
+          print *, "Received sub_masks2 temp for ob 2"
+          call PRINT_FLOAT_ARR(sub_masks2(2, 1:, 1:), sNx*sNy)
+          print *, " "
+        end if
 
+        counter1 = 2
+        counter2 = 2
+        num_valid1 = 0
+        num_valid2 = 0
+
+
+        do row=1, sNy, 1
+          do col=1, sNx, 1
+            if (sub_masks1(1,row,col) .ge. 1) then
+              sub_tempOnMask(1,counter1) = sub_masks1(2,row,col)
+              sub_global_indices(1,counter1) = global_ob_index
+              counter1 = counter1 + 1
+              num_valid1 = num_valid1 + 1
+            end if
+            if (sub_masks2(1,row,col) .ge. 1) then
+              sub_tempOnMask(2,counter2) = sub_masks2(2,row,col)
+              sub_global_indices(2,counter2) = global_ob_index
+              counter2 = counter2 + 1
+              num_valid2 = num_valid2 + 1
+            end if
+
+            global_ob_index = global_ob_index + 1
+
+          end do
         end do
-      end do
 
-      sub_tempOnMask(1,1) = num_valid1
-      sub_global_indices(1,1) = num_valid1
-      sub_tempOnMask(2,1) = num_valid2
-      sub_global_indices(2,1) = num_valid2
+        sub_tempOnMask(1,1) = num_valid1
+        sub_global_indices(1,1) = num_valid1
+        sub_tempOnMask(2,1) = num_valid2
+        sub_global_indices(2,1) = num_valid2
 
-      if (PRINT_SUB_SEND .eq. 1) then
-        print *, "Piece", proc_id, "will be sent to Parent:"
-        print *, "sub_tempOnMask ob 1 for piece", proc_id
-        call PRINT_FLOAT_ARR(sub_tempOnMask(1, 1:), 1+sNx+sNy)
-        print *, "sub_global_indices ob 1 for piece", proc_id
-        call PRINT_INT_ARR(sub_global_indices(1, 1:), 1+sNx+sNy)
-        print *, "sub_tempOnMask ob 2 for piece", proc_id
-        call PRINT_FLOAT_ARR(sub_tempOnMask(2, 1:), 1+sNx+sNy)
-        print *, "sub_global_indices ob 2 for piece", proc_id
-        call PRINT_INT_ARR(sub_global_indices(2, 1:), 1+sNx+sNy)
-        print *, " "
-      end if
+        if (PRINT_SUB_SEND .eq. 1) then
+          print *, "Sub arrays with global_ob_index",global_ob_index,
+     &             "will be sent to Parent:"
+          print *, "sub_tempOnMask ob 1:"
+          call PRINT_FLOAT_ARR(sub_tempOnMask(1, 1:), 1+sNx+sNy)
+          print *, "sub_global_indices ob 1:"
+          call PRINT_INT_ARR(sub_global_indices(1, 1:), 1+sNx+sNy)
+          print *, "sub_tempOnMask ob 2:"
+          call PRINT_FLOAT_ARR(sub_tempOnMask(2, 1:), 1+sNx+sNy)
+          print *, "sub_global_indices ob 2:"
+          call PRINT_INT_ARR(sub_global_indices(2, 1:), 1+sNx+sNy)
+          print *, " "
+        end if
 
 
-      call MPI_SEND(sub_tempOnMask, num_openB*(sNx+sNy+1), MPI_REAL,
-     &              0, 1, MPI_COMM_WORLD, ierror)
-      call MPI_SEND(sub_global_indices, num_openB*(sNx+sNy+1),
-     &              MPI_INT, 0, 2, MPI_COMM_WORLD, ierror)
+        call MPI_SEND(sub_tempOnMask, num_openB*(sNx+sNy+1), MPI_REAL,
+     &                0, 1, MPI_COMM_WORLD, ierror)
+        call MPI_SEND(sub_global_indices, num_openB*(sNx+sNy+1),
+     &                MPI_INT, 0, 2, MPI_COMM_WORLD, ierror)
+c      end if
+
 
 
 
@@ -324,26 +339,34 @@ c     - Receive sub arrays from all processes. Only include sub arrays with mess
         end do
 
         ob_index = 1
+        total_valid1 = 0
+        total_valid2 = 0
+
 c       Receiving messages from all processes
-        do p_count=0, 1,1!nPx*nPy-1, 1
+        do p_count=0,nPx*nPy-1, 1
 c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierr
           call MPI_RECV(sub_global_indices, num_openB*(sNx+sNy+1),
      &                  MPI_REAL, p_count, 2, MPI_COMM_WORLD, status,
      &                  ierror)
           call MPI_RECV(sub_tempOnMask, num_openB*(sNx+sNy+1), MPI_REAL,
      &                  p_count, 1 ,MPI_COMM_WORLD, status, ierror)
+
           if (PRINT_PARENT_RECV .eq. 1) then
-            print *, "Parent received sub_tempOnMask ob 1, piece",
-     &              p_count, "of global domain"
+            print *, "Parent received sub_tempOnMask ob 1"
             call PRINT_FLOAT_ARR(sub_tempOnMask(1, 1:), sNx+sNy+1)
-            print *, "Parent received sub_tempOnMask ob 2, piece",
-     &              p_count, "of global domain"
+            print *, "Parent received sub_tempOnMask ob 2"
             call PRINT_FLOAT_ARR(sub_tempOnMask(2, 1:), sNx+sNy+1)
           end if
 
 
           do ob=1, num_openB, 1
             num_valid = sub_global_indices(ob, 1)
+            if (ob .eq. 1) then
+              total_valid1 = total_valid1 + num_valid
+            else if (ob .eq. 2) then
+              total_valid2 = total_valid2 + num_valid
+            end if
+
             !if there exists open boundary points in the mask, then append values to final array
             if (sub_global_indices(ob,1) .ge. 1) then
               do col=2,num_valid+1, 1
@@ -354,10 +377,14 @@ c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID
           end do
         end do
 
+      print *, "FINAL ARRAY constructed in Parent process: "
       print *, "temp_on_mask: open boundary #1"
+      print *, "Total valid elements: ", total_valid1
       call PRINT_FLOAT_ARR(temp_on_mask(1,1:),(sNy+sNx)*(nPx*nPy))
       print *, "temp_on_mask: open boundary #2"
+      print *, "Total valid elements: ", total_valid2
       call PRINT_FLOAT_ARR(temp_on_mask(2,1:),(sNy+sNx)*(nPx*nPy))
+
       end if
 
 
@@ -532,5 +559,40 @@ c          call PRINT_INT_ARR(sub_mask_correct, Ny*Nx)
 c          print *, "TEST_SUBMASKS: sub_temp: 1 for correct. 0 for ",
 c     &             "incorrect: "
 c          call PRINT_INT_ARR(sub_temp_correct, Ny*Nx)
+        end if
+      end
+
+
+      SUBROUTINE CREATE_FILENAME(proc_id, prefix, is_child, filename)
+c       Creating filenames for all binary files.
+
+        include 'SIZE.h'
+        integer, intent(in) :: proc_id
+        integer, intent(in) :: is_child
+        character*50, intent(out) :: filename
+
+        integer subtile_x, subtile_y
+        character*3 str_px, str_py
+        character*20 prefix
+
+c       Indices for each process with respect to global mask divided by the number of processes
+        subtile_y = (proc_id / nPx) + 1     ! Integer division does not round.
+        subtile_x = (mod(proc_id, nPx)) + 1  ! The remainder is equivalent to tile(process) number along x_axis.
+
+c       If creating a filename for a child process, create a name in the format: T.001.002.bin
+c       T for temp or mask for mask
+c       0001 for index 1 in x axis
+c       0002 for index 2 in x axis
+        if (is_child .eq. 1) then
+          write(str_px, "(I3.3)") subtile_x
+          write(str_py, "(I3.3)") subtile_y
+
+          write(filename, "(5A)") prefix, str_px(1:3),
+     &                            ".", str_py(1:3), ".bin"
+
+        else
+c         Creating a filename for global arrays
+          write(filename, "(2A)") prefix, "_global.bin"
+
         end if
       end
