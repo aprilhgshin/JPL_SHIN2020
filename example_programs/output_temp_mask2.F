@@ -405,9 +405,9 @@ c       Reading/writing REALs Decimal form Fw.d
 c     Creating filenames for all binary files.
 
         include 'SIZE.h'
-        integer, intent(in) :: proc_id
-        integer, intent(in) :: is_child
-        character*50, intent(out) :: filename
+        integer proc_id
+        integer is_child
+        character*50 filename
 
         integer p_x, p_y
         character*3 str_px, str_py
