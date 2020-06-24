@@ -411,7 +411,7 @@ c     Creating filenames for all binary files.
 
         integer p_x, p_y
         character*3 str_px, str_py
-        character*30 prefix
+        character*20 prefix
 
 c       Indices for each process with respect to global mask divided by the number of processes
         p_y = (proc_id / nPx) + 1     ! Integer division does not round.
@@ -422,27 +422,15 @@ c       T for temp or mask for mask
 c       0001 for index 1 in x axis
 c       0002 for index 2 in x axis
         if (is_child .eq. 1) then
-          if (p_x .lt. 10) then
-            write(str_px, "(I3.3)") p_x
-          else if (p_x .ge. 10) then
-            write(str_px, "(I3.2)") p_x
-          else if ((p_x .ge. 100) .and. p_x .le. 999) then
-            write(str_px, "(I3.1)") p_x
-          end if
+          write(str_px, "(I3.3)") p_x
+          write(str_py, "(I3.3)") p_y
 
-          if (p_y .lt. 10) then
-            write(str_py, "(I3.3)") p_y
-          else if (p_y .ge. 10) then
-            write(str_py, "(I3.2)") p_y
-          else if ((p_y .ge. 100) .and. p_y .le. 999) then
-            write(str_py, "(I3.1)") p_y
-          end if
-          write(filename, "(A, A3, A1, A3, A4)") prefix, str_px(1:3),
-     &                                          ".", str_py(1:3), ".bin"
+          write(filename, "(5A)") prefix, str_px(1:3),
+     &                            ".", str_py(1:3), ".bin"
 
         else
 c         Creating a filename for global arrays
-          write(filename, "(A, A11)") prefix, "_global.bin"
+          write(filename, "(2A)") prefix, "_global.bin"
 
         end if
       end
@@ -462,12 +450,12 @@ c       Writing all sub arrays that each process receives from the Parent to bin
 
         common /sub_arr_pid/ sub_mask, sub_temp, proc_id
 
-        character*30 prefix
+        character*20 prefix
         character*50 filename
 
 c       Writing sub_temp to binary file:
 c       CREATE_FILENAME params: proc_id, prefix, is_child, filename
-        prefix = "./output_masks/T."
+        prefix = "./output_masks/temp."
         call CREATE_FILENAME(proc_id, prefix, 1, filename)
         open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
         write(1) sub_temp
@@ -519,7 +507,7 @@ c       Writing all global arrays to binary files
         real, dimension((sNy+sNx)*(nPx*nPy)) :: temp_on_mask
         real, dimension((sNy+sNx)*(nPx*nPy)) :: read_temp_on_mask
         character*50 filename
-        character*30 prefix
+        character*20 prefix
         integer, parameter :: print_output = 0
 
 c       Writing global final mask to binary file

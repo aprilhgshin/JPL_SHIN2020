@@ -323,7 +323,6 @@ c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID
             if (sub_global_indices(ob,1) .ge. 1) then
               do col=2,num_valid+1, 1
                 ob_index = lookup(ob, sub_global_indices(ob, col))
-                print *, "ob_index", ob_index
                 temp_on_mask(ob,ob_index) = sub_tempOnMask(ob,col)
               end do
             end if
