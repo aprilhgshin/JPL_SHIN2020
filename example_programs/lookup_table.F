@@ -348,6 +348,8 @@ c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID
       print *, "Total valid elements: ", total_valid2
       call PRINT_FLOAT_ARR(temp_on_mask(2,1:),(sNy+sNx)*(nPx*nPy))
 
+c     Write temp_on_mask to bin file
+      call WRITE_GLOBAL_BIN(temp_on_mask)
       end if
 
 
@@ -643,7 +645,7 @@ c       Creating filenames for all binary files.
 
         integer subtile_x, subtile_y
         character*3 str_px, str_py
-        character*24 prefix
+        character*25 prefix
 
 c       tile number along x and y axis:
         subtile_x = s_global_index/sNx + 1
@@ -651,8 +653,8 @@ c       tile number along x and y axis:
 
 c       If creating a filename for a child process, create a name in the format: T.001.002.bin
 c       T for temp or mask for mask
-c       0001 for index 1 in x axis
-c       0002 for index 2 in x axis
+c       001 for index 1 in x axis
+c       002 for index 2 in x axis
         if (is_child .eq. 1) then
           write(str_px, "(I3.3)") subtile_x
           write(str_py, "(I3.3)") subtile_y
@@ -676,15 +678,12 @@ c       Writing all sub arrays that each process receives from the Parent to bin
         real sub_masks2(num_info_masks, sNy, sNx) !open boundary 2
         integer global_ob_index
 
-        !real, dimension(sNy,sNx) :: read_sub_temp
-        real, dimension(sNy,sNx) :: read_sub_mask
-
         integer, parameter :: print_write = 1
         integer, parameter :: print_read = 0
 
         common /sub_arr_info/ sub_masks1, sub_masks2, global_ob_index
 
-        character*24 prefix
+        character*25 prefix
         character*50 filename
 
 c       Writing sub mask of ob1 with global_ob_index to binary file:
@@ -699,16 +698,6 @@ c       CREATE_FILENAME params: s_global_index, prefix, is_child, filename
      &              global_ob_index,"is written to ",filename
         end if
 
-        if (print_read .eq. 1) then
-c         DOUBLE CHECKING: Reading binary files to make sure sub temp is correctly written
-          open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
-          print *, "Reading sub mask for ob1 with global_ob_index",
-     &              global_ob_index,"back from ",filename
-          read(1) read_sub_mask
-          call PRINT_FLOAT_ARR(read_sub_mask, sNx*sNy)
-          close(1)
-        end if
-
 c       Writing sub_ temp of ob1 with global_ob_index to binary file
         prefix = "./output_masks/ob1.temp."
         call CREATE_FILENAME(global_ob_index, prefix, 1, filename)
@@ -720,7 +709,6 @@ c       Writing sub_ temp of ob1 with global_ob_index to binary file
           print *, "sub temp for ob1 with global_ob_index",
      &              global_ob_index,"is written to ",filename
         end if
-
 
         prefix = "./output_masks/ob2.mask."
         call CREATE_FILENAME(global_ob_index, prefix, 1, filename)
@@ -741,6 +729,53 @@ c       Writing sub_ temp of ob1 with global_ob_index to binary file
         if (print_write .eq. 1) then
           print *, "sub temp for ob2 with global_ob_index",
      &              global_ob_index,"is written to ",filename
+        end if
+
+      end
+
+
+      SUBROUTINE WRITE_GLOBAL_BIN(temp_on_mask)
+c       Writing all global arrays to binary files
+        use constants
+        include "SIZE.h"
+        real temp_on_mask(num_openB,(sNy+sNx)*(nPx*nPy))
+        real read_temp_on_mask((sNy+sNx)*(nPx*nPy))
+        character*50 filename
+        character*25 prefix
+        integer, parameter :: print_output = 1
+
+c       Writing global final mask to binary file
+        prefix = "./output_masks/T_on_mask1"
+        call CREATE_FILENAME(1,prefix, 0, filename)
+        open(3, FILE=filename, FORM="unformatted", ACCESS="stream")
+        write(3) temp_on_mask(1, 1:)
+        close(3)
+
+        if (print_output .eq. 1) then
+          print *, "Wrote temp_on_mask ob1 to ", filename
+c         Reading file to make sure global final mask is correctly written to binary file
+          open(4, FILE=filename, FORM="unformatted", ACCESS="stream")
+          print *, "Reading final_mask back from ", filename
+          read(4) read_temp_on_mask
+          call PRINT_FLOAT_ARR(read_temp_on_mask, (sNy+sNx)*(nPx*nPy))
+          close(4)
+        end if
+
+
+        prefix = "./output_masks/T_on_mask2"
+        call CREATE_FILENAME(1,prefix, 0, filename)
+        open(5, FILE=filename, FORM="unformatted", ACCESS="stream")
+        write(5) temp_on_mask(2, 1:)
+        close(5)
+
+        if (print_output .eq. 1) then
+          print *, "Wrote temp_on_mask ob2 to ", filename
+c         Reading file to make sure global final mask is correctly written to binary file
+          open(4, FILE=filename, FORM="unformatted", ACCESS="stream")
+          print *, "Reading final_mask back from ", filename
+          read(4) read_temp_on_mask
+          call PRINT_FLOAT_ARR(read_temp_on_mask, (sNy+sNx)*(nPx*nPy))
+          close(4)
         end if
 
       end
