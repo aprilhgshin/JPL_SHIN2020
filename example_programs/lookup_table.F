@@ -1,15 +1,22 @@
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 c234567890
 
+
+      module constants
+        integer, parameter :: num_openB = 2
+c     Each open boundary will have a 3D array with the following info:
+c     1) open boundary mask,  2) temp
+        integer, parameter :: num_info_masks = 2
+      end module constants
+
+
       program lookup_table
+      use constants
 
       include "SIZE.h"
       include "mpif.h"
 
-      integer, parameter :: num_openB = 2
-c     Each open boundary will have a 3D array with the following info:
-c     1) open boundary mask,  2) temp
-      integer, parameter :: num_info_masks = 2
+
 
       real temp_on_mask(num_openB,(sNy+sNx)*(nPx*nPy))
       integer global_indices(num_openB,(sNy+sNx)*(nPx*nPy))
@@ -39,6 +46,12 @@ c     Store temperature values only on elements == 1 on each sub_mask
       integer num_valid1, num_valid2, counter, ob_index
 
       integer, parameter :: PRINT_PARENT_SEND = 0
+      integer, parameter :: PRINT_SUB_RECV = 0
+      integer ,parameter :: PRINT_SUB_SEND = 0
+      integer, parameter :: PRINT_PARENT_RECV = 1
+
+      common /sub_arr_info/ sub_masks1, sub_masks2, global_ob_index
+
 
       global_row = 1
       global_col = 1
@@ -139,16 +152,17 @@ c     Parent Process' task:
      &       ,ACCESS="stream")
        read(3) global_temps(1, 1:Ny, 1:Nx)
        close(3)
+       call TEST_TEMP_READ(global_temps(1, 1:, 1:))
 
        open(4, FILE="input_domains/domain_temp.bin", FORM="unformatted"
      &       ,ACCESS="stream")
        read(4) global_temps(2, 1:Ny, 1:Nx)
        close(4)
+       call TEST_TEMP_READ(global_temps(2, 1:, 1:))
 
        !call PRINT_FLOAT_ARR(global_temps(1, 1:Ny, 1:Nx), Ny*Nx)
        !call PRINT_FLOAT_ARR(global_temps(2, 1:Ny, 1:Nx), Ny*Nx)
-       !call TEST_TEMP_READ(global_temps(1, 1:Ny, 1:Nx), Ny*Nx)
-       !call TEST_TEMP_READ(global_temps(2, 1:Ny, 1:Nx), Ny*Nx)
+
 
 
 c      Distribute pieces of mask and temp of each open boundary to each process
@@ -226,18 +240,24 @@ c     MPI_RECV params: received_data, receive_count, receive_type, sender_ID, ta
       call MPI_RECV(sub_masks2, num_info_masks*sNx*sNy, MPI_REAL,0,200,
      &              MPI_COMM_WORLD, status, ierror)
 
-      print *, "Received sub_masks1 mask for piece", proc_id
-      call PRINT_FLOAT_ARR(sub_masks1(1, 1:, 1:), sNx*sNy)
-      print *, "Received global_ob_index mask1 for piece", proc_id
-      print *, global_ob_index
-      print *, "Received sub_masks1 temp for piece", proc_id
-      call PRINT_FLOAT_ARR(sub_masks1(2, 1:, 1:), sNx*sNy)
-      print *, "Received sub_masks2 mask for piece", proc_id
-      call PRINT_FLOAT_ARR(sub_masks2(1, 1:, 1:), sNx*sNy)
-      print *, "Received sub_masks2 temp for piece", proc_id
-      call PRINT_FLOAT_ARR(sub_masks2(2, 1:, 1:), sNx*sNy)
+      print *, "Testing sub_masks of all ob, piece ", proc_id, ":"
+      call TEST_SUBMASKS(global_ob_masks)
 
-      print *, " "
+
+      if (PRINT_SUB_RECV .eq. 1) then
+        print *, "Received sub_masks1 ob 1,  piece", proc_id
+        call PRINT_FLOAT_ARR(sub_masks1(1, 1:, 1:), sNx*sNy)
+        print *, "Received global_ob_index,", global_ob_index,
+     &           ", for ob 1, piece", proc_id
+        print *, "Received sub_masks1 temp for ob 1, piece", proc_id
+        call PRINT_FLOAT_ARR(sub_masks1(2, 1:, 1:), sNx*sNy)
+        print *, "Received sub_masks2 ob 2, piece", proc_id
+        call PRINT_FLOAT_ARR(sub_masks2(1, 1:, 1:), sNx*sNy)
+        print *, "Received sub_masks2 temp for ob 2, piece", proc_id
+        call PRINT_FLOAT_ARR(sub_masks2(2, 1:, 1:), sNx*sNy)
+        print *, " "
+      end if
+
       counter1 = 2
       counter2 = 2
       num_valid1 = 0
@@ -269,14 +289,18 @@ c     MPI_RECV params: received_data, receive_count, receive_type, sender_ID, ta
       sub_tempOnMask(2,1) = num_valid2
       sub_global_indices(2,1) = num_valid2
 
-      print *, "sub_tempOnMask mask1 for piece", proc_id
-      call PRINT_FLOAT_ARR(sub_tempOnMask(1, 1:), 1+sNx+sNy)
-      print *, "sub_global_indices mask1 for piece", proc_id
-      call PRINT_INT_ARR(sub_global_indices(1, 1:), 1+sNx+sNy)
-      print *, "sub_tempOnMask mask2 for piece", proc_id
-      call PRINT_FLOAT_ARR(sub_tempOnMask(2, 1:), 1+sNx+sNy)
-      print *, "sub_global_indices mask2 for piece", proc_id
-      call PRINT_INT_ARR(sub_global_indices(2, 1:), 1+sNx+sNy)
+      if (PRINT_SUB_SEND .eq. 1) then
+        print *, "Piece", proc_id, "will be sent to Parent:"
+        print *, "sub_tempOnMask ob 1 for piece", proc_id
+        call PRINT_FLOAT_ARR(sub_tempOnMask(1, 1:), 1+sNx+sNy)
+        print *, "sub_global_indices ob 1 for piece", proc_id
+        call PRINT_INT_ARR(sub_global_indices(1, 1:), 1+sNx+sNy)
+        print *, "sub_tempOnMask ob 2 for piece", proc_id
+        call PRINT_FLOAT_ARR(sub_tempOnMask(2, 1:), 1+sNx+sNy)
+        print *, "sub_global_indices ob 2 for piece", proc_id
+        call PRINT_INT_ARR(sub_global_indices(2, 1:), 1+sNx+sNy)
+        print *, " "
+      end if
 
 
       call MPI_SEND(sub_tempOnMask, num_openB*(sNx+sNy+1), MPI_REAL,
@@ -303,18 +327,19 @@ c     - Receive sub arrays from all processes. Only include sub arrays with mess
 c       Receiving messages from all processes
         do p_count=0, 1,1!nPx*nPy-1, 1
 c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierr
-          call MPI_RECV(sub_global_indices, num_openB*(sNx*sNy+1),
+          call MPI_RECV(sub_global_indices, num_openB*(sNx+sNy+1),
      &                  MPI_REAL, p_count, 2, MPI_COMM_WORLD, status,
      &                  ierror)
-          call MPI_RECV(sub_tempOnMask, num_openB*(sNx*sNy+1), MPI_REAL,
+          call MPI_RECV(sub_tempOnMask, num_openB*(sNx+sNy+1), MPI_REAL,
      &                  p_count, 1 ,MPI_COMM_WORLD, status, ierror)
-
-          print *, "Parent received sub_tempOnMask 1 from piece",
-     &              p_count
-          call PRINT_FLOAT_ARR(sub_tempOnMask(1, 1:), sNx*sNy+1)
-          print *, "Parent received sub_tempOnMask 2 from piece",
-     &              p_count
-          call PRINT_FLOAT_ARR(sub_tempOnMask(2, 1:), sNx*sNy+1)
+          if (PRINT_PARENT_RECV .eq. 1) then
+            print *, "Parent received sub_tempOnMask ob 1, piece",
+     &              p_count, "of global domain"
+            call PRINT_FLOAT_ARR(sub_tempOnMask(1, 1:), sNx+sNy+1)
+            print *, "Parent received sub_tempOnMask ob 2, piece",
+     &              p_count, "of global domain"
+            call PRINT_FLOAT_ARR(sub_tempOnMask(2, 1:), sNx+sNy+1)
+          end if
 
 
           do ob=1, num_openB, 1
@@ -329,9 +354,9 @@ c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID
           end do
         end do
 
-      print *, "temp_on_mask: 1"
+      print *, "temp_on_mask: open boundary #1"
       call PRINT_FLOAT_ARR(temp_on_mask(1,1:),(sNy+sNx)*(nPx*nPy))
-      print *, "temp_on_mask: 2"
+      print *, "temp_on_mask: open boundary #2"
       call PRINT_FLOAT_ARR(temp_on_mask(2,1:),(sNy+sNx)*(nPx*nPy))
       end if
 
@@ -352,6 +377,7 @@ c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID
              write(*, '(A,/)') ''
           endif
       enddo
+      print *, " "
       end
 
       SUBROUTINE PRINT_FLOAT_ARR(array, arr_length)
@@ -370,4 +396,141 @@ c       Reading/writing REALs Decimal form Fw.d
              write(*, '(A,/)') ''
           endif
       enddo
+      print *, " "
+      end
+
+      SUBROUTINE TEST_TEMP_READ(temp)
+        include "SIZE.h"
+        real, dimension(Ny, Nx) :: temp
+        integer row, col
+        integer correct
+        integer, parameter :: print_correctness=1
+
+c      Array to check if mask and temp are distributed to processes correctly:
+c     -1 for not being sent, 1 for being correct, 0 for incorrect.
+        integer, dimension(Ny, Nx) :: temp_correct
+        do row=1, Ny, 1
+          do col=1, Nx, 1
+            temp_correct(row,col) = 0
+          end do
+        end do
+
+        do row=1, Ny, 1
+          do col=1, Nx, 1
+            if (temp(row,col) .eq. row*col) then
+              correct = 1
+              temp_correct(row,col) = 1
+            else
+              correct = 0
+              temp_correct(row,col) = 0
+              if (print_correctness .eq. 1) then
+                print *, "TEST_TEMP_READ: global temp read ",
+     &                   "incorrectly."
+              end if
+            end if
+          end do
+        end do
+        if (print_correctness .eq. 1) then
+          if (correct .eq. 1) then
+            print *, "TEST_TEMP_READ: global temp is read ",
+     &               "correctly."
+          end if
+        end if
+      end
+
+      SUBROUTINE TEST_SUBMASKS(global_ob_masks)
+c    Checking if all sub_masks are correctly distributed to processes
+c    by comparing distributed sub arrays to manually created sub arrays from the global arrays
+        use constants
+        include "SIZE.h"
+
+        real sub_masks1(num_info_masks, sNy, sNx) !open boundary 1
+        real sub_masks2(num_info_masks, sNy, sNx) !open boundary 2
+        integer global_ob_masks(num_openB,Ny,Nx)
+
+c       Arrays to check if mask and temp are distributed to processes correctly:
+c       1 for being correct, 0 for incorrect.
+        integer, dimension(sNy,sNx) :: sub_mask_correct
+        integer, dimension(sNy,sNx) :: sub_temp_correct
+
+        integer s_global_col, s_global_row, row, col
+        integer global_ob_index, global_row, global_col
+        integer correct
+        integer, parameter :: print_correctness = 0
+
+        common /sub_arr_info/ sub_masks1, sub_masks2, global_ob_index
+
+
+c       Initialize mask_correct and temp_correct
+        do row=1, sNy, 1
+          do col=1, sNx, 1
+            sub_mask_correct(row,col) = -1
+            sub_temp_correct(row,col) = -1
+          end do
+        end do
+
+        s_global_col = (global_ob_index/sNx) * sNx + 1
+        s_global_row = (global_ob_index/Nx) + 1
+        !print*, "s_global_col",s_global_col
+        !print*, "s_global_row",s_global_row
+
+        correct = 1
+
+c       Looping through sub arrays and comparing each element to corresponding elements of global arrays
+        do row=1, sNy, 1
+          do col=1, sNx, 1
+            global_col = int(s_global_col + col-1)
+            global_row = int(s_global_row + row-1)
+            !print *, global_row, global_col
+c           Comparing sub mask to corresponding piece of global mask
+            if (int(sub_masks1(1,row, col)) .ne.
+     &          global_ob_masks(1,global_row, global_col)) then
+              correct = 0
+              sub_mask_correct(row, col) = 0
+            end if
+            if (int(sub_masks2(1,row, col)) .ne.
+     &          global_ob_masks(2,global_row, global_col)) then
+              correct = 0
+              sub_mask_correct(row, col) = 0
+            end if
+
+c           Comparing sub temp to corresponding piece of global temp which  is defined by the function global row * global col
+            if (sub_masks1(2,row, col) .ne. real(global_row*global_col))
+     &      then
+              correct = 0
+              sub_temp_correct(row, col) = 0
+            end if
+            if (sub_masks2(2,row, col) .ne. real(global_row*global_col))
+     &      then
+
+              correct = 0
+              sub_temp_correct(row, col) = 0
+            end if
+
+          end do
+        end do
+
+c        if (correct .eq. 0) then
+c          print *, "submask1 incorrect: "
+c          call PRINT_FLOAT_ARR(sub_masks1(1,1:,1:),sNy*sNx)
+c          print *, "from global:"
+c          call PRINT_INT_ARR(global_ob_masks(1,
+c     &                         s_global_row:s_global_row+sNy-1,
+c     &                         s_global_col:s_global_col+sNx-1),
+c     &                         sNy*sNx)
+c        end if
+
+c       correct == 1 indicates sub arrays were correctly generated.
+c       correct == 0 indicates sub arrays are incorrect.
+        if (correct .eq. 1) then
+          print *, "TEST_SUBMASKS: correct sub_mask and sub_temp"
+        else
+          print *, "TEST_SUBMASKS: INCORRECTLY DISTRIBUTED"
+c          print *, "TEST_SUBMASKS: sub_mask: 1 for correct. 0 for ",
+c     &             "incorrect: "
+c          call PRINT_INT_ARR(sub_mask_correct, Ny*Nx)
+c          print *, "TEST_SUBMASKS: sub_temp: 1 for correct. 0 for ",
+c     &             "incorrect: "
+c          call PRINT_INT_ARR(sub_temp_correct, Ny*Nx)
+        end if
       end
