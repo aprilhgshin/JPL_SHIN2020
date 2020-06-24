@@ -33,7 +33,8 @@ c           1) open boundary mask
 c           2) temp
       real sub_masks1(num_info_masks, sNy, sNx) !open boundary 1
       real sub_masks2(num_info_masks, sNy, sNx) !open boundary 2
-      !integer global_ob_index(num_openB)
+
+c     global_ob_index defined at row=1, col=1 of each open boundary
       integer global_ob_index
 
 c     Store temperature values only on elements == 1 on each sub_mask
@@ -42,18 +43,20 @@ c     Store temperature values only on elements == 1 on each sub_mask
 
       integer proc_id, ierror, status(MPI_STATUS_SIZE)
       integer row, col, p_count, ob, lookup_col, infomask_id
-      integer global_row, global_col, counter1, counter2
-      integer num_valid1, num_valid2, counter, ob_index
+      integer global_row, global_col
       integer total_valid1, total_valid2
       integer  subtile_x, subtile_y, subtile_id
 
       integer, parameter :: PRINT_PARENT_SEND = 0
       integer, parameter :: PRINT_SUB_RECV = 0
       integer ,parameter :: PRINT_SUB_SEND = 0
-      integer, parameter :: PRINT_PARENT_RECV = 1
+      integer, parameter :: PRINT_PARENT_RECV = 0
       integer, parameter :: debug = 1
 
       common /sub_arr_info/ sub_masks1, sub_masks2, global_ob_index
+      common /sub_global/ sub_tempOnMask, sub_global_indices
+      common /global_arr/ lookup, total_valid1, total_valid2,
+     &                    temp_on_mask
 
 
       global_row = 1
@@ -120,6 +123,13 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 c     Parent Process' task:
       if (proc_id .eq. 0) then
 
+        !Initialize arrays
+        do ob=1, num_openB, 1
+          do col=1, ((sNy+sNx)*(nPx*nPy)), 1
+            temp_on_mask(ob,col) = 0.0
+            global_indices(ob,col) = 0
+          end do
+        end do
 
        !Initialize lookup table
        do row=1, num_openB, 1
@@ -215,18 +225,22 @@ c               In this program there are 2 open boundaries. Therefore, we defin
 
               print *, " "
             end if
-
+            if (p_count .gt. 0) then
 c             Parent sends pieces of masks of each open boundary to each process other than itself - zero.
               !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
-            call MPI_SEND(global_ob_index, 1, MPI_INT, p_count, 300,
-     &                    MPI_COMM_WORLD, ierror)
-            call MPI_SEND(sub_masks1, num_info_masks*sNx*sNy, MPI_REAL,
-     &                    p_count, 100, MPI_COMM_WORLD, ierror)
-            call MPI_SEND(sub_masks2, num_info_masks*sNx*sNy, MPI_REAL,
-     &                    p_count, 200, MPI_COMM_WORLD, ierror)
+              call MPI_SEND(global_ob_index, 1, MPI_INT, p_count, 300,
+     &                      MPI_COMM_WORLD, ierror)
+              call MPI_SEND(sub_masks1, num_info_masks*sNx*sNy, MPI_REAL
+     &                      ,p_count, 100, MPI_COMM_WORLD, ierror)
+              call MPI_SEND(sub_masks2, num_info_masks*sNx*sNy, MPI_REAL
+     &                      ,p_count, 200, MPI_COMM_WORLD, ierror)
+            else if (p_count .eq. 0) then
+              print *, "Doing Process 0 tasks locally. No MPI."
+              call CHILD_TASKS()
+              call WRITE_SUB_BIN()
+              call APPEND_OB_VALUES()
 
-            !else if (p_count .eq. 0) then
-
+            end if
 
             !We are sending each subtile to each process by incrementing the destination process id at each loop.
             !No computation is dependent on the process id.
@@ -239,8 +253,8 @@ c             Parent sends pieces of masks of each open boundary to each process
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
-c     ALL Processes' task:
-c      if (proc_id .gt. 0) then
+c     ALL Processes' task other than Process 0:
+      if (proc_id .gt. 0) then
 
 c       Each process receives masks of each open boundary from Parent.
 c       MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierr
@@ -270,36 +284,9 @@ c       MPI_RECV params: received_data, receive_count, receive_type, sender_ID, 
           print *, " "
         end if
 
-        counter1 = 2
-        counter2 = 2
-        num_valid1 = 0
-        num_valid2 = 0
+        call CHILD_TASKS()
+        call WRITE_SUB_BIN()
 
-
-        do row=1, sNy, 1
-          do col=1, sNx, 1
-            if (sub_masks1(1,row,col) .ge. 1) then
-              sub_tempOnMask(1,counter1) = sub_masks1(2,row,col)
-              sub_global_indices(1,counter1) = global_ob_index
-              counter1 = counter1 + 1
-              num_valid1 = num_valid1 + 1
-            end if
-            if (sub_masks2(1,row,col) .ge. 1) then
-              sub_tempOnMask(2,counter2) = sub_masks2(2,row,col)
-              sub_global_indices(2,counter2) = global_ob_index
-              counter2 = counter2 + 1
-              num_valid2 = num_valid2 + 1
-            end if
-
-            global_ob_index = global_ob_index + 1
-
-          end do
-        end do
-
-        sub_tempOnMask(1,1) = num_valid1
-        sub_global_indices(1,1) = num_valid1
-        sub_tempOnMask(2,1) = num_valid2
-        sub_global_indices(2,1) = num_valid2
 
         if (PRINT_SUB_SEND .eq. 1) then
           print *, "Sub arrays with global_ob_index",global_ob_index,
@@ -320,7 +307,7 @@ c       MPI_RECV params: received_data, receive_count, receive_type, sender_ID, 
      &                0, 1, MPI_COMM_WORLD, ierror)
         call MPI_SEND(sub_global_indices, num_openB*(sNx+sNy+1),
      &                MPI_INT, 0, 2, MPI_COMM_WORLD, ierror)
-c      end if
+      end if
 
 
 
@@ -330,20 +317,11 @@ c     Final tasks for parent process:
 c     - Receive sub arrays from all processes. Only include sub arrays with message tag 1 into global final mask array.
       if (proc_id .eq. 0) then
 
-        !Initialize arrays
-        do ob=1, num_openB, 1
-          do col=1, ((sNy+sNx)*(nPx*nPy)), 1
-            temp_on_mask(ob,col) = 0.0
-            global_indices(ob,col) = 0
-          end do
-        end do
+        !total_valid1 = 0
+        !total_valid2 = 0
 
-        ob_index = 1
-        total_valid1 = 0
-        total_valid2 = 0
-
-c       Receiving messages from all processes
-        do p_count=0,nPx*nPy-1, 1
+c       Receiving messages from all processes other than itself
+        do p_count=1,nPx*nPy-1, 1
 c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierr
           call MPI_RECV(sub_global_indices, num_openB*(sNx+sNy+1),
      &                  MPI_REAL, p_count, 2, MPI_COMM_WORLD, status,
@@ -358,23 +336,8 @@ c         MPI_RECV params: received_data, receive_count, receive_type, sender_ID
             call PRINT_FLOAT_ARR(sub_tempOnMask(2, 1:), sNx+sNy+1)
           end if
 
+          call APPEND_OB_VALUES()
 
-          do ob=1, num_openB, 1
-            num_valid = sub_global_indices(ob, 1)
-            if (ob .eq. 1) then
-              total_valid1 = total_valid1 + num_valid
-            else if (ob .eq. 2) then
-              total_valid2 = total_valid2 + num_valid
-            end if
-
-            !if there exists open boundary points in the mask, then append values to final array
-            if (sub_global_indices(ob,1) .ge. 1) then
-              do col=2,num_valid+1, 1
-                ob_index = lookup(ob, sub_global_indices(ob, col))
-                temp_on_mask(ob,ob_index) = sub_tempOnMask(ob,col)
-              end do
-            end if
-          end do
         end do
 
       print *, "FINAL ARRAY constructed in Parent process: "
@@ -464,6 +427,113 @@ c     -1 for not being sent, 1 for being correct, 0 for incorrect.
           end if
         end if
       end
+
+      SUBROUTINE CHILD_TASKS()
+        use constants
+        include "SIZE.h"
+
+        real sub_masks1(num_info_masks, sNy, sNx) !open boundary 1
+        real sub_masks2(num_info_masks, sNy, sNx) !open boundary 2
+        real sub_tempOnMask(num_openB, sNy+sNx+1)
+        integer sub_global_indices(num_openB, sNy+sNx+1)
+
+        integer global_ob_index, counter1, counter2
+        integer num_valid1, num_valid2, row, col
+        integer new_goi
+        common /sub_arr_info/ sub_masks1, sub_masks2, global_ob_index
+        common /sub_global/ sub_tempOnMask, sub_global_indices
+
+        integer, parameter :: PRINT_DEBUG = 0
+
+        counter1 = 2
+        counter2 = 2
+        num_valid1 = 0
+        num_valid2 = 0
+        new_goi = global_ob_index
+
+        do row=1, sNy, 1
+          do col=1, sNx, 1
+            if (sub_masks1(1,row,col) .ge. 1) then
+              sub_tempOnMask(1,counter1) = sub_masks1(2,row,col)
+              sub_global_indices(1,counter1) = new_goi
+              counter1 = counter1 + 1
+              num_valid1 = num_valid1 + 1
+            end if
+            if (sub_masks2(1,row,col) .ge. 1) then
+              sub_tempOnMask(2,counter2) = sub_masks2(2,row,col)
+              sub_global_indices(2,counter2) = new_goi
+              counter2 = counter2 + 1
+              num_valid2 = num_valid2 + 1
+            end if
+
+            new_goi = new_goi + 1
+
+          end do
+        end do
+
+        sub_tempOnMask(1,1) = num_valid1
+        sub_global_indices(1,1) = num_valid1
+        sub_tempOnMask(2,1) = num_valid2
+        sub_global_indices(2,1) = num_valid2
+
+        if (PRINT_DEBUG .eq. 1) then
+          print *, "CHILD_TASKS: sub_tempOnMask ob1, global_ob_index:",
+     &              global_ob_index
+          call PRINT_FLOAT_ARR(sub_tempOnMask(1,1:),
+     &                       (sNy+sNx+1))
+          print *, "CHILD_TASKS: sub_tempOnMask ob2"
+          call PRINT_FLOAT_ARR(sub_tempOnMask(2,1:),
+     &                       (sNy+sNx+1))
+        end if
+
+      end
+
+
+      SUBROUTINE APPEND_OB_VALUES()
+        use constants
+        include "SIZE.h"
+        real sub_tempOnMask(num_openB, sNy+sNx+1)
+        integer sub_global_indices(num_openB, sNy+sNx+1)
+
+        real temp_on_mask(num_openB,(sNy+sNx)*(nPx*nPy))
+        integer lookup(num_openB, Ny*Nx)
+
+        integer ob, ob_index, total_valid1, total_valid2, col
+        integer num_valid
+
+        common /sub_global/ sub_tempOnMask, sub_global_indices
+        common /global_arr/ lookup, total_valid1,total_valid2,
+     &                        temp_on_mask
+
+
+        ob_index = 1
+        num_valid = 0
+        do ob=1, num_openB, 1
+          num_valid = sub_global_indices(ob, 1)
+          if (ob .eq. 1) then
+            total_valid1 = total_valid1 + num_valid
+          else if (ob .eq. 2) then
+            total_valid2 = total_valid2 + num_valid
+          end if
+
+          !if there exists open boundary points in the mask, then append values to final array
+          if (num_valid .ge. 1) then
+            print *, "APPEND_OB_VALUES: OB points exist in subtile ob",
+     &                ob,"with starting global element",
+     &               sub_global_indices(ob,2),". Append values."
+            do col=2,num_valid+1, 1
+              ob_index = lookup(ob, sub_global_indices(ob, col))
+              temp_on_mask(ob,ob_index) = sub_tempOnMask(ob,col)
+            end do
+            print *, "APPEND_OB_VALUES: Updated temp_on_mask for ob:"
+     &               ,ob
+            call PRINT_FLOAT_ARR(temp_on_mask(1,1:),
+     &                          (sNy+sNx)*(nPx*nPy))
+          end if
+        end do
+
+      end
+
 
       SUBROUTINE TEST_SUBMASKS(global_ob_masks)
 c    Checking if all sub_masks are correctly distributed to processes
@@ -563,21 +633,21 @@ c          call PRINT_INT_ARR(sub_temp_correct, Ny*Nx)
       end
 
 
-      SUBROUTINE CREATE_FILENAME(proc_id, prefix, is_child, filename)
+      SUBROUTINE CREATE_FILENAME(s_global_index, prefix, is_child,
+     &                           filename)
 c       Creating filenames for all binary files.
 
         include 'SIZE.h'
-        integer, intent(in) :: proc_id
-        integer, intent(in) :: is_child
+        integer is_child, s_global_index
         character*50, intent(out) :: filename
 
         integer subtile_x, subtile_y
         character*3 str_px, str_py
-        character*20 prefix
+        character*24 prefix
 
-c       Indices for each process with respect to global mask divided by the number of processes
-        subtile_y = (proc_id / nPx) + 1     ! Integer division does not round.
-        subtile_x = (mod(proc_id, nPx)) + 1  ! The remainder is equivalent to tile(process) number along x_axis.
+c       tile number along x and y axis:
+        subtile_x = s_global_index/sNx + 1
+        subtile_y = ((s_global_index/Nx + 1)/sNy) + 1 !row # divided by sNy then + 1
 
 c       If creating a filename for a child process, create a name in the format: T.001.002.bin
 c       T for temp or mask for mask
@@ -595,4 +665,82 @@ c         Creating a filename for global arrays
           write(filename, "(2A)") prefix, "_global.bin"
 
         end if
+      end
+
+
+      SUBROUTINE WRITE_SUB_BIN()
+c       Writing all sub arrays that each process receives from the Parent to binary files
+        use constants
+        include 'SIZE.h'
+        real sub_masks1(num_info_masks, sNy, sNx) !open boundary 1
+        real sub_masks2(num_info_masks, sNy, sNx) !open boundary 2
+        integer global_ob_index
+
+        !real, dimension(sNy,sNx) :: read_sub_temp
+        real, dimension(sNy,sNx) :: read_sub_mask
+
+        integer, parameter :: print_write = 1
+        integer, parameter :: print_read = 0
+
+        common /sub_arr_info/ sub_masks1, sub_masks2, global_ob_index
+
+        character*24 prefix
+        character*50 filename
+
+c       Writing sub mask of ob1 with global_ob_index to binary file:
+c       CREATE_FILENAME params: s_global_index, prefix, is_child, filename
+        prefix = "./output_masks/ob1.mask."
+        call CREATE_FILENAME(global_ob_index, prefix, 1, filename)
+        open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+        write(1) sub_masks1(1,1:,1:)
+        close(1)
+        if (print_write .eq. 1) then
+          print *, "sub mask for ob1 with global_ob_index",
+     &              global_ob_index,"is written to ",filename
+        end if
+
+        if (print_read .eq. 1) then
+c         DOUBLE CHECKING: Reading binary files to make sure sub temp is correctly written
+          open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+          print *, "Reading sub mask for ob1 with global_ob_index",
+     &              global_ob_index,"back from ",filename
+          read(1) read_sub_mask
+          call PRINT_FLOAT_ARR(read_sub_mask, sNx*sNy)
+          close(1)
+        end if
+
+c       Writing sub_ temp of ob1 with global_ob_index to binary file
+        prefix = "./output_masks/ob1.temp."
+        call CREATE_FILENAME(global_ob_index, prefix, 1, filename)
+        open(2, FILE=filename, FORM="unformatted", ACCESS="stream")
+        write(2) sub_masks1(2,1:,1:)
+        close(2)
+
+        if (print_write .eq. 1) then
+          print *, "sub temp for ob1 with global_ob_index",
+     &              global_ob_index,"is written to ",filename
+        end if
+
+
+        prefix = "./output_masks/ob2.mask."
+        call CREATE_FILENAME(global_ob_index, prefix, 1, filename)
+        open(3, FILE=filename, FORM="unformatted", ACCESS="stream")
+        write(3) sub_masks2(1,1:,1:)
+        close(3)
+        if (print_write .eq. 1) then
+          print *, "sub mask for ob2 with global_ob_index",
+     &              global_ob_index,"is written to ",filename
+        end if
+
+        prefix = "./output_masks/ob2.temp."
+        call CREATE_FILENAME(global_ob_index, prefix, 1, filename)
+        open(4, FILE=filename, FORM="unformatted", ACCESS="stream")
+        write(4) sub_masks2(2,1:,1:)
+        close(4)
+
+        if (print_write .eq. 1) then
+          print *, "sub temp for ob2 with global_ob_index",
+     &              global_ob_index,"is written to ",filename
+        end if
+
       end
