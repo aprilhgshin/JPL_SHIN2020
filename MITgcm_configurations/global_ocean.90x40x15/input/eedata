@@ -7,7 +7,7 @@
  nTx=1,
  nTy=1,
  useSETRLSTK=.TRUE.,
-#debugMode=.TRUE.,
+ debugMode=.TRUE.,
  &
 # Note: Some systems use & as the namelist terminator (as shown here).
 #       Other systems use a / character.

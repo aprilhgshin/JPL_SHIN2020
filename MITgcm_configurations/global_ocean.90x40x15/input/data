@@ -37,6 +37,7 @@
 # set precision of data files
  readBinaryPrec=32,
 #writeBinaryPrec=64,
+ debugLevel = 99,
  &
 
 # Elliptic solver parameters
@@ -48,7 +49,7 @@
 # Time stepping parameters
  &PARM03
  nIter0=36000,
- nTimeSteps=10,
+ nTimeSteps=1,
 # 100 years of integration will yield a reasonable flow field
 # startTime =          0.,
 # endTime   = 3110400000.,
