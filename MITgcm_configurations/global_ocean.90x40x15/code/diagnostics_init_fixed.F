@@ -58,8 +58,8 @@ C--   Calculate pointers for statistics-diags set to non-zero frequency
         integer myThid
 
 c       local variables:
-        integer i,j, R_low_size, pid, ierror
-        real global_field(Ny,Nx)
+        integer i,j, iG, jG, ob_subMask_size, pid, ierror
+        real global_mask(Ny,Nx)
 
         !open(10, FILE="aprilshin.txt", FORM="formatted")
         !write(10, "(A)") "hello this is april shin"
@@ -90,37 +90,30 @@ C                      provide a mechanism for deducing that information
 C                      if it is needed.
 
 C------
-C   0) Initialize R_low and global_field (define an empty domain)
+C   0) Initialize ob_subMask and global_mask (define an empty domain)
 C------
 
-c I am going to create my own version of R_low ... more simple, no threads. No need to acount for OLx and OLy.
-c However, look more into how pieces of global mask is read. R_low is involved, so we may actually need to use R_low.
 
-        DO bj = myByLo(myThid), myByHi(myThid)
-          DO bi = myBxLo(myThid), myBxHi(myThid)
-            DO j=1-OLy,sNy+OLy
-              DO i=1-OLx,sNx+OLx
-                !R_low(i,j,1,1)   = 0. _d 0
-                R_low(i,j,bi,bj)   = 0. _d 0
-                iG = myXGlobalLo-1+i
-                jG = myYGlobalLo-1+j
-                global_field(jG,iG) = 0. _d 0
-              ENDDO
-            ENDDO
+        DO j=1-OLy,sNy+OLy
+          DO i=1-OLx,sNx+OLx
+            iG = myXGlobalLo-1+i
+            jG = myYGlobalLo-1+j
+            global_mask(jG,iG) = 0.0
           ENDDO
         ENDDO
+
 
 c       _RS field(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 c           iG=bi+(myXGlobalLo-1)/sNx
 c           jG=bj+(myYGlobalLo-1)/sNy
 c       All Processes read:
-        CALL READ_REC_XY_RS( ob_fileName, R_low, 1, 0, myThid )
+        CALL READ_REC_XY_RS( ob_fileName, ob_subMask, 1, 0, myThid )
 
-        R_low_size = (abs(1-OLx)+(sNx+OLx))*(abs(1-OLy)+(sNy+OLy))*nSx*nSy
+        ob_subMask_size = (abs(1-OLx)+(sNx+OLx))*(abs(1-OLy)+(sNy+OLy))*nSx*nSy
 
         !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
         if (myProcId .ne. 0) then
-          call MPI_SEND(R_low, R_low_size, MPI_REAL, 0, 1,
+          call MPI_SEND(ob_subMask, ob_subMask_size, MPI_REAL, 0, 1,
      &                  MPI_COMM_WORLD, ierror)
         else
           DO bj = myByLo(myThid), myByHi(myThid)
@@ -129,7 +122,7 @@ c       All Processes read:
                 DO i=1-OLx,sNx+OLx
                   iG = myXGlobalLo-1+(bi-1)*sNx+i
                   jG = myYGlobalLo-1+(bj-1)*sNy+j
-                  global_field(jG,iG) = R_low(j,i,bj,bi)
+                  global_mask(jG,iG) = ob_subMask(j,i,bj,bi)
                 ENDDO
               ENDDO
             ENDDO
@@ -141,7 +134,7 @@ c       All Processes read:
         if (myProcId .eq. 0) then
 
           DO pid=1, numberOfProcs-1, 1
-            call MPI_RECV(R_low, R_low_size, MPI_REAL, pid, 1,
+            call MPI_RECV(ob_subMask, ob_subMask_size, MPI_REAL, pid, 1,
      &                    MPI_COMM_WORLD, status, ierror)
 
             DO bj = myByLo(myThid), myByHi(myThid)
@@ -150,7 +143,7 @@ c       All Processes read:
                   DO i=1-OLx,sNx+OLx
                     iG = myXGlobalLo-1+(bi-1)*sNx+i
                     jG = myYGlobalLo-1+(bj-1)*sNy+j
-                    global_field(jG,iG) = R_low(j,i,bj,bi)
+                    global_mask(jG,iG) = ob_subMask(j,i,bj,bi)
                   ENDDO
                 ENDDO
               ENDDO
@@ -158,7 +151,7 @@ c       All Processes read:
 
           ENDDO
 
-          CALL PLOT_FIELD_XYRS( global_field, 'Values on Open Boundary ',
+          CALL PLOT_FIELD_XYRS( global_mask, 'Values on Open Boundary ',
      &                         -1, myThid )
 
         end if

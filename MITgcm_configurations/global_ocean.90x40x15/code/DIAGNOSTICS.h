@@ -1,3 +1,6 @@
+# include "/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/"
+     &   ,"global_ocean.90x40x15/code_mpi/SIZE.h"
+
 C ======================================================================
 C  Common blocks for diagnostics package.
 C  - DIAG_DEFINE contains the definition of all available diagnostics
@@ -190,7 +193,11 @@ C     diagSt_Fname(n)  :: output file name for output stream # n
       INTEGER   diagSt_ioUnit(numLists)
       CHARACTER*8  diagSt_Flds(numperList,numLists)
       CHARACTER*80 diagSt_Fname(numLists)
+
       LOGICAL   diagSt_ascii, diagSt_mnc
+
+      CHARACTER*40 ob_fileName
+      INTEGER ob_subField()
 
       COMMON / DIAG_STATIS_R /
      &     diagSt_freq, diagSt_phase
@@ -202,8 +209,10 @@ C     diagSt_Fname(n)  :: output file name for output stream # n
      &     diagSt_Flds, diagSt_Fname
       COMMON / DIAG_STATIS_L /
      &     diagSt_Ascii, diagSt_mnc
-      COMMON / APRIL_OB /
-     & ob_fileName
+
+
+      COMMON / DIAG_OB_EXTRACT /
+     & ob_fileName, ob_submask
 
 
 CEH3 ;;; Local Variables: ***

@@ -105,8 +105,8 @@ C--   per level statistics output:
      &     set_regMask, val_regMask,
      &     diagSt_regMaskFile, nSetRegMskFile
 
-      NAMELIST / APRIL_OB /
-     &     ob_fileName
+      NAMELIST / DIAG_OB_EXTRACT /
+     &     ob_fileName, ob_subMask
 
       IF ( .NOT.useDiagnostics ) THEN
 C-    pkg DIAGNOSTICS is not used
@@ -192,6 +192,20 @@ C     useDiag4AdjOutp will be to set to T if ADJ diags are found in namelist
       useDiag4AdjOutp = .FALSE.
 C-    Track diagnostics pkg activation status:
       diag_pkgStatus = 1
+
+C     Initializing to empty string
+      ob_fileName = ' '
+C     Initializing open boundary sub mask
+      DO bj = myByLo(myThid), myByHi(myThid)
+        DO bi = myBxLo(myThid), myBxHi(myThid)
+          DO j=1-OLy,sNy+OLy
+            DO i=1-OLx,sNx+OLx
+              ob_subMask(i,j,bi,bj)   = 0.0
+            ENDDO
+          ENDDO
+        ENDDO
+      ENDDO
+
 
       WRITE(msgBuf,'(2A)')
      &     ' DIAGNOSTICS_READPARMS: opening data.diagnostics'
