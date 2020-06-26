@@ -46,9 +46,9 @@ C--   Calculate pointers for statistics-diags set to non-zero frequency
 
       CALL DIAGSTATS_INI_IO( myThid )
 
-      CALL aprilshin( myThid )
+      CALL OB_EXTRACT( myThid )
 
-      SUBROUTINE aprilshin( myThid )
+      SUBROUTINE OB_EXTRACT( myThid )
         !include "../code_mpi/SIZE.h"
         include "/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/"
      &         ,"global_ocean.90x40x15/code_mpi/SIZE.h"
@@ -60,12 +60,16 @@ C--   Calculate pointers for statistics-diags set to non-zero frequency
 c       local variables:
         integer i,j, iG, jG, ob_subMask_size, pid, ierror
         real global_mask(Ny,Nx)
+        CHARACTER*(MAX_LEN_MBUF) msgBuf
+
+
+        write(msgBuf, "(A)") "April Shin Open Boundary Test"
 
         !open(10, FILE="aprilshin.txt", FORM="formatted")
         !write(10, "(A)") "hello this is april shin"
         !close(10)
-
-
+        CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &                              SQUEEZE_RIGHT, myThid)
 c       Initialize MPI environment
         call MPI_INIT(ierror)
 

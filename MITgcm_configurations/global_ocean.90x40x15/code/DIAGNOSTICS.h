@@ -197,7 +197,7 @@ C     diagSt_Fname(n)  :: output file name for output stream # n
       LOGICAL   diagSt_ascii, diagSt_mnc
 
       CHARACTER*40 ob_fileName
-      INTEGER ob_subField()
+      INTEGER ob_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
       COMMON / DIAG_STATIS_R /
      &     diagSt_freq, diagSt_phase
@@ -212,7 +212,7 @@ C     diagSt_Fname(n)  :: output file name for output stream # n
 
 
       COMMON / DIAG_OB_EXTRACT /
-     & ob_fileName, ob_submask
+     & ob_fileName, ob_subMask
 
 
 CEH3 ;;; Local Variables: ***

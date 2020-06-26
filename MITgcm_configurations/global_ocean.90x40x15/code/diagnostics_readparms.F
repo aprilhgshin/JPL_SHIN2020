@@ -205,6 +205,9 @@ C     Initializing open boundary sub mask
           ENDDO
         ENDDO
       ENDDO
+      WRITE(msgBuf,'(2A)')
+     &     ' DIAGNOSTICS_READPARMS: Testing April Shin Code'
+      CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,SQUEEZE_RIGHT,1)
 
 
       WRITE(msgBuf,'(2A)')
