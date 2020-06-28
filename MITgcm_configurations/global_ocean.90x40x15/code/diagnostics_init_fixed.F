@@ -46,6 +46,9 @@ C--   Calculate pointers for statistics-diags set to non-zero frequency
 
       CALL DIAGSTATS_INI_IO( myThid )
 
+c     Printing stop messages
+      print ,
+
       CALL OB_EXTRACT( myThid )
 
       SUBROUTINE OB_EXTRACT( myThid )
@@ -59,17 +62,21 @@ C--   Calculate pointers for statistics-diags set to non-zero frequency
 
 c       local variables:
         integer i,j, iG, jG, ob_subMask_size, pid, ierror
+        integer, parameter :: stop_program = 1
         real global_mask(Ny,Nx)
         CHARACTER*(MAX_LEN_MBUF) msgBuf
 
-
+c       Testing print:
+        print *, "Printing from diagnostics_init_fixed: April Shin"
         write(msgBuf, "(A)") "April Shin Open Boundary Test"
-
-        !open(10, FILE="aprilshin.txt", FORM="formatted")
-        !write(10, "(A)") "hello this is april shin"
-        !close(10)
         CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
      &                              SQUEEZE_RIGHT, myThid)
+
+c       Testing to see if code is even running:
+        open(10, FILE="aprilshin.txt", FORM="formatted")
+        write(10, "(A)") "Written from diagnostics_init_fixed.F"
+        close(10)
+
 c       Initialize MPI environment
         call MPI_INIT(ierror)
 
@@ -97,7 +104,6 @@ C------
 C   0) Initialize ob_subMask and global_mask (define an empty domain)
 C------
 
-
         DO j=1-OLy,sNy+OLy
           DO i=1-OLx,sNx+OLx
             iG = myXGlobalLo-1+i
@@ -114,6 +120,11 @@ c       All Processes read:
         CALL READ_REC_XY_RS( ob_fileName, ob_subMask, 1, 0, myThid )
 
         ob_subMask_size = (abs(1-OLx)+(sNx+OLx))*(abs(1-OLy)+(sNy+OLy))*nSx*nSy
+
+c       To test if code is running to this point, print stop message if stop_program is set to 1
+        if (stop_program .eq. 1) then
+          stop "init_f"
+        end if
 
         !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
         if (myProcId .ne. 0) then
