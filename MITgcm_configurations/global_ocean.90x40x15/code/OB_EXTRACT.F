@@ -38,6 +38,8 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 C12345678
 
        SUBROUTINE OB_EXTRACT( myThid )
+#include "DIAG_OPTIONS.h"
+
 #include "SIZE.h"
 #include "EEPARAMS.h"
 c#include "EESUPPORT.h"
@@ -126,8 +128,8 @@ C     mpi_myYGlobalLo :: List of all processors bottom-left Y-index in global do
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 C    Initialize global_mask (define an empty domain)
-       DO j=Ny
-         DO i=Nx
+       DO j=1,Ny
+         DO i=1,Nx
            global_mask(j,i) = 0.0
          ENDDO
        ENDDO
