@@ -12,13 +12,14 @@ C     Read Diagnostics Namelists to specify output sequence.
 
 C     !USES:
       IMPLICIT NONE
-C #include "SIZE.h"
+#include "SIZE.h"
 #include "EEPARAMS.h"
 #include "PARAMS.h"
 #include "DIAGNOSTICS_SIZE.h"
 #include "DIAGNOSTICS.h"
 #include "DIAGNOSTICS_CALC.h"
 #include "DIAGSTATS_REGIONS.h"
+
 
 C     !INPUT PARAMETERS:
       INTEGER myThid
@@ -84,6 +85,7 @@ C     stat_fName  :: List of statistics output Filename
       INTEGER ku, stdUnit
       INTEGER j,k,l,n,m,nf
       INTEGER iLen, regionCount
+      INTEGER bi, bj, i
 
 C--   full level output:
       NAMELIST / DIAGNOSTICS_LIST /
@@ -205,6 +207,7 @@ C     Initializing open boundary sub mask
           ENDDO
         ENDDO
       ENDDO
+      print *, "April Shin"
       WRITE(msgBuf,'(2A)')
      &     ' DIAGNOSTICS_READPARMS: Testing April Shin Code'
       CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,SQUEEZE_RIGHT,1)

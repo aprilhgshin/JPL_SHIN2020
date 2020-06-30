@@ -1,4 +1,3 @@
-# include "SIZE.h"
 
 C ======================================================================
 C  Common blocks for diagnostics package.

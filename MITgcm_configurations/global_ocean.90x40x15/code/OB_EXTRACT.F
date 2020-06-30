@@ -38,20 +38,29 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 C12345678
 
        SUBROUTINE OB_EXTRACT( myThid )
-
-c       IMPLICIT NONE
+#include "SIZE.h"
 #include "EEPARAMS.h"
-#include "EESUPPORT.h"
+c#include "EESUPPORT.h"
 #ifdef ALLOW_FIZHI
 #include "PARAMS.h"
 #endif
-#include "GRID.h"
 #include "DIAGNOSTICS_SIZE.h"
 #include "DIAGNOSTICS.h"
 
-#ifdef ALLOW_USE_MPI
-#include "mpif.h"
-#endif
+
+c       IMPLICIT NONE
+C#include "EEPARAMS.h"
+C#include "EESUPPORT.h"
+C#ifdef ALLOW_FIZHI
+C#include "PARAMS.h"
+C#endif
+C#include "GRID.h"
+C#include "DIAGNOSTICS_SIZE.h"
+C#include "DIAGNOSTICS.h"
+
+c No need to include "mpif.h" becaues EESUPRT.h alread includes it.
+C#include "mpif.h"
+C#endif
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 C12345678
@@ -61,28 +70,28 @@ C12345678
 
 C      local variables:
        integer i,j, iG, jG, ob_subMask_size, pid, ierror, np
-       integer, parameter :: stop_program = 1
-       integer, parameter :: debug = 1
+       integer, parameter :: stop_program = 0
+       integer, parameter :: debug = 0
        real global_mask(Ny,Nx)
-       CHARACTER*(MAX_LEN_MBUF) msgBuf
+cc       CHARACTER*(MAX_LEN_MBUF) msgBuf
 
 C      Testing print:
-       if (debug .eq. 1) then
-         print *, "Printing from diagnostics_init_fixed: April Shin"
-         write(msgBuf, "(A)") "April Shin Open Boundary Test"
-         CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
-     &                              SQUEEZE_RIGHT, myThid)
+cc       if (debug .eq. 1) then
+cc         print *, "Printing from diagnostics_init_fixed: April Shin"
+cc         write(msgBuf, "(A)") "April Shin Open Boundary Test"
+cc         CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+cc     &                              SQUEEZE_RIGHT, myThid)
 
 C        Testing to see if code is even running:
          open(10, FILE="aprilshin.txt", FORM="formatted")
          write(10, "(A)") "Written from diagnostics_init_fixed.F"
          close(10)
-       end if
+cc       end if
 
-#ifdef ALLOW_USE_MPI
+cc#ifdef ALLOW_USE_MPI
 c      Initialize MPI environment
-       call MPI_INIT(ierror)
-#endif
+cc       call MPI_INIT(ierror)
+cc#endif
 
 C       myThid  ::  my Thread Id number
 
@@ -133,14 +142,14 @@ c           jG=bj+(myYGlobalLo-1)/sNy
 
 c       All Processes read:
 
-       CALL READ_REC_XY_RS( ob_fileName, ob_subMask, 1, 0, myThid )
+CC       CALL READ_REC_XY_RS( ob_fileName, ob_subMask, 1, 0, myThid )
 
-       ob_subMask_size = (abs(1-OLx)+(sNx+OLx))*(abs(1-OLy)+(sNy+OLy))*nSx*nSy
+CC       ob_subMask_size = (abs(1-OLx)+(sNx+OLx))*(abs(1-OLy)+(sNy+OLy))*nSx*nSy
 
 c      To test if code is running to this point, print stop message if stop_program is set to 1
-       if (stop_program .eq. 1) then
-         stop "init_f"
-       end if
+CC       if (stop_program .eq. 1) then
+CC         stop "init_f"
+CC       end if
 
 C12345678
        !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
@@ -151,7 +160,7 @@ c      end if
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
-       if (myProcId .eq. 0) then
+CC       if (myProcId .eq. 0) then
 C     To speed-up mpi gather and scatter routines, myXGlobalLo
 C     and myYGlobalLo from each process are transferred to
 C     a common block array.  This allows process 0 to know
@@ -188,8 +197,8 @@ C useExch2GlobLayOut:: =T: Use Exch2 global-map layout (only with EXCH2)
 C zeroBuff (logical):: =T: initialise the buffer to zero before copy
 C myThid   (integer):: my Thread Id number
 C12345678
-         call GATHER_2D_R4(global_mask, ob_subMask, Nx, Ny, .true.,
-     &                     .true., myThid)
+CC         call GATHER_2D_R4(global_mask, ob_subMask, Nx, Ny, .true.,
+CC     &                     .true., myThid)
 
 
 C    DO pid=1, numberOfProcs-1, 1
@@ -209,12 +218,12 @@ C        ENDDO
 C      ENDDO
 
 C    ENDDO
-         CALL PLOT_FIELD_XYRS( global_mask, 'Values on Open Boundary ',
-     &                         -1, myThid )
+CC         CALL PLOT_FIELD_XYRS( global_mask, 'Values on Open Boundary ',
+CC     &                         -1, myThid )
 
-       end if
+CC       end if
 
-#ifdef ALLOW_USE_MPI
-       call MPI_FINALIZE(ierror)
-#endif
+cc#ifdef ALLOW_USE_MPI
+cc       call MPI_FINALIZE(ierror)
+cc#endif
        end
