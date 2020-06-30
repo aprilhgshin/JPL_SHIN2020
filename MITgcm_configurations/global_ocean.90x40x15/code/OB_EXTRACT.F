@@ -39,10 +39,9 @@ C12345678
 
        SUBROUTINE OB_EXTRACT( myThid )
 #include "DIAG_OPTIONS.h"
-
 #include "SIZE.h"
 #include "EEPARAMS.h"
-c#include "EESUPPORT.h"
+#include "EESUPPORT.h"
 #ifdef ALLOW_FIZHI
 #include "PARAMS.h"
 #endif
