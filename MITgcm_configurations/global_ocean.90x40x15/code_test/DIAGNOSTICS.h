@@ -1,5 +1,4 @@
-# include "/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/"
-     &   ,"global_ocean.90x40x15/code_mpi/SIZE.h"
+# include "SIZE.h"
 
 C ======================================================================
 C  Common blocks for diagnostics package.
