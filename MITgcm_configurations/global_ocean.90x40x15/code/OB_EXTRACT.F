@@ -10,8 +10,12 @@ C12345678
 #include "DIAGNOSTICS_SIZE.h"
 #include "DIAGNOSTICS.h"
 #include "GRID.h"
+#ifdef ALLOW_FIZHI
 #include "PARAMS.h"
+#endif
+#ifdef ALLOW_USE_MPI
 #include "mpif.h"
+#endif
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 C12345678
@@ -39,8 +43,10 @@ C        Testing to see if code is even running:
          close(10)
        end if
 
+#ifdef ALLOW_USE_MPI
 c      Initialize MPI environment
        call MPI_INIT(ierror)
+#endif
 
 C       myThid  ::  my Thread Id number
 
@@ -172,6 +178,7 @@ C    ENDDO
 
        end if
 
+#ifdef ALLOW_USE_MPI
        call MPI_FINALIZE(ierror)
-
+#endif
        end
