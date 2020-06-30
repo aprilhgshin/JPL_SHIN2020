@@ -12,7 +12,7 @@ C     Read Diagnostics Namelists to specify output sequence.
 
 C     !USES:
       IMPLICIT NONE
-#include "SIZE.h"
+C #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "PARAMS.h"
 #include "DIAGNOSTICS_SIZE.h"

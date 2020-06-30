@@ -1,18 +1,54 @@
+C All variables in header file are global to header files included below
+
+C     == Global variables ===
+C     ORDER SHOWN IN OTHER .F FILES:
+
+C#include "SIZE.h"
+C#include "EEPARAMS.h"
+C#include "PARAMS.h"
+C#include "DIAGNOSTICS_SIZE.h"
+C#include "DIAGNOSTICS.h"
+
+C     == Global variables ===
+C#include "EEPARAMS.h"
+C#include "SIZE.h"
+C#include "DIAGNOSTICS_SIZE.h"
+C#include "DIAGNOSTICS.h"
+
+C#include "SIZE.h"
+C#include "EEPARAMS.h"
+C#include "PARAMS.h"
+C#include "GRID.h"
+C#include "DIAGNOSTICS_SIZE.h"
+C#include "DIAGNOSTICS.h"
+
+C#include "EEPARAMS.h"
+C#include "SIZE.h"
+C#include "DIAGNOSTICS_SIZE.h"
+C#include "PARAMS.h"
+C#include "DIAGNOSTICS.h"
+
+C#include "SIZE.h"
+C#include "EEPARAMS.h"
+C#include "EESUPPORT.h"
+
+
+
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 C12345678
 
        SUBROUTINE OB_EXTRACT( myThid )
 
-       IMPLICIT NONE
+c       IMPLICIT NONE
 #include "EEPARAMS.h"
 #include "EESUPPORT.h"
-#include "SIZE.h"
-#include "DIAGNOSTICS_SIZE.h"
-#include "DIAGNOSTICS.h"
-#include "GRID.h"
 #ifdef ALLOW_FIZHI
 #include "PARAMS.h"
 #endif
+#include "GRID.h"
+#include "DIAGNOSTICS_SIZE.h"
+#include "DIAGNOSTICS.h"
+
 #ifdef ALLOW_USE_MPI
 #include "mpif.h"
 #endif

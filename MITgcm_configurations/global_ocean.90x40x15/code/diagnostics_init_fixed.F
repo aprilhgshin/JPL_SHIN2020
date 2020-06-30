@@ -13,14 +13,14 @@ C     prepare for storing selected diagnostics and statistics-diags.
 
 C     !USES:
       IMPLICIT NONE
+
 #include "EEPARAMS.h"
-#include "SIZE.h"
-#include "DIAGNOSTICS_SIZE.h"
-#include "DIAGNOSTICS.h"
-#include "GRID.h"
 #ifdef ALLOW_FIZHI
 #include "PARAMS.h"
 #endif
+#include "GRID.h"
+#include "DIAGNOSTICS_SIZE.h"
+#include "DIAGNOSTICS.h"
 
 C     !INPUT PARAMETERS:
       INTEGER myThid
