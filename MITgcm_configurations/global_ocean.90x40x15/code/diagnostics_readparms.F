@@ -110,6 +110,7 @@ C--   per level statistics output:
       NAMELIST / DIAG_OB_EXTRACT /
      &     ob_fileName, ob_subMask
 
+
       IF ( .NOT.useDiagnostics ) THEN
 C-    pkg DIAGNOSTICS is not used
         _BEGIN_MASTER(myThid)
@@ -207,11 +208,8 @@ C     Initializing open boundary sub mask
           ENDDO
         ENDDO
       ENDDO
-      print *, "April Shin"
-      WRITE(msgBuf,'(2A)')
-     &     ' DIAGNOSTICS_READPARMS: Testing April Shin Code'
-      CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,SQUEEZE_RIGHT,1)
 
+  
 
       WRITE(msgBuf,'(2A)')
      &     ' DIAGNOSTICS_READPARMS: opening data.diagnostics'

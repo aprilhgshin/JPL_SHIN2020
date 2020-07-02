@@ -32,6 +32,7 @@ C#include "DIAGNOSTICS.h"
 
 C     !INPUT PARAMETERS:
       INTEGER myThid
+      print *, "April Shin myThid value in init_fixed: ", myThid
 CEOP
 
 C     !LOCAL VARIABLES:
