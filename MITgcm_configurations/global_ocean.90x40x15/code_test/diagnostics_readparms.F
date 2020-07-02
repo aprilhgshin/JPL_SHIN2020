@@ -20,6 +20,7 @@ C     !USES:
 #include "DIAGNOSTICS_CALC.h"
 #include "DIAGSTATS_REGIONS.h"
 
+
 C     !INPUT PARAMETERS:
       INTEGER myThid
 CEOP
@@ -84,6 +85,7 @@ C     stat_fName  :: List of statistics output Filename
       INTEGER ku, stdUnit
       INTEGER j,k,l,n,m,nf
       INTEGER iLen, regionCount
+      INTEGER bi, bj, i
 
 C--   full level output:
       NAMELIST / DIAGNOSTICS_LIST /
@@ -107,6 +109,7 @@ C--   per level statistics output:
 
       NAMELIST / DIAG_OB_EXTRACT /
      &     ob_fileName, ob_subMask
+
 
       IF ( .NOT.useDiagnostics ) THEN
 C-    pkg DIAGNOSTICS is not used
@@ -205,10 +208,8 @@ C     Initializing open boundary sub mask
           ENDDO
         ENDDO
       ENDDO
-      WRITE(msgBuf,'(2A)')
-     &     ' DIAGNOSTICS_READPARMS: Testing April Shin Code'
-      CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,SQUEEZE_RIGHT,1)
 
+  
 
       WRITE(msgBuf,'(2A)')
      &     ' DIAGNOSTICS_READPARMS: opening data.diagnostics'

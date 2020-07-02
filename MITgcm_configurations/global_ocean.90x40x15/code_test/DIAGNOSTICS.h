@@ -1,5 +1,3 @@
-# include "SIZE.h"
-
 C ======================================================================
 C  Common blocks for diagnostics package.
 C  - DIAG_DEFINE contains the definition of all available diagnostics
@@ -196,7 +194,7 @@ C     diagSt_Fname(n)  :: output file name for output stream # n
       LOGICAL   diagSt_ascii, diagSt_mnc
 
       CHARACTER*40 ob_fileName
-      INTEGER ob_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      REAL*8 ob_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
       COMMON / DIAG_STATIS_R /
      &     diagSt_freq, diagSt_phase

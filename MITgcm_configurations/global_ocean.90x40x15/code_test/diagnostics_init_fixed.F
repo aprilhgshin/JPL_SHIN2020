@@ -13,17 +13,26 @@ C     prepare for storing selected diagnostics and statistics-diags.
 
 C     !USES:
       IMPLICIT NONE
-#include "EEPARAMS.h"
 #include "SIZE.h"
-#include "DIAGNOSTICS_SIZE.h"
-#include "DIAGNOSTICS.h"
-#include "GRID.h"
+#include "EEPARAMS.h"
 #ifdef ALLOW_FIZHI
 #include "PARAMS.h"
 #endif
+#include "DIAGNOSTICS_SIZE.h"
+#include "DIAGNOSTICS.h"
+
+
+C#include "EEPARAMS.h"
+C#ifdef ALLOW_FIZHI
+C#include "PARAMS.h"
+C#endif
+C#include "GRID.h"
+C#include "DIAGNOSTICS_SIZE.h"
+C#include "DIAGNOSTICS.h"
 
 C     !INPUT PARAMETERS:
       INTEGER myThid
+      print *, "April Shin myThid value in init_fixed: ", myThid
 CEOP
 
 C     !LOCAL VARIABLES:
