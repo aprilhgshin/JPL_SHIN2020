@@ -78,7 +78,7 @@ C      local variables:
        integer, parameter :: debug = 0
 C      I thought global_mask should be real*4 as we are reading in float32 values
 C      however, it causes errors when GATHER_2D_R4 is called because its input is _RS. So it is set as real*8 or _RS.
-       _RS global_mask(Nx,Ny,sNx, sNy)
+       real*8 global_mask(Nx,Ny,nSx,nSy)
 
        CHARACTER*(MAX_LEN_MBUF) msgBuf
 
@@ -150,20 +150,22 @@ c           jG=bj+(myYGlobalLo-1)/sNy
      & 1-Olx, sNx+Olx, 1-Oly, sNy+Oly
       print *, "April Shin ob_subMask shape: ", shape(ob_subMask)
 c       All Processes read:
-       ob_fileName = 'domain_flt32_mask.bin'
+
+       ob_fileName = 'bathymetry.bin'
+       print *, "April Shin file name: ", ob_fileName
        CALL READ_REC_XY_RS( ob_fileName, ob_subMask, 1, 0, myThid )
+
+       _EXCH_XY_RS(ob_subMask, myThid)
 
 
 
       ob_subMask_size = (abs(1-OLx)+(sNx+OLx))*(abs(1-OLy)+(sNy+OLy))
      &                    *nSx*nSy
+      print *, "obsubMask at -2: ", ob_subMask(-2,-2,1,1)
 C     Plotting for debugging
       CALL PLOT_FIELD_XYRS( ob_subMask, 'April Shin Submask',
      &                         -1, myThid )
-c      To test if code is running to this point, print stop message if stop_program is set to 1
-CC       if (stop_program .eq. 1) then
-CC         stop "init_f"
-CC       end if
+
 
        !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
 c       if (mpiMyId .ne. 0) then
@@ -203,16 +205,17 @@ C     | barrier calls, max, min and aggregate polling loop counts.
 C     *=====================================================================*
 C         call BAR2(myThid)
 
-         call GATHER_2D_R4(global_mask(1:Nx, 1:Ny, 1, 1),
-     & ob_subMask(1:sNx, 1:sNy, 1, 1), Nx, Ny, .true., .true., myThid)
-
-
-         print *, "April Shin global_mask shape:", shape(global_mask)
-CC         call PRINT_FLOAT_ARR(global_mask, Nx*Ny)
-         if (myProcId .eq. 0) then
+         call GATHER_2D_R8(global_mask(1:Nx,1:Ny,1,1),
+     &                     ob_subMask(1:sNx, 1:sNy, nSx, nSy),
+     &                     Nx, Ny, .true., .true., myThid)
+         if (mpiMyId .eq. 0) then
+           print *, "April Shin global_mask shape:", shape(global_mask)
            call PLOT_GLO_FIELD_XYRS(global_mask, "April global mask",
      &                            myThid)
          end if
+
+
+
 
 C      This plotting routine only writes fields with dimensions equal to ob_subMask (myIterL -1)
 C       CALL PLOT_FIELD_XYRS( ob_subMask, 'April Shin Submask',
@@ -345,7 +348,8 @@ C     fld - Field to plot
 C     fldNam - Name of field
 C     myIter - Iteration number for plot
 C     myThid - Thread id of thread instance calling plot_field
-       _RS fld(Nx, Ny, nSx, nSy)
+       real*8 fld(Nx, Ny, nSx, nSy)
+
 C       _RS fld(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
        CHARACTER*(*) fldNam
        INTEGER myThid
