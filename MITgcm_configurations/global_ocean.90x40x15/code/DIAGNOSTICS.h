@@ -193,8 +193,22 @@ C     diagSt_Fname(n)  :: output file name for output stream # n
 
       LOGICAL   diagSt_ascii, diagSt_mnc
 
+C     ================== Global Variables for open boundary ====================
       CHARACTER*40 ob_fileName
+      CHARACTER*40 t_fileName
       REAL*8 ob_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      REAL*8 temp_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      REAL*8 subTempOnMask(sNx + sNy + 1)
+
+C      integer, parameter :: num_openB = 1
+
+C     Each open boundary will have a 3D array with the following info:
+C     1) open boundary mask,  2) temp
+C      integer, parameter :: num_info_arrays = 2
+
+      REAL*8 lookup_table(1, Ny*Nx)
+C     ==========================================================================
+
 
       COMMON / DIAG_STATIS_R /
      &     diagSt_freq, diagSt_phase
@@ -209,7 +223,9 @@ C     diagSt_Fname(n)  :: output file name for output stream # n
 
 
       COMMON / DIAG_OB_EXTRACT /
-     & ob_fileName, ob_subMask
+     & ob_fileName, t_fileName, ob_subMask,
+     & temp_subMask, lookup_table, subTempOnMask
+
 
 
 CEH3 ;;; Local Variables: ***

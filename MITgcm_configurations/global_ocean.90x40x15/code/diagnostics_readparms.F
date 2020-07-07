@@ -108,7 +108,8 @@ C--   per level statistics output:
      &     diagSt_regMaskFile, nSetRegMskFile
 
       NAMELIST / DIAG_OB_EXTRACT /
-     &     ob_fileName, ob_subMask
+     &     ob_fileName, t_fileName, ob_subMask,
+     &     temp_subMask, subTempOnMask, lookup_table
 
 
       IF ( .NOT.useDiagnostics ) THEN
@@ -198,18 +199,33 @@ C-    Track diagnostics pkg activation status:
 
 C     Initializing to empty string
       ob_fileName = ' '
+      t_fileName = ' '
 C     Initializing open boundary sub mask
       DO bj = myByLo(myThid), myByHi(myThid)
         DO bi = myBxLo(myThid), myBxHi(myThid)
           DO j=1-OLy,sNy+OLy
             DO i=1-OLx,sNx+OLx
               ob_subMask(i,j,bi,bj)   = 0.0
+              temp_subMask(i,j,bi,bj) = 0.0
             ENDDO
           ENDDO
         ENDDO
       ENDDO
 
-  
+C      DO i = 1, 2
+       DO i = 1, sNy+sNx+1
+         subTempOnMask(i) = 0.0
+       ENDDO
+C      ENDDO
+
+C     k limited to total number of open boundaries
+      DO k = 1, 1
+        DO l = 1, Ny*Nx
+          lookup_table(k,1) = 0.0
+        ENDDO
+      ENDDO
+
+
 
       WRITE(msgBuf,'(2A)')
      &     ' DIAGNOSTICS_READPARMS: opening data.diagnostics'
