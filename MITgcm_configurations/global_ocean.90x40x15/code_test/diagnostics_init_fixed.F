@@ -55,7 +55,8 @@ C--   Calculate pointers for statistics-diags set to non-zero frequency
 
       CALL DIAGSTATS_INI_IO( myThid )
 
-      CALL OB_EXTRACT( myThid )
+C      CALL OB_EXTRACT( myThid )
+      CALL OB_EXTRACT_LOOKUP( myThid )
 
 
 
