@@ -65,17 +65,36 @@ C      stop_program: Integer used to hold either 1 or 0, 1 to stop program or 0 
 C      debug: Integer used to hold either 1 or 0, 1 to print debug statements or 0 to ignore
 
 C      Although we read REAL*4 values, most built in functions have _RS input which by default is real*8.
-C      So global_mask, ob_subMask, and temp_subMask are set as real*8 or _RS.
+C      So global_mask, ob_subMask, and bath_subMask are set as real*8 or _RS.
        real*8 global_mask(Nx,Ny,nSx,nSy)
+
        CHARACTER*(MAX_LEN_MBUF) msgBuf
-       integer i,j, iG, jG, bi, bj, ob, global_ob_index
+       integer i,j, iG, jG, bi, bj
+       integer ob, global_ob_index, ob_index, new_goi
        integer ob_subMask_size, counter
+       integer total_valid1
+       integer, parameter :: num_openB = 1
        integer, parameter :: stop_program = 0
        integer, parameter :: debug = 1
+       CHARACTER*40 b_fileName
 #ifdef ALLOW_USE_MPI
        integer pid, ierror, status(MPI_STATUS_SIZE)
 C     &    , np, itemp(2)
 #endif
+
+
+C       Initialize local arrays:
+        DO bj = myByLo(myThid), myByHi(myThid)
+          DO bi = myBxLo(myThid), myBxHi(myThid)
+            DO j=1, Ny
+              DO i=1, Nx
+                global_mask(i,j,bi,bj) = 0.0
+              ENDDO
+            ENDDO
+          ENDDO
+        ENDDO
+
+
 
 C       myThid  ::  my Thread Id number
 
@@ -120,21 +139,61 @@ c           jG=bj+(myYGlobalLo-1)/sNy
       print *, "April Shin: ob_subMask indices:",
      & 1-Olx, sNx+Olx, 1-Oly, sNy+Oly
       print *, "April Shin ob_subMask shape: ", shape(ob_subMask)
+
+
 c       All Processes read:
 
+       b_fileName = 'bathymetry.bin'
        t_fileName = 'domain_temp.bin'
-       ob_fileName = 'domain_flt64_mask.bin'
+       ob_fileName = 'domain_flt32_mask.bin'
        print *, "April Shin file name: ", ob_fileName
-       CALL READ_REC_XY_RS( t_fileName, temp_subMask, 1, 0, myThid )
+C       CALL READ_REC_XY_RS( t_fileName, temp_subMask, 1, 0, myThid )
+       CALL READ_REC_XY_RS( b_fileName, bath_subMask, 1, 0, myThid)
        CALL READ_REC_XY_RS( ob_fileName, ob_subMask, 1, 0, myThid)
 
        CALL PLOT_FIELD_XYRS( ob_subMask, 'B Open Boundary Submask',
      &                         -1, myThid )
 
-       _EXCH_XY_RS(temp_subMask, myThid)
+       _EXCH_XY_RS(bath_subMask, myThid)
        _EXCH_XY_RS(ob_subMask, myThid)
 
+       iG = mpi_myXGlobalLo(mpiMyId)
+       jG = mpi_myYGlobalLo(mpiMyId)
+       print *, "iG:", iG, "jG:", jG
+       global_ob_index = (Nx*jG - 1) + iG
+
        counter = 2
+       new_goi = global_ob_index
+
+
+
+      if (debug .eq. 1) then
+C        Plotting for debugging
+        print *, "April Number of valid elements:", counter-2
+        CALL PLOT_FIELD_XYRS( ob_subMask, 'Open Boundary Submask',
+     &                         -1, myThid )
+C         call PRINT_FLOAT_ARR(ob_subMask, ob_subMask_size)
+
+        CALL PLOT_FIELD_XYRS( bath_subMask, 'Temperature Submask',
+     &                         -1, myThid )
+C         call PRINT_FLOAT_ARR(bath_subMask, ob_subMask_size)
+
+
+        print *, "April global_ob_index:", global_ob_index
+        print *, "April subTempOnMask in process", mpiMyId,
+     &            "before sending to Parent:"
+C         call PRINT_FLOAT_ARR(subTempOnMask, num_openB*(sNx+sNy+1))
+      end if
+
+      print *, "April Shin MPI Process ID: ", mpiMyId
+      print *, "April Shin MPI total num procs: ", mpiNprocs
+      print *, "April Shin myThid: ", myThid
+
+
+
+
+C      In this program, we only have one open boundary. Therefore, first dimension
+C      of subTempOnMask and sub_global_indices is 1, referring to open boundary # 1
        DO bj = myByLo(myThid), myByHi(myThid)
          DO bi = myBxLo(myThid), myBxHi(myThid)
            DO j=1-OLy,sNy+OLy
@@ -143,91 +202,125 @@ c       All Processes read:
                  print *, "April ob_subMask gt 1:",
      &                    ob_subMask(i,j,bi,bj)
                  print *, "April i j of ob_subMask gt 1", i, j
-                 print *, "April temp_subMask gt 1",
-     &                    temp_subMask(i,j,bi,bj)
-                 subTempOnMask(counter) = temp_subMask(i,j,bi,bj)
+                 print *, "April bath_subMask gt 1",
+     &                    bath_subMask(i,j,bi,bj)
+                 subTempOnMask(1, counter) = bath_subMask(i,j,bi,bj)
+                 sub_global_indices(1, counter) = new_goi
                  counter = counter + 1
                end if
+               new_goi = new_goi + 1
              ENDDO
            ENDDO
          ENDDO
        ENDDO
 
-       iG = mpi_myXGlobalLo(mpiMyId)
-       jG = mpi_myYGlobalLo(mpiMyId)
-       global_ob_index = (Nx*jG - 1) + iG
 
-       ob_subMask_size = (abs(1-OLx)+(sNx+OLx))*(abs(1-OLy)+(sNy+OLy))
+      ob_subMask_size = (abs(1-OLx)+(sNx+OLx))*(abs(1-OLy)+(sNy+OLy))
      &                    *nSx*nSy
 
-       subTempOnMask(1) = counter - 2
-
-       if (debug .eq. 1) then
-C        Plotting for debugging
-         print *, "April Number of valid elements:", counter-2
-         CALL PLOT_FIELD_XYRS( ob_subMask, 'Open Boundary Submask',
-     &                         -1, myThid )
-C         call PRINT_FLOAT_ARR(ob_subMask, ob_subMask_size)
-
-         CALL PLOT_FIELD_XYRS( temp_subMask, 'Temperature Submask',
-     &                         -1, myThid )
-C         call PRINT_FLOAT_ARR(temp_subMask, ob_subMask_size)
+      subTempOnMask(1, 1) = counter - 2
+      sub_global_indices(1, 1) = counter - 2
 
 
-         print *, "April global_ob_index:", global_ob_index
-         print *, "April subTempOnMask in process", mpiMyId,
-     &            "before sending to Parent:"
-         call PRINT_FLOAT_ARR(subTempOnMask, sNx+sNy+1)
-       end if
-
-       print *, "April Shin MPI Process ID: ", mpiMyId
-       print *, "April Shin MPI total num procs: ", mpiNprocs
-       print *, "April Shin myThid: ", myThid
 
 #ifdef ALLOW_USE_MPI
        if (usingMPI) then
          if (mpiMyId .gt. 0) then
 
 C#ifndef DISABLE_MPI_READY_TO_RECEIVE
-           call MPI_SEND(global_ob_index, 1, MPI_INTEGER, 0, 1,
-     &               MPI_COMM_MODEL, ierror)
-           call MPI_SEND(subTempOnMask, sNx+sNy+1, MPI_REAL
+           call MPI_SEND(sub_global_indices,num_openB*(sNx+sNy+1),
+     &                MPI_INT, 0, 1, MPI_COMM_WORLD, ierror)
+           call MPI_SEND(subTempOnMask, num_openB*(sNx+sNy+1), MPI_REAL
      &               ,0, 2, MPI_COMM_MODEL, ierror)
+
          end if
        end if
 C#endif
 #endif
 
 
+
+C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
+
+
+C      Using GATHER_2D_R8 to correctly combine ob_subMasks into a single global array
+
+       call GATHER_2D_R8(global_mask(1:Nx,1:Ny,1,1),
+     &                   ob_subMask(1:sNx, 1:sNy, 1, 1),
+     &                   Nx, Ny, .true., .true., myThid)
+
+       if (mpiMyId .eq. 0) then
+         print *, "April Shin global_mask shape:", shape(global_mask)
+         call PLOT_GLO_FIELD_XYRS(global_mask, "April global mask",
+     &                            myThid)
+       end if
+
 #ifdef ALLOW_USE_MPI
-       if (usingMPI) then
-         if (mpiMyId .eq. 0) then
+      if (usingMPI) then
+        if (mpiMyId .eq. 0) then
+C         print *, "April Shin global_mask shape:", shape(global_mask)
+          call PLOT_GLO_FIELD_XYRS(global_mask, "April global mask",
+     &                            myThid)
+C         Store global_ob_masks into lookup table
+           do ob=1, num_openB, 1
+             counter = 1
+             do j=1, Ny, 1
+               do i=1, Nx, 1
+                 lookup_table(ob, counter) = global_mask(i,j,1,1)
+                 counter = counter + 1
+               end do
+             end do
+             if (sub_global_indices(ob, 1) .gt. 0) then
+               print *, "April local subTempOnMask has valid elements:"
+               call PRINT_FLOAT_ARR(subTempOnMask, sNx+sNy+1)
+               do i=2, sub_global_indices(ob, 1) + 1
+                 ob_index = lookup_table(ob,
+     &                              sub_global_indices(ob, i))
+                 print *, "process 0 ob_index:", ob_index
+                 global_ob1(1, ob_index) = subTempOnMask(ob, i)
+               end do
+             end if
+           end do
 
-           if (subTempOnMask(1) .gt. 0) then
-             print *, "April local subTempOnMask has valid elements:"
-             call PRINT_FLOAT_ARR(subTempOnMask, sNx+sNy+1)
-           end if
+           print *, "Locally added: global_ob1:"
+           call PRINT_FLOAT_ARR(global_ob1, 1*(sNy+sNx)*(nPx*nPy))
 
-           do pid=1, mpiNprocs-1
+
+
+          ob_index = 1
+
+          do ob=1, num_openB
+            do pid=1, mpiNprocs-1
 C#ifndef DISABLE_MPI_READY_TO_RECEIVE
-             call MPI_RECV(global_ob_index, 1, MPI_INTEGER,pid, 1,
-     &                MPI_COMM_MODEL, status, ierror)
-             call MPI_RECV(subTempOnMask, sNx+sNy+1, MPI_REAL,pid, 2
-     &                ,MPI_COMM_MODEL, status, ierror)
-             print *, "Parent received",global_ob_index, "from ",
-     &                 "Process ", status(MPI_SOURCE)
 
-             print *, "April subTempOnMask:"
-             call PRINT_FLOAT_ARR(subTempOnMask, sNx+sNy+1)
+              call MPI_RECV(sub_global_indices, num_openB*(sNx+sNy+1)
+     &                  ,MPI_INTEGER, pid, 1, MPI_COMM_WORLD, status,
+     &                  ierror)
+              call MPI_RECV(subTempOnMask, num_openB*(sNx+sNy+1),
+     &             MPI_REAL,pid, 2 ,MPI_COMM_MODEL, status, ierror)
 
+               if (sub_global_indices(ob, 1) .ge. 1) then
+                 do i=2, sub_global_indices(ob, 1) + 1
+                   ob_index = lookup_table(ob,
+     &                              sub_global_indices(ob, i))
+                   print *, "ob_index:", ob_index
+                   global_ob1(1, ob_index) = subTempOnMask(ob, i)
+                 end do
+               end if
+              print *, "Parent received from Process ",
+     &                  status(MPI_SOURCE)
 
+              print *, "April subTempOnMask:"
+              call PRINT_FLOAT_ARR(subTempOnMask, sNx+sNy+1)
+              print *, "April global_ob1:"
+              call PRINT_FLOAT_ARR(global_ob1, 1*(sNy+sNx)*(nPx*nPy))
+
+            end do
 C#endif
           end do
         end if
       end if
 #endif
-
-
 C     !DESCRIPTION:
 C     *=====================================================================*
 C     | SUBROUTINE BAR2
@@ -249,26 +342,12 @@ c     GATHER_2D_R4 initializes global_mask
 CCCCCC
 C      if (mpiMyId .eq. 0) then
 C
-C         call GATHER_2D_R8(global_mask(1:Nx,1:Ny,1,1),
-C     &                     ob_subMask(1:sNx, 1:sNy, nSx, nSy),
-C     &                     Nx, Ny, .true., .true., myThid)
 
 
-C         Store global_ob_masks into lookup table
-C         do ob=1, 1, 1
-C           counter = 1
-C           do j=1, Ny, 1
-C             do i=1, Nx, 1
-C               lookup(ob, counter)
-C     &            = global_mask(ob, j, i)
-C               counter = counter + 1
-C             end do
-C           end do
-C         end do
+CCCCCCCCCC INSERT HERE
 
-C         print *, "April Shin global_mask shape:", shape(global_mask)
-C         call PLOT_GLO_FIELD_XYRS(global_mask, "April global mask",
-C     &                            myThid)
+
+
 C       end if
 CCCCC
 
@@ -348,6 +427,7 @@ C    ENDDO
 
 
        end
+
 
 
        SUBROUTINE PRINT_FLOAT_ARR(array, arr_length)

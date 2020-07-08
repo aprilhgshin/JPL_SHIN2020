@@ -197,16 +197,15 @@ C     ================== Global Variables for open boundary ====================
       CHARACTER*40 ob_fileName
       CHARACTER*40 t_fileName
       REAL*8 ob_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      REAL*8 temp_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      REAL*8 subTempOnMask(sNx + sNy + 1)
+      REAL*8 bath_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
-C      integer, parameter :: num_openB = 1
-
-C     Each open boundary will have a 3D array with the following info:
-C     1) open boundary mask,  2) temp
-C      integer, parameter :: num_info_arrays = 2
-
+C     First dimension accounts for number of open boundaries
+      REAL*8 subTempOnMask(1, sNx + sNy + 1)
+      INTEGER sub_global_indices(1, sNx + sNy + 1)
       REAL*8 lookup_table(1, Ny*Nx)
+
+C     First dimension accounts for number of info arrays laid on mask
+      REAL*8 global_ob1(1, (sNy+sNx)*(nPx*nPy))
 C     ==========================================================================
 
 
@@ -224,7 +223,8 @@ C     ==========================================================================
 
       COMMON / DIAG_OB_EXTRACT /
      & ob_fileName, t_fileName, ob_subMask,
-     & temp_subMask, lookup_table, subTempOnMask
+     & bath_subMask, lookup_table, subTempOnMask, sub_global_indices,
+     & global_ob1
 
 
 
