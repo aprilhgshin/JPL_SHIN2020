@@ -200,7 +200,7 @@ C     ================== Global Variables for open boundary ====================
       REAL*8 bath_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
 C     First dimension accounts for number of open boundaries
-      REAL*8 subTempOnMask(1, sNx + sNy + 1)
+      REAL*8 subBathOnMask(1, sNx + sNy + 1)
       INTEGER sub_global_indices(1, sNx + sNy + 1)
       REAL*8 lookup_table(1, Ny*Nx)
 
@@ -223,7 +223,7 @@ C     ==========================================================================
 
       COMMON / DIAG_OB_EXTRACT /
      & ob_fileName, t_fileName, ob_subMask,
-     & bath_subMask, lookup_table, subTempOnMask, sub_global_indices,
+     & bath_subMask, lookup_table, subBathOnMask, sub_global_indices,
      & global_ob1
 
 
