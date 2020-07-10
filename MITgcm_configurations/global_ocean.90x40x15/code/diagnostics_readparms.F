@@ -230,7 +230,7 @@ C     k limited to total number of open boundaries
         ENDDO
       ENDDO
 
-      DO k=1,1
+      DO k=1,3
         DO j=1, (sNy+sNx)*(nPx*nPy)
           global_ob1(k,j) = 0.0
         ENDDO
