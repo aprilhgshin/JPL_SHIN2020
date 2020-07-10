@@ -109,8 +109,9 @@ C--   per level statistics output:
 
       NAMELIST / DIAG_OB_EXTRACT /
      &     ob_fileName, t_fileName, ob_subMask,
-     &     bath_subMask, subBathOnMask, lookup_table,
-     &     sub_global_indices, global_ob1
+     &     lookup_table, global_ob1, sub_global_indices,
+     &     temp_subMask, bath_subMask,
+     &     subBathOnMask, subTempOnMask
 
 
       IF ( .NOT.useDiagnostics ) THEN
@@ -208,6 +209,7 @@ C     Initializing open boundary sub mask
             DO k=1-OLx,sNx+OLx
               ob_subMask(k,j,bi,bj)   = 0.0
               bath_subMask(k,j,bi,bj) = 0.0
+              temp_subMask(k,j,bi,bj) = 0.0
             ENDDO
           ENDDO
         ENDDO
@@ -216,6 +218,7 @@ C     Initializing open boundary sub mask
       DO k = 1,1
         DO l = 1, sNy+sNx+1
           subBathOnMask(k,l) = 0.0
+          subTempOnMask(k,l) = 0.0
           sub_global_indices(k,l) = 0
         ENDDO
       ENDDO
@@ -226,7 +229,7 @@ C     k limited to total number of open boundaries
           lookup_table(k,l) = 0.0
         ENDDO
       ENDDO
- 
+
       DO k=1,1
         DO j=1, (sNy+sNx)*(nPx*nPy)
           global_ob1(k,j) = 0.0
