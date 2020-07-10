@@ -208,7 +208,7 @@ C     First dimension accounts for number of open boundaries
 
 C     First dimension accounts for number of info arrays laid on mask
 C     In ob_extract_lookup.F, bathymetry and temperature arrays are used.
-      REAL*8 global_ob1(2, (sNy+sNx)*(nPx*nPy))
+      REAL*8 global_ob1(3, (sNy+sNx)*(nPx*nPy))
 C     ==========================================================================
 
 
@@ -230,7 +230,7 @@ C     ==========================================================================
      & temp_subMask, bath_subMask,
      & subBathOnMask, subTempOnMask
 
-     
+
 
 
 

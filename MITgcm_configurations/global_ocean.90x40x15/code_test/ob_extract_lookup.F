@@ -1,42 +1,6 @@
 C All variables in header file are global to header files included below
-
-C     == Global variables ===
-C     ORDER SHOWN IN OTHER .F FILES:
-
-C#include "SIZE.h"
-C#include "EEPARAMS.h"
-C#include "PARAMS.h"
-C#include "DIAGNOSTICS_SIZE.h"
-C#include "DIAGNOSTICS.h"
-
-C     == Global variables ===
-C#include "EEPARAMS.h"
-C#include "SIZE.h"
-C#include "DIAGNOSTICS_SIZE.h"
-C#include "DIAGNOSTICS.h"
-
-C#include "SIZE.h"
-C#include "EEPARAMS.h"
-C#include "PARAMS.h"
-C#include "GRID.h"
-C#include "DIAGNOSTICS_SIZE.h"
-C#include "DIAGNOSTICS.h"
-
-C#include "EEPARAMS.h"
-C#include "SIZE.h"
-C#include "DIAGNOSTICS_SIZE.h"
-C#include "PARAMS.h"
-C#include "DIAGNOSTICS.h"
-
-C#include "SIZE.h"
-C#include "EEPARAMS.h"
-C#include "EESUPPORT.h"
-
 #include "DIAG_OPTIONS.h"
 
-
-C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
-C12345678
 
        SUBROUTINE OB_EXTRACT_LOOKUP( myThid )
 #include "SIZE.h"
@@ -55,7 +19,6 @@ C12345678
 
        integer myThid
 
-
 C      !LOCAL VARIABLES:
 C      global_mask: 4 dimensional REAL*8 array that combines all open boundarys
 C      msgBuf: Used to write statements into the output file
@@ -67,7 +30,6 @@ C      debug: Integer used to hold either 1 or 0, 1 to print debug statements or
 C      Although we read REAL*4 values, most built in functions have _RS input which by default is real*8.
 C      So global_mask, ob_subMask, and bath_subMask are set as real*8 or _RS.
        real*8 global_mask(Nx,Ny,nSx,nSy)
-
        CHARACTER*(MAX_LEN_MBUF) msgBuf
        integer i,j, iG, jG, bi, bj
        integer ob, global_ob_index, ob_index, new_goi
@@ -81,7 +43,6 @@ C      So global_mask, ob_subMask, and bath_subMask are set as real*8 or _RS.
        CHARACTER*40 b_fileName
 #ifdef ALLOW_USE_MPI
        integer pid, ierror, status(MPI_STATUS_SIZE)
-C     &    , np, itemp(2)
 #endif
 
 
@@ -129,6 +90,7 @@ c           jG=bj+(myYGlobalLo-1)/sNy
          print *, "April Shin ob_subMask shape: ", shape(ob_subMask)
        end if
 
+
 c       All Processes read:
 
        b_fileName = 'bathymetry.bin'
@@ -142,9 +104,11 @@ c       All Processes read:
        _EXCH_XY_RS(bath_subMask, myThid)
        _EXCH_XY_RS(ob_subMask, myThid)
 
+C      Writing ob_subMask, bath_subMask, temp_subMask to bin file
        call WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy,ob_subMask,
      &                          bath_subMask, temp_subMask)
 
+C      Computing left bottom most global element number
        iG = mpi_myXGlobalLo(mpiMyId+1)
        jG = mpi_myYGlobalLo(mpiMyId+1)
        global_ob_index = Nx*(jG -1)  + iG
@@ -172,9 +136,6 @@ C        Plotting for debugging
         CALL PLOT_FIELD_XYRS( temp_subMask, 'Temperature Submask',
      &                         -1, myThid )
 
-C        print *, "April subBathOnMask in process", mpiMyId,
-C     &            "before sending to Parent:"
-C         call PRINT_FLOAT_ARR(subBathOnMask, num_openB*(sNx+sNy+1))
       end if
 
        if (print_debug .eq .1) then
@@ -223,6 +184,7 @@ C      of subBathOnMask and sub_global_indices is 1, referring to open boundary 
       ob_subMask_size = (abs(1-OLx)+(sNx+OLx))*(abs(1-OLy)+(sNy+OLy))
      &                    *nSx*nSy
 
+C    Inserting number of valid elements as first element of each array
       subBathOnMask(1, 1) = counter - 2
       subTempOnMask(1, 1) = counter - 2
       sub_global_indices(1, 1) = counter - 2
@@ -232,7 +194,7 @@ C      of subBathOnMask and sub_global_indices is 1, referring to open boundary 
        if (usingMPI) then
          if (mpiMyId .gt. 0) then
 
-C#ifndef DISABLE_MPI_READY_TO_RECEIVE
+C          Processes 1 and onward, send sub arrays to Parent process
            call MPI_SEND(sub_global_indices,num_openB*(sNx+sNy+1),
      &                MPI_INT, 0, 1, MPI_COMM_WORLD, ierror)
            call MPI_SEND(subBathOnMask, num_openB*(sNx+sNy+1), MPI_REAL
@@ -242,7 +204,6 @@ C#ifndef DISABLE_MPI_READY_TO_RECEIVE
 
          end if
        end if
-C#endif
 #endif
 
 
@@ -271,9 +232,10 @@ C myThid   (integer):: my Thread Id number
 #ifdef ALLOW_USE_MPI
       if (usingMPI) then
         if (mpiMyId .eq. 0) then
-C         print *, "April Shin global_mask shape:", shape(global_mask)
+
           call PLOT_GLO_FIELD_XYRS(global_mask,
      &                      "OB_EXTRACT_LOOKUP: global mask", myThid)
+
 C          Store global_ob_masks into lookup table
            do ob=1, num_openB, 1
              if (ob .eq. 1) then
@@ -312,8 +274,9 @@ C            Append subBathOnMask values to global_ob1 if valid elements exist.
                    print *, "OB_EXTRACT_LOOKUP:subBathOnMask at ob ",
      &                     "points:" ,subBathOnMask(ob, i)
                  end if
-                 global_ob1(1, ob_index) = subBathOnMask(ob, i)
-                 global_ob1(2, ob_index) = subTempOnMask(ob, i)
+                 global_ob1(1, ob_index) = sub_global_indices(ob,i)
+                 global_ob1(2, ob_index) = subBathOnMask(ob, i)
+                 global_ob1(3, ob_index) = subTempOnMask(ob, i)
                end do
              end if
 
@@ -350,8 +313,10 @@ C          Retrive sub_global_indicies and subBathOnMask from every process > 0.
                    if (print_debug .eq. 1) then
                      print *, "OB_EXTRACT_LOOKUP: ob_index:",ob_index
                    end if
-                   global_ob1(1, ob_index) = subBathOnMask(ob, i)
-                   global_ob1(2, ob_index) = subTempOnMask(ob, i)
+
+                   global_ob1(1, ob_index) = sub_global_indices(ob,i)
+                   global_ob1(2, ob_index) = subBathOnMask(ob, i)
+                   global_ob1(3, ob_index) = subTempOnMask(ob, i)
                  end do
                end if
                if (debug .eq. 1) then
@@ -363,20 +328,31 @@ C          Retrive sub_global_indicies and subBathOnMask from every process > 0.
                call PRINT_FLOAT_ARR(subBathOnMask, sNx+sNy+1)
                print *, "OB_EXTRACT_LOOKUP:Process",pid,"subBathOnMask"
      &                 ," appended to global_ob1:"
-               call PRINT_FLOAT_ARR(global_ob1(1,1:(sNy+sNx)*(nPx*nPy))
+               call PRINT_FLOAT_ARR(global_ob1(2,1:(sNy+sNx)*(nPx*nPy))
      &                       ,(sNy+sNx)*(nPx*nPy))
                print *, "OB_EXTRACT_LOOKUP:subTempOnMask from ",
      &                  "Process:",status(MPI_SOURCE)
                call PRINT_FLOAT_ARR(subTempOnMask, sNx+sNy+1)
                print *, "OB_EXTRACT_LOOKUP:Process",pid,"subTempOnMask"
      &                 ," appended to global_ob1:"
-               call PRINT_FLOAT_ARR(global_ob1(2,1:(sNy+sNx)*(nPx*nPy))
+               call PRINT_FLOAT_ARR(global_ob1(3,1:(sNy+sNx)*(nPx*nPy))
      &                       ,(sNy+sNx)*(nPx*nPy))
             end do
           end do
-          print *, "OB_EXTRACT_LOOKUP: FINAL global_ob1:"
-          call PRINT_FLOAT_ARR(global_ob1, 2*(sNy+sNx)*(nPx*nPy))
+          print *, "OB_EXTRACT_LOOKUP: FINAL global_ob1 indices:"
+          call PRINT_FLOAT_ARR(global_ob1(1,1:),(sNy+sNx)*(nPx*nPy))
+          print *, "OB_EXTRACT_LOOKUP: FINAL global_ob1 bath:"
+          call PRINT_FLOAT_ARR(global_ob1(2,1:),(sNy+sNx)*(nPx*nPy))
+          print *, "OB_EXTRACT_LOOKUP: FINAL global_ob1 temp:"
+          call PRINT_FLOAT_ARR(global_ob1(3,1:),(sNy+sNx)*(nPx*nPy))
+
+C         Write global_ob1 to bin file
           call WRITE_GLOBAL_BIN(global_ob1, total_valid1)
+
+C         Plot global_ob1 back on Nx by Ny dim array and tests for correctness
+          call PLOT_TEST_GLOBAL_OB(global_ob1, global_mask, myThid,
+     & myByLo(myThid), myByHi(myThid), myBxLo(myThid), myBxHi(myThid)
+     & ,total_valid1)
         end if
       end if
 #endif
@@ -505,6 +481,80 @@ c       Writing global tempOnMask to binary file
        write(2) global_ob1(2, 1:total_valid1)
        close(2)
 
+       end
+
+       SUBROUTINE PLOT_TEST_GLOBAL_OB(global_ob, global_mask, myThid,
+     & myByLo_myThid, myByHi_myThid, myBxLo_myThid, myBxHi_myThid,
+     & total_valid1)
+c      Unravels global_ob1 and plots onto an array with dimensions Nx by Ny
+       include "SIZE.h"
+       REAL*8 global_ob(3, (sNy+sNx)*(nPx*nPy))
+       REAL*8 global_correct((sNy+sNx)*(nPx*nPy))
+       REAL*8 global_NxNy(Nx,Ny,nSx,nSy)
+       REAL*8 global_mask(Nx,Ny,nSx,nSy)
+       integer i,j, bi, bj, counter, ob_counter, correct, myThid
+       integer myByLo_myThid, myByHi_myThid, total_valid1
+       integer myBxLo_myThid, myBxHi_myThid
+       integer, parameter :: plot_on_NxNy = 1
+
+C      Initializing global_correct, used to indicate if elements of global_ob is correct or not
+       DO i=1,(sNy+sNx)*(nPx*nPy)
+         global_correct(i) = 1.0
+       ENDDO
+
+C       Initialize NxNy array:
+
+        DO bj = myByLo_myThid, myByHi_myThid
+          DO bi = myBxLo_myThid, myBxHi_myThid
+            DO j=1, Ny
+              DO i=1, Nx
+                global_NxNy(i,j,bi,bj) = 0.0
+              ENDDO
+            ENDDO
+          ENDDO
+        ENDDO
+
+
+       correct = 1
+       counter = 1
+       ob_counter = 1
+       DO bj = myByLo_myThid, myByHi_myThid
+         DO bi = myBxLo_myThid, myBxHi_myThid
+           DO j=1, Ny
+             DO i=1, Nx
+               if (ob_counter .le. total_valid1) then
+                 if (counter .eq. global_ob(1,ob_counter)) then
+C                Inserting bathymetry points into NxNy array
+                   global_NxNy(i,j,bi,bj) = global_ob(2,ob_counter)
+                   print *,"PLOT_TEST_GLOBAL_OB: inserting:",
+     &                    global_ob(2,ob_counter)
+                   if (global_mask(i,j,bi,bj) .eq. 0) then
+                     correct = 0
+                     global_correct(ob_counter) = 0.0
+                   end if
+                   ob_counter = ob_counter + 1
+                 end if
+               end if
+               counter = counter + 1
+             ENDDO
+           ENDDO
+         ENDDO
+       ENDDO
+
+       if (correct .eq. 0) then
+         print *, "PLOT_TEST_GLOBAL_OB: global_ob final array is ",
+     &            "incorrect."
+         call PRINT_FLOAT_ARR(global_correct, (sNy+sNx)*(nPx*nPy))
+       else
+         print *, "PLOT_TEST_GLOBAL_OB: global_ob final array is ",
+     &            "correct."
+         if (plot_on_NxNy .eq. 1) then
+           print *, "PLOT_TEST_GLOBAL_OB: plotting global_ob ",
+     &              "on NxNy dimension array:"
+           call PLOT_GLO_FIELD_XYRS(global_NxNy,"PLOT_TEST_GLOBAL_OB",
+     &                              myThid)
+         end if
+       end if
        end
 
 
