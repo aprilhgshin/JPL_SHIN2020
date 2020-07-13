@@ -226,7 +226,7 @@ C     Initializing open boundary sub mask
 C     k limited to total number of open boundaries
       DO k = 1, 1
         DO l = 1, Ny*Nx
-          lookup_table(k,l) = 0.0
+          lookup_table(k,l) = 0
         ENDDO
       ENDDO
 

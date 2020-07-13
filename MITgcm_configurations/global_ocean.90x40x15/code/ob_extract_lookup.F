@@ -200,7 +200,7 @@ C          Processes 1 and onward, send sub arrays to Parent process
            call MPI_SEND(subBathOnMask, num_openB*(sNx+sNy+1), MPI_REAL
      &               ,0, 2, MPI_COMM_MODEL, ierror)
            call MPI_SEND(subTempOnMask, num_openB*(sNx+sNy+1), MPI_REAL
-     &               ,0, 2, MPI_COMM_MODEL, ierror)
+     &               ,0, 3, MPI_COMM_MODEL, ierror)
 
          end if
        end if
@@ -244,7 +244,7 @@ C          Store global_ob_masks into lookup table
              counter = 1
              do j=1, Ny, 1
                do i=1, Nx, 1
-                 lookup_table(ob, counter) = global_mask(i,j,1,1)
+                 lookup_table(ob, counter) = int(global_mask(i,j,1,1))
                  if (lookup_table(ob, counter) .ge. 1) then
                    print *, "OB_EXTRACT_LOOKUP:global index positive:",
      &              lookup_table(ob, counter), "at", counter
@@ -254,18 +254,19 @@ C          Store global_ob_masks into lookup table
              end do
 
 C            Append subBathOnMask values to global_ob1 if valid elements exist.
-             if (sub_global_indices(ob, 1) .gt. 0) then
+             if (int(sub_global_indices(ob, 1)) .gt. 0) then
                if (print_debug .eq. 1) then
                  print *, "OB_EXTRACT_LOOKUP: local subBathOnMask has",
      &                     "valid elements:"
                end if
                if (ob .eq. 1) then
-                 total_valid1 = total_valid1+sub_global_indices(ob, 1)
+                 total_valid1 = total_valid1
+     &             + int(sub_global_indices(ob, 1))
                end if
                call PRINT_FLOAT_ARR(subBathOnMask, sNx+sNy+1)
-               do i=2, sub_global_indices(ob, 1) + 1
+               do i=2, int(sub_global_indices(ob, 1)) + 1
                  ob_index = lookup_table(ob,
-     &                              sub_global_indices(ob, i))
+     &                              int(sub_global_indices(ob, i)))
                  if (print_debug .eq. 1) then
                    print *, "OB_EXTRACT_LOOKUP: sub_global_index:",
      &                     sub_global_indices(ob, i)
@@ -301,15 +302,16 @@ C          Retrive sub_global_indicies and subBathOnMask from every process > 0.
      &             MPI_REAL,pid, 2 ,MPI_COMM_MODEL, status, ierror)
 
               call MPI_RECV(subTempOnMask, num_openB*(sNx+sNy+1),
-     &             MPI_REAL,pid, 2 ,MPI_COMM_MODEL, status, ierror)
+     &             MPI_REAL,pid, 3 ,MPI_COMM_MODEL, status, ierror)
 
-               if (sub_global_indices(ob, 1) .ge. 1) then
+               if (int(sub_global_indices(ob, 1)) .ge. 1) then
                  if (ob .eq. 1) then
-                   total_valid1 = total_valid1+sub_global_indices(ob, 1)
+                   total_valid1 = total_valid1
+     &               + int(sub_global_indices(ob, 1))
                  end if
-                 do i=2, sub_global_indices(ob, 1) + 1
+                 do i=2, int(sub_global_indices(ob, 1)) + 1
                    ob_index = lookup_table(ob,
-     &                              sub_global_indices(ob, i))
+     &                              int(sub_global_indices(ob, i)))
                    if (print_debug .eq. 1) then
                      print *, "OB_EXTRACT_LOOKUP: ob_index:",ob_index
                    end if

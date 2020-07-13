@@ -203,8 +203,8 @@ C     ================== Global Variables for open boundary ====================
 C     First dimension accounts for number of open boundaries
       REAL*8 subBathOnMask(1, sNx + sNy + 1)
       REAL*8 subTempOnMask(1, sNx + sNy + 1)
-      INTEGER sub_global_indices(1, sNx + sNy + 1)
-      REAL*8 lookup_table(1, Ny*Nx)
+      REAL*8 sub_global_indices(1, sNx + sNy + 1)
+      INTEGER lookup_table(1, Ny*Nx)
 
 C     First dimension accounts for number of info arrays laid on mask
 C     In ob_extract_lookup.F, bathymetry and temperature arrays are used.
