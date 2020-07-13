@@ -20,16 +20,16 @@ C12345678
        integer myThid
 
 C      !LOCAL VARIABLES:
-C      global_mask: 4 dimensional REAL*8 array that combines all open boundarys
+C      global_mask: 4 dimensional _RL array that combines all open boundarys
 C      msgBuf: Used to write statements into the output file
 C      ob_subMask_size: Integer size of ob_subMask (ob_subMask from DIAGNOSTICS.h)
 C      global_ob_index: Integer indicating bottom-left global element number
 C      stop_program: Integer used to hold either 1 or 0, 1 to stop program or 0 to ignore
 C      debug: Integer used to hold either 1 or 0, 1 to print debug statements or 0 to ignore
 
-C      Although we read REAL*4 values, most built in functions have _RS input which by default is real*8.
-C      So global_mask, ob_subMask, and bath_subMask are set as real*8 or _RS.
-       real*8 global_mask(Nx,Ny,nSx,nSy)
+C      Although we read REAL*4 values, most built in functions have _RS input which by default is _RL.
+C      So global_mask, ob_subMask, and bath_subMask are set as _RL or _RS.
+       _RL global_mask(Nx,Ny,nSx,nSy)
        CHARACTER*(MAX_LEN_MBUF) msgBuf
        integer i,j, iG, jG, bi, bj
        integer ob, global_ob_index, ob_index, new_goi
@@ -96,13 +96,13 @@ c       All Processes read:
        b_fileName = 'bathymetry.bin'
        t_fileName = 'domain_temp.bin'
        ob_fileName = 'domain_flt32_mask.bin'
-       CALL READ_REC_XY_RS( t_fileName, temp_subMask, 1, 0, myThid )
-       CALL READ_REC_XY_RS( b_fileName, bath_subMask, 1, 0, myThid)
-       CALL READ_REC_XY_RS( ob_fileName, ob_subMask, 1, 0, myThid)
+       CALL READ_REC_XY_RL( t_fileName, temp_subMask, 1, 0, myThid )
+       CALL READ_REC_XY_RL( b_fileName, bath_subMask, 1, 0, myThid)
+       CALL READ_REC_XY_RL( ob_fileName, ob_subMask, 1, 0, myThid)
 
-       _EXCH_XY_RS(temp_subMask, myThid)
-       _EXCH_XY_RS(bath_subMask, myThid)
-       _EXCH_XY_RS(ob_subMask, myThid)
+       _EXCH_XY_RL(temp_subMask, myThid)
+       _EXCH_XY_RL(bath_subMask, myThid)
+       _EXCH_XY_RL(ob_subMask, myThid)
 
 C      Writing ob_subMask, bath_subMask, temp_subMask to bin file
        call WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy,ob_subMask,
@@ -127,13 +127,13 @@ C      Computing left bottom most global element number
 C        Plotting for debugging
         print *, "OB_EXTRACT_LOOKUP: Number of valid elements:",
      &            counter-2
-        CALL PLOT_FIELD_XYRS( ob_subMask, 'Open Boundary Submask',
+        CALL PLOT_FIELD_XYRL( ob_subMask, 'Open Boundary Submask',
      &                         -1, myThid )
 
-        CALL PLOT_FIELD_XYRS( bath_subMask, 'Bathymetry Submask',
+        CALL PLOT_FIELD_XYRL( bath_subMask, 'Bathymetry Submask',
      &                         -1, myThid )
 
-        CALL PLOT_FIELD_XYRS( temp_subMask, 'Temperature Submask',
+        CALL PLOT_FIELD_XYRL( temp_subMask, 'Temperature Submask',
      &                         -1, myThid )
 
       end if
@@ -233,7 +233,7 @@ C myThid   (integer):: my Thread Id number
       if (usingMPI) then
         if (mpiMyId .eq. 0) then
 
-          call PLOT_GLO_FIELD_XYRS(global_mask,
+          call PLOT_GLO_FIELD_XYRL(global_mask,
      &                      "OB_EXTRACT_LOOKUP: global mask", myThid)
 
 C          Store global_ob_masks into lookup table
@@ -245,9 +245,11 @@ C          Store global_ob_masks into lookup table
              do j=1, Ny, 1
                do i=1, Nx, 1
                  lookup_table(ob, counter) = int(global_mask(i,j,1,1))
-                 if (lookup_table(ob, counter) .ge. 1) then
-                   print *, "OB_EXTRACT_LOOKUP:global index positive:",
-     &              lookup_table(ob, counter), "at", counter
+                 if (print_debug .eq. 1) then
+                   if (lookup_table(ob, counter) .ge. 1) then
+                     print *, "OB_EXTRACT_LOOKUP:global index ",
+     &           " positive:", lookup_table(ob, counter), "at", counter
+                   end if 
                  end if
                  counter = counter + 1
                end do
@@ -372,7 +374,7 @@ c       e: the number of digits in the exponent part
 
 c       Reading/writing REALs Decimal form Fw.d
        integer arr_length, i
-       real*8 array(arr_length)
+       _RL array(arr_length)
        do, i=1, arr_length
          write(*,"(F6.0,$)") array(i)
            if (i .EQ. arr_length) then
@@ -423,9 +425,9 @@ C      Writing all sub arrays read from binary fie containing global array
        character*15 prefix
        character*40 filename
        integer, parameter :: print_write = 1
-       REAL*8 ob_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-       REAL*8 bath_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-       REAL*8 temp_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+       _RL ob_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+       _RL bath_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+       _RL temp_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
        prefix = "./ob1.mask."
        call CREATE_FILENAME(prefix, 1, filename, mpiPx, mpiPy)
@@ -463,7 +465,7 @@ C      Writing all sub arrays read from binary fie containing global array
        SUBROUTINE WRITE_GLOBAL_BIN(global_ob1, total_valid1)
        include "SIZE.h"
 
-       REAL*8 global_ob1(2, (sNy+sNx)*(nPx*nPy))
+       _RL global_ob1(2, (sNy+sNx)*(nPx*nPy))
        integer total_valid1
 
        character*15 prefix
@@ -490,10 +492,10 @@ c       Writing global tempOnMask to binary file
      & total_valid1)
 c      Unravels global_ob1 and plots onto an array with dimensions Nx by Ny
        include "SIZE.h"
-       REAL*8 global_ob(3, (sNy+sNx)*(nPx*nPy))
-       REAL*8 global_correct((sNy+sNx)*(nPx*nPy))
-       REAL*8 global_NxNy(Nx,Ny,nSx,nSy)
-       REAL*8 global_mask(Nx,Ny,nSx,nSy)
+       _RL global_ob(3, (sNy+sNx)*(nPx*nPy))
+       _RL global_correct((sNy+sNx)*(nPx*nPy))
+       _RL global_NxNy(Nx,Ny,nSx,nSy)
+       _RL global_mask(Nx,Ny,nSx,nSy)
        integer i,j, bi, bj, counter, ob_counter, correct, myThid
        integer myByLo_myThid, myByHi_myThid, total_valid1
        integer myBxLo_myThid, myBxHi_myThid
@@ -553,14 +555,14 @@ C                Inserting bathymetry points into NxNy array
          if (plot_on_NxNy .eq. 1) then
            print *, "PLOT_TEST_GLOBAL_OB: plotting global_ob ",
      &              "on NxNy dimension array:"
-           call PLOT_GLO_FIELD_XYRS(global_NxNy,"PLOT_TEST_GLOBAL_OB",
+           call PLOT_GLO_FIELD_XYRL(global_NxNy,"PLOT_TEST_GLOBAL_OB",
      &                              myThid)
          end if
        end if
        end
 
 
-       SUBROUTINE PLOT_GLO_FIELD_XYRS(fld, fldNam, myThid)
+       SUBROUTINE PLOT_GLO_FIELD_XYRL(fld, fldNam, myThid)
 
 C      Building on top of subroutine PLOT_FIELD_XYRS:
 C     /==========================================================\
@@ -588,7 +590,7 @@ C     fld - Field to plot
 C     fldNam - Name of field
 C     myIter - Iteration number for plot
 C     myThid - Thread id of thread instance calling plot_field
-       real*8 fld(Nx, Ny, nSx, nSy)
+       _RL fld(Nx, Ny, nSx, nSy)
 
 C       _RS fld(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
        CHARACTER*(*) fldNam
@@ -626,7 +628,7 @@ C      Substitute other plotting utilities here!
         bjStart  =  nSy
         bjEnd    =  1
         bjStride = -1
-        CALL PRINT_MAPRS(
+        CALL PRINT_MAPRL(
      &        fld, fldTitle, PRINT_MAP_XY,
      &         1,Nx,1,Ny,1,1,  nSx,  nSy,
      &         iStart,   iEnd,  iStride,

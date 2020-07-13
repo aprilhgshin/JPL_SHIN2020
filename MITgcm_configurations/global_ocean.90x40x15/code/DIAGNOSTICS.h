@@ -196,19 +196,19 @@ C     diagSt_Fname(n)  :: output file name for output stream # n
 C     ================== Global Variables for open boundary ====================
       CHARACTER*40 ob_fileName
       CHARACTER*40 t_fileName
-      REAL*8 ob_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      REAL*8 bath_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      REAL*8 temp_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      _RL ob_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      _RL bath_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      _RL temp_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
 C     First dimension accounts for number of open boundaries
-      REAL*8 subBathOnMask(1, sNx + sNy + 1)
-      REAL*8 subTempOnMask(1, sNx + sNy + 1)
-      REAL*8 sub_global_indices(1, sNx + sNy + 1)
+      _RL subBathOnMask(1, sNx + sNy + 1)
+      _RL subTempOnMask(1, sNx + sNy + 1)
+      _RL sub_global_indices(1, sNx + sNy + 1)
       INTEGER lookup_table(1, Ny*Nx)
 
 C     First dimension accounts for number of info arrays laid on mask
 C     In ob_extract_lookup.F, bathymetry and temperature arrays are used.
-      REAL*8 global_ob1(3, (sNy+sNx)*(nPx*nPy))
+      _RL global_ob1(3, (sNy+sNx)*(nPx*nPy))
 C     ==========================================================================
 
 
