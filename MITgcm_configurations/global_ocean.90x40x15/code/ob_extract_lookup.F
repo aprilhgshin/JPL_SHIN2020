@@ -135,14 +135,14 @@ C          Differing filenames yet to be figured out.
            _EXCH_XY_RL(ob_subMask(time,:,:,:,:), myThid)
 
 
-C         CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, temp_subMask,
-C     &                      "temp", ob_id)
+           CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, temp_subMask,
+     &                      "temp", ob_id)
 
-C         CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, bath_subMask,
-C     &                      "bath", ob_id)
+           CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, bath_subMask,
+     &                      "bath", ob_id)
 
-C         CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, temp_subMask,
-C     &                      "mask", ob_id)
+           CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, temp_subMask,
+     &                      "mask", ob_id)
 
            if (debug .eq. 1) then
 C           Plotting for debugging
@@ -264,7 +264,7 @@ C           Processes 1 and onward, send sub arrays to Parent process
      &               ,  int(sub_global_indices(1))
               print *, "OB_EXTRACT_LOOKUP: local sub_global_indices"
               call PRINT_FLOAT_ARR( sub_global_indices(:),num_valid)
-            end if 
+            end if
           end if
 
         end if
@@ -385,13 +385,6 @@ C                 Only need to add onto total_valid once
 
                 end if
 
-                if (tag .eq. 2) then
-                  fldNm = "bath"
-                else if (tag .eq. 3) then
-                  fldNm = "temp"
-                end if
-C                 call WRITE_GLOBAL_BIN(global_ob, total_valid, fldNm,
-C     &                               ob_id, tag)
                 print *, "OB_EXTRACT_LOOKUP: updated global ob by ",
      &       "process", pid, "with",g_indices(pid,1), "valid elements"
                 call PRINT_FLOAT_ARR(global_ob,total_valid)
@@ -400,7 +393,18 @@ C     &                               ob_id, tag)
               print *, "OB_EXTRACT_LOOKUP: final global ob by ",
      &     "for tag", tag, "with total", total_valid, "valid elements"
               call PRINT_FLOAT_ARR(global_ob,total_valid)
+
+              if (tag .eq. 2) then
+                fldNm = "bath"
+              else if (tag .eq. 3) then
+                fldNm = "temp"
+              end if
+
+              call WRITE_GLOBAL_BIN(global_ob,total_valid,fldNm,ob_id,
+     &                             mpiPx, mpiPy)
             ENDDO
+
+
 
           end if
         end if
@@ -480,10 +484,96 @@ C myThid   (integer):: my Thread Id number
            call PRINT_FLOAT_ARR(global_ob, (sNy+sNx)*(nPx*nPy))
          end if
 
-      end
+       end
 
-      SUBROUTINE PRINT_FLOAT_ARR(array, arr_length)
-c     Edit Descriptor:
+
+       SUBROUTINE CREATE_FILENAME(dir, fldNm, ob_id, filename,
+     &                            is_child, mpiPx, mpiPy)
+c       Creating filenames for all binary files.
+
+       integer is_child, mpiPx, mpiPy, ob_id
+       character*30 filename
+       character*4 fldNm
+       character*2 dir
+       character*3 str_px, str_py
+       character str_ob
+
+c       From EESUPPORT.h
+C       mpiPx     - My MPI proc. grid X coord
+C       mpiPy     - My MPI proc. grid Y coord
+
+c       If creating a filename for a child process, create a name in the format: T.001.002.bin
+c       T for temp or mask for mask
+c       001 for index 1 in x axis
+c       002 for index 2 in x axis
+       write(str_ob, "(I1)") ob_id
+       if (is_child .eq. 1) then
+         write(str_px, "(I3.3)") mpiPx
+         write(str_py, "(I3.3)") mpiPy
+         write(filename, "(10A)") dir, "ob",str_ob,".",fldNm,".",
+     &                            str_px, ".", str_py, ".bin"
+       else
+c         Creating a filename for global arrays
+         write(filename, "(5A)") dir, fldNm, "_on_mask", str_ob,
+     &                           "_global.bin"
+       end if
+
+       end
+
+
+       SUBROUTINE WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, subMask,
+     &                          fldNm, ob_id)
+C      Writing all sub arrays read from binary fie containing global array
+       include "SIZE.h"
+
+       integer mpiMyId, mpiPx, mpiPy, ob_id
+       character*4 fldNm
+       character*2 dir
+       character*30 filename
+       _RL subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+       integer, parameter :: print_write = 1
+
+       dir = "./"
+       call CREATE_FILENAME(dir, fldNm, ob_id, filename, 1,
+     &                      mpiPx, mpiPy)
+       open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+       write(1) subMask
+       close(1)
+       if (print_write .eq. 1) then
+         print *, fldNm, " for ob",ob_id,"process", mpiMyId,
+     &            "is written to ",filename
+       end if
+
+       end
+
+
+       SUBROUTINE WRITE_GLOBAL_BIN(global_ob,total_valid,fldNm,ob_id,
+     &                             mpiPx, mpiPy)
+       include "SIZE.h"
+
+       _RL global_ob((sNy+sNx)*(nPx*nPy))
+       integer total_valid, ob_id, mpiPx, mpiPy
+
+       character*2 dir
+       character*4 fldNm
+       character*30 filename
+
+
+c      Writing global array to binary file
+       dir = "./"
+       call CREATE_FILENAME(dir, fldNm, ob_id, filename, 0,
+     &                      mpiPx, mpiPy)
+       open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+       write(1) global_ob(1:total_valid)
+       close(1)
+
+
+       end
+
+
+
+       SUBROUTINE PRINT_FLOAT_ARR(array, arr_length)
+c      Edit Descriptor:
 c       w: the number of positions to be used
 c       m: the minimum number of positions to be used
 c       d: the number of digits to the right of the decimal point
