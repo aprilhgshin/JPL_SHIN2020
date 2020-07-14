@@ -1,3 +1,4 @@
+#include "USER_INPUT.h"
 C ======================================================================
 C  Common blocks for diagnostics package.
 C  - DIAG_DEFINE contains the definition of all available diagnostics
@@ -196,19 +197,20 @@ C     diagSt_Fname(n)  :: output file name for output stream # n
 C     ================== Global Variables for open boundary ====================
       CHARACTER*40 ob_fileName
       CHARACTER*40 t_fileName
-      _RL ob_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      _RL bath_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      _RL temp_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+
+      _RL ob_subMask(nOB_mask,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      _RL bath_subMask(nOB_mask,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      _RL temp_subMask(nOB_mask,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
 C     First dimension accounts for number of open boundaries
-      _RL subBathOnMask(1, sNx + sNy + 1)
-      _RL subTempOnMask(1, sNx + sNy + 1)
-      _RL sub_global_indices(1, sNx + sNy + 1)
-      INTEGER lookup_table(1, Ny*Nx)
+      _RL subBathOnMask(nOB_mask, sNx + sNy + 1)
+      _RL subTempOnMask(nOB_mask, sNx + sNy + 1)
+      _RL sub_global_indices(nOB_mask, sNx + sNy + 1)
+      _RL lookup_table(nOB_mask, Ny*Nx)
 
 C     First dimension accounts for number of info arrays laid on mask
 C     In ob_extract_lookup.F, bathymetry and temperature arrays are used.
-      _RL global_ob1(3, (sNy+sNx)*(nPx*nPy))
+      _RL global_ob((sNy+sNx)*(nPx*nPy))
 C     ==========================================================================
 
 
@@ -226,7 +228,7 @@ C     ==========================================================================
 
       COMMON / DIAG_OB_EXTRACT /
      & ob_fileName, t_fileName, ob_subMask,
-     & lookup_table, global_ob1, sub_global_indices,
+     & lookup_table, global_ob, sub_global_indices,
      & temp_subMask, bath_subMask,
      & subBathOnMask, subTempOnMask
 
