@@ -203,7 +203,7 @@ C     Initializing to empty string
       ob_fileName = ' '
       t_fileName = ' '
 C     Initializing open boundary sub mask
-      DO l=1, nOB_mask
+      DO l=1, nfld_time
         DO bj = myByLo(myThid), myByHi(myThid)
           DO bi = myBxLo(myThid), myBxHi(myThid)
             DO j=1-OLy,sNy+OLy
@@ -217,20 +217,16 @@ C     Initializing open boundary sub mask
         ENDDO
       ENDDO
 
-      DO k = 1,nOB_mask
         DO l = 1, sNy+sNx+1
-          subBathOnMask(k,l) = 0.0
-          subTempOnMask(k,l) = 0.0
-          sub_global_indices(k,l) = 0
+          subBathOnMask(l) = 0.0
+          subTempOnMask(l) = 0.0
+          sub_global_indices(l) = 0
         ENDDO
-      ENDDO
 
 C     k limited to total number of open boundaries
-      DO k = 1, nOB_Mask
         DO l = 1, Ny*Nx
-          lookup_table(k,l) = 0.0
+          lookup_table(l) = 0.0
         ENDDO
-      ENDDO
 
         DO j=1, (sNy+sNx)*(nPx*nPy)
           global_ob(j) = 0.0

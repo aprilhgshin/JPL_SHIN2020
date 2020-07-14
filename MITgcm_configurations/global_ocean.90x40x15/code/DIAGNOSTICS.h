@@ -198,18 +198,15 @@ C     ================== Global Variables for open boundary ====================
       CHARACTER*40 ob_fileName
       CHARACTER*40 t_fileName
 
-      _RL ob_subMask(nOB_mask,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      _RL bath_subMask(nOB_mask,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      _RL temp_subMask(nOB_mask,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+C     First dimension accounts for number of each field outputted during entire time duration
+      _RL ob_subMask(nfld_time,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      _RL bath_subMask(nfld_time,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      _RL temp_subMask(nfld_time,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
-C     First dimension accounts for number of open boundaries
-      _RL subBathOnMask(nOB_mask, sNx + sNy + 1)
-      _RL subTempOnMask(nOB_mask, sNx + sNy + 1)
-      _RL sub_global_indices(nOB_mask, sNx + sNy + 1)
-      _RL lookup_table(nOB_mask, Ny*Nx)
-
-C     First dimension accounts for number of info arrays laid on mask
-C     In ob_extract_lookup.F, bathymetry and temperature arrays are used.
+      _RL subBathOnMask(sNx + sNy + 1)
+      _RL subTempOnMask(sNx + sNy + 1)
+      _RL sub_global_indices(sNx + sNy + 1)
+      _RL lookup_table(Ny*Nx)
       _RL global_ob((sNy+sNx)*(nPx*nPy))
 C     ==========================================================================
 
