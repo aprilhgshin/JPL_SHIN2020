@@ -319,7 +319,7 @@ C           Retrieving sub fields and appending to final global_ob array
               if (debug .eq. 1) then
                 if (tag .eq. 2) then
                   print *, "TAG 2: to BATH field"
-                else if (tag .eq. 3) then 
+                else if (tag .eq. 3) then
                   print *, "TAG 3: to TEMP field"
                 end if
               end if
@@ -467,7 +467,7 @@ C myThid   (integer):: my Thread Id number
          _RL global_indices(sNx + sNy + 1)
          _RL ob_values(sNx + sNy + 1)
          _RL global_ob((sNy+sNx)*(nPx*nPy))
-         _RL lookup_table(Ny*Nx)
+         INTEGER lookup_table(Ny*Nx)
          integer num_valid, i, ob_index
          integer, parameter :: print_debug = 0
 
@@ -585,7 +585,7 @@ c      Unravels global_ob and plots onto an array with dimensions Nx by Ny
        include "SIZE.h"
        _RL global_ob((sNy+sNx)*(nPx*nPy))
        _RL global_mask(Nx,Ny,nSx,nSy)
-       _RL lookup_table(Ny*Nx)
+       INTEGER lookup_table(Ny*Nx)
        _RL global_correct((sNy+sNx)*(nPx*nPy))
        _RL global_NxNy(Nx,Ny,nSx,nSy)
 

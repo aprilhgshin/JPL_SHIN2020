@@ -107,11 +107,24 @@ C--   per level statistics output:
      &     set_regMask, val_regMask,
      &     diagSt_regMaskFile, nSetRegMskFile
 
+
       NAMELIST / DIAG_OB_EXTRACT /
-     &     ob_fileName, t_fileName, ob_subMask,
-     &     lookup_table, global_ob, sub_global_indices,
+     &     ob_subMask,lookup_table, ob_fileName,
+     &     global_ob, sub_global_indices,t_fileName,
      &     temp_subMask, bath_subMask,
      &     subBathOnMask, subTempOnMask
+
+C      NAMELIST / DIAG_OB_EXTRACT_R /
+C     &     ob_subMask,
+C     &     global_ob, sub_global_indices,
+C     &     temp_subMask, bath_subMask,
+C     &     subBathOnMask, subTempOnMask
+
+C      NAMELIST / DIAG_OB_EXTRACT_I /
+C     &     lookup_table
+
+C      NAMELIST / DIAG_OB_EXTRACT_C /
+C     &     ob_fileName, t_fileName
 
 
       IF ( .NOT.useDiagnostics ) THEN
@@ -217,20 +230,20 @@ C     Initializing open boundary sub mask
         ENDDO
       ENDDO
 
-        DO l = 1, sNy+sNx+1
-          subBathOnMask(l) = 0.0
-          subTempOnMask(l) = 0.0
-          sub_global_indices(l) = 0
-        ENDDO
+      DO l = 1, sNy+sNx+1
+        subBathOnMask(l) = 0.0
+        subTempOnMask(l) = 0.0
+        sub_global_indices(l) = 0
+      ENDDO
 
 C     k limited to total number of open boundaries
-        DO l = 1, Ny*Nx
-          lookup_table(l) = 0.0
-        ENDDO
+      DO l = 1, Ny*Nx
+        lookup_table(l) = 0.0
+      ENDDO
 
-        DO j=1, (sNy+sNx)*(nPx*nPy)
-          global_ob(j) = 0.0
-        ENDDO
+      DO j=1, (sNy+sNx)*(nPx*nPy)
+        global_ob(j) = 0.0
+      ENDDO
 
 
 
