@@ -206,7 +206,7 @@ C     First dimension accounts for number of each field outputted during entire 
       _RL subBathOnMask(sNx + sNy + 1)
       _RL subTempOnMask(sNx + sNy + 1)
       _RL sub_global_indices(sNx + sNy + 1)
-      _RL lookup_table(Ny*Nx)
+      INTEGER lookup_table(Ny*Nx)
       _RL global_ob((sNy+sNx)*(nPx*nPy))
 C     ==========================================================================
 
@@ -222,15 +222,21 @@ C     ==========================================================================
       COMMON / DIAG_STATIS_L /
      &     diagSt_Ascii, diagSt_mnc
 
-
       COMMON / DIAG_OB_EXTRACT /
-     & ob_fileName, t_fileName, ob_subMask,
-     & lookup_table, global_ob, sub_global_indices,
-     & temp_subMask, bath_subMask,
-     & subBathOnMask, subTempOnMask
+     &     ob_subMask,lookup_table, ob_fileName,
+     &     global_ob, sub_global_indices,t_fileName,
+     &     temp_subMask, bath_subMask,
+     &     subBathOnMask, subTempOnMask
 
-
-
+C      COMMON / DIAG_OB_EXTRACT_R /
+C     &     ob_subMask,
+C     &     global_ob, sub_global_indices,
+C     &     temp_subMask, bath_subMask,
+C     &     subBathOnMask, subTempOnMask
+C      COMMON / DIAG_OB_EXTRACT_I /
+C     &     lookup_table
+C      COMMON / DIAG_OB_EXTRACT_C /
+C     &     ob_fileName, t_fileName
 
 
 CEH3 ;;; Local Variables: ***
