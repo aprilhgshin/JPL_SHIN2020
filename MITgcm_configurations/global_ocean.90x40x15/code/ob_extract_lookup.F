@@ -53,7 +53,7 @@ C      So global_mask, ob_subMask, and bath_subMask are set as _RL or _RS.
        integer pid, ierror, status(MPI_STATUS_SIZE)
 #endif
 
-       common / local_var / global_mask, total_valid, g_indices
+       common / local_var / global_mask, total_valid
        common / myBxy_LoHi / myByLo_myThid, myByHi_myThid,
      &                       myBxLo_myThid, myBxHi_myThid
 
@@ -259,7 +259,7 @@ C           Processes 1 and onward, send sub arrays to Parent process
      &               MPI_REAL,0, 3, MPI_COMM_MODEL, ierror)
 
           else if (mpiMYId .eq. 0) then
-            if (debug .eq. 1) then
+            if (print_debug .eq. 1) then
               print *,"OB_EXTRACT_LOOKUP: l sub_global_indices count:"
      &               ,  int(sub_global_indices(1))
               print *, "OB_EXTRACT_LOOKUP: local sub_global_indices"
@@ -316,12 +316,21 @@ C             Save all global indices into array for future reference
 
 C           Retrieving sub fields and appending to final global_ob array
             DO tag=2, nOB_fld + 1
+              if (debug .eq. 1) then
+                if (tag .eq. 2) then
+                  print *, "TAG 2: to BATH field"
+                else if (tag .eq. 3) then 
+                  print *, "TAG 3: to TEMP field"
+                end if
+              end if
+
+              total_valid = 0
               DO pid=1, mpiNprocs-1
 
 C                 First append process 0 local arrays to final global array if number of valid elements in those local arrays > 0:
                 if (print_debug .eq. 1) then
                   print *, "OB_EXTRACT_LOOKUP: l sub_global_indices ",
-     &                     "after count: ",sub_global_indices(1)
+     &                     "after count: ",int(sub_global_indices(1))
                 end if
 
                 if (int(sub_global_indices(1)) .ge. 1) then
@@ -336,17 +345,15 @@ C                 First append process 0 local arrays to final global array if n
      &                                 int(sub_global_indices(1) + 1))
                   end if
 
-                  if (tag .eq. 2) then
-C                   Only need to add to total_valid elements once
-                    total_valid = total_valid +
+                  total_valid = total_valid +
      &                                  int(sub_global_indices(1))
-
+                  if (tag .eq. 2) then
                     call APPEND_OB_VALUE(sub_global_indices(:),
      &                                   subBathOnMask(:),
      &                                   global_ob, lookup_table)
                     if (debug .eq. 1) then
-                      print *, "APPEND_OB_VALUE: appending local bath",
-     &                "with ", sub_global_indices(1), "valid elements:"
+                      print *,"APPEND_OB_VALUE: appending local bath ",
+     &"to global_ob with ",int(sub_global_indices(1)),"valid elements:"
 
                       call PRINT_FLOAT_ARR(global_ob, total_valid)
                     end if
@@ -356,7 +363,7 @@ C                   Only need to add to total_valid elements once
      &                                   global_ob, lookup_table)
                     if (debug .eq. 1) then
                       print *, "APPEND_OB_VALUE: appending local temp",
-     &                "with ", sub_global_indices(1), "valid elements:"
+     &"to global_ob with ",int(sub_global_indices(1)),"valid elements:"
 
                       call PRINT_FLOAT_ARR(global_ob,total_valid)
 
@@ -369,6 +376,8 @@ C               Receive all sub arrays from processes with pid > 0. Only needs t
      &                  ,MPI_COMM_WORLD, status, ierror)
                 if (debug .eq. 1) then
                   print *, "Received recv_arr with tag",tag
+                  print *, "Displaying FULL array, beyond number of ",
+     &                     "valid elements"
                   call PRINT_FLOAT_ARR(recv_arr, sNx+sNy+1)
                 end if
 
@@ -378,15 +387,13 @@ C               Appending all other processes' local arrays to final array if nu
                   call APPEND_OB_VALUE(g_indices(pid,:),recv_arr(:),
      &                                 global_ob, lookup_table)
 
-C                 Only need to add onto total_valid once
-                  if (tag .eq. 2) then
-                    total_valid = total_valid + g_indices(pid,1)
-                  end if
+                  total_valid = total_valid + g_indices(pid,1)
 
                 end if
 
                 print *, "OB_EXTRACT_LOOKUP: updated global ob by ",
-     &       "process", pid, "with",g_indices(pid,1), "valid elements"
+     &       "process",pid,"for tag",tag,"with",int(g_indices(pid,1)),
+     &       "valid elements"
                 call PRINT_FLOAT_ARR(global_ob,total_valid)
 
               ENDDO
@@ -402,6 +409,9 @@ C                 Only need to add onto total_valid once
 
               call WRITE_GLOBAL_BIN(global_ob,total_valid,fldNm,ob_id,
      &                             mpiPx, mpiPy)
+
+              call PLOT_TEST_GLOBAL_OB(global_ob, lookup_table, myThid,
+     &                                 ob_id, fldNm)
             ENDDO
 
 
@@ -558,7 +568,6 @@ C      Writing all sub arrays read from binary fie containing global array
        character*4 fldNm
        character*30 filename
 
-
 c      Writing global array to binary file
        dir = "./"
        call CREATE_FILENAME(dir, fldNm, ob_id, filename, 0,
@@ -567,7 +576,86 @@ c      Writing global array to binary file
        write(1) global_ob(1:total_valid)
        close(1)
 
+       end
 
+
+       SUBROUTINE PLOT_TEST_GLOBAL_OB(global_ob, lookup_table, myThid,
+     &                                ob_id, fldNm)
+c      Unravels global_ob and plots onto an array with dimensions Nx by Ny
+       include "SIZE.h"
+       _RL global_ob((sNy+sNx)*(nPx*nPy))
+       _RL global_mask(Nx,Ny,nSx,nSy)
+       _RL lookup_table(Ny*Nx)
+       _RL global_correct((sNy+sNx)*(nPx*nPy))
+       _RL global_NxNy(Nx,Ny,nSx,nSy)
+
+       integer i,j, bi, bj, counter, ob_counter, correct, myThid
+       integer myByLo_myThid, myByHi_myThid, total_valid, ob_id
+       integer myBxLo_myThid, myBxHi_myThid
+       integer, parameter :: plot_on_NxNy = 1
+       character*4 fldNm
+       character*30 plotTitle
+
+       common / local_var / global_mask, total_valid
+       common / myBxy_LoHi / myByLo_myThid, myByHi_myThid,
+     &                       myBxLo_myThid, myBxHi_myThid
+
+C      Initializing global_correct, used to indicate if elements of global_ob is correct or not
+       DO i=1,(sNy+sNx)*(nPx*nPy)
+         global_correct(i) = 1.0
+       ENDDO
+
+C       Initialize NxNy array:
+
+        DO bj = myByLo_myThid, myByHi_myThid
+          DO bi = myBxLo_myThid, myBxHi_myThid
+            DO j=1, Ny
+              DO i=1, Nx
+                global_NxNy(i,j,bi,bj) = 0.0
+              ENDDO
+            ENDDO
+          ENDDO
+        ENDDO
+
+C      If lookup table contains ob mask point location (1-90) then extract corresponding point in global_ob at location
+       correct = 1
+       counter = 1
+       ob_counter = 1
+       DO bj = myByLo_myThid, myByHi_myThid
+         DO bi = myBxLo_myThid, myBxHi_myThid
+           DO j=1, Ny
+             DO i=1, Nx
+               if (ob_counter .le. total_valid) then
+                 if (lookup_table(counter) .eq. ob_counter) then
+C                Inserting bathymetry points into NxNy array
+                   global_NxNy(i,j,bi,bj) = global_ob(ob_counter)
+                   if (global_mask(i,j,bi,bj) .eq. 0) then
+                     correct = 0
+                     global_correct(ob_counter) = 0.0
+                   end if
+                   ob_counter = ob_counter + 1
+                 end if
+               end if
+               counter = counter + 1
+             ENDDO
+           ENDDO
+         ENDDO
+       ENDDO
+
+       if (correct .eq. 0) then
+         print *, "PLOT_TEST_GLOBAL_OB: global_ob final array is ",
+     &            "incorrect for ", fldNm, "for ob", ob_id
+         call PRINT_FLOAT_ARR(global_correct, (sNy+sNx)*(nPx*nPy))
+       else
+         print *, "PLOT_TEST_GLOBAL_OB: global_ob final array is ",
+     &         "correct for the ", fldNm, " field for ob", ob_id
+         if (plot_on_NxNy .eq. 1) then
+           print *, "PLOT_TEST_GLOBAL_OB: plotting global_ob ",
+     &              "on NxNy dimension array:"
+           write(plotTitle, "(2A)") "PLOT_TEST_GLOBAL_OB: ", fldNm
+           call PLOT_GLO_FIELD_XYRL(global_NxNy,plotTitle,myThid)
+         end if
+       end if
        end
 
 
