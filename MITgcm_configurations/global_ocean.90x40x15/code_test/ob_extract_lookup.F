@@ -2,6 +2,9 @@ C All variables in header file are global to header files included below
 #include "DIAG_OPTIONS.h"
 
 
+
+
+
        SUBROUTINE OB_EXTRACT_LOOKUP( myThid )
 #include "SIZE.h"
 #include "EEPARAMS.h"
@@ -13,6 +16,8 @@ C All variables in header file are global to header files included below
 #include "DIAGNOSTICS.h"
 C No need to include "mpif.h" becaues EESUPPORT.h already includes it.
 
+C Putting everything under do loop ob_id (EVERYTHING)
+
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 C12345678
@@ -20,32 +25,46 @@ C12345678
        integer myThid
 
 C      !LOCAL VARIABLES:
-C      global_mask: 4 dimensional REAL*8 array that combines all open boundarys
+C      global_mask: 4 dimensional _RL array that combines all open boundarys
 C      msgBuf: Used to write statements into the output file
 C      ob_subMask_size: Integer size of ob_subMask (ob_subMask from DIAGNOSTICS.h)
 C      global_ob_index: Integer indicating bottom-left global element number
 C      stop_program: Integer used to hold either 1 or 0, 1 to stop program or 0 to ignore
 C      debug: Integer used to hold either 1 or 0, 1 to print debug statements or 0 to ignore
 
-C      Although we read REAL*4 values, most built in functions have _RS input which by default is real*8.
-C      So global_mask, ob_subMask, and bath_subMask are set as real*8 or _RS.
-       real*8 global_mask(Nx,Ny,nSx,nSy)
+C      Although we read REAL*4 values, most built in functions have _RS input which by default is _RL.
+C      So global_mask, ob_subMask, and bath_subMask are set as _RL or _RS.
+       _RL global_mask(Nx,Ny,nSx,nSy)
+       _RL recv_arr(sNx + sNy + 1)
+       _RL g_indices(nPx*nPy, sNx + sNy + 1)
        CHARACTER*(MAX_LEN_MBUF) msgBuf
        integer i,j, iG, jG, bi, bj
        integer ob, global_ob_index, ob_index, new_goi
-       integer ob_subMask_size, counter
-       integer total_valid1
-       integer, parameter :: num_openB = 1
+       integer ob_subMask_size, counter, ob_id
+       integer total_valid, tag, time, num_valid
+       integer myByLo_myThid,myByHi_myThid,myBxLo_myThid,myBxHi_myThid
+       real avg
        integer, parameter :: stop_program = 0
        integer, parameter :: debug = 1
        integer, parameter :: print_debug = 0
-
-       CHARACTER*40 b_fileName
+       character*10 fldNm
+       character*40 b_fileName
 #ifdef ALLOW_USE_MPI
        integer pid, ierror, status(MPI_STATUS_SIZE)
 #endif
 
+       common / local_var / global_mask, total_valid
+       common / myBxy_LoHi / myByLo_myThid, myByHi_myThid,
+     &                       myBxLo_myThid, myBxHi_myThid
 
+       myByLo_myThid = myByLo(myThid)
+       myByHi_myThid = myByHi(myThid)
+       myBxLo_myThid = myBxLo(myThid)
+       myBxHi_myThid = myBxHi(myThid)
+
+C      Initializing before adding onto total_valid
+       total_valid = 0
+       num_valid = 0
 
 C       Initialize local arrays:
         DO bj = myByLo(myThid), myByHi(myThid)
@@ -58,7 +77,22 @@ C       Initialize local arrays:
           ENDDO
         ENDDO
 
+        DO i=1, sNx + sNy + 1
+          recv_arr(i) = 0.0
+        ENDDO
 
+
+        DO pid=1, mpiNprocs
+          DO i=1, sNx + sNy + 1
+            g_indices(pid, i)=0.0
+          ENDDO
+        ENDDO
+
+
+c      ob_subMask initialized in diagnostics_readparms, dimensions match READ_REC_XY_RS field:
+c      field(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+c           iG=bi+(myXGlobalLo-1)/sNx
+c           jG=bj+(myYGlobalLo-1)/sNy
 
 C       myThid  ::  my Thread Id number
 
@@ -78,134 +112,323 @@ C     mpi_myYGlobalLo :: List of all processors bottom-left Y-index in global do
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
 
+c      All Processes :
 
-c      ob_subMask initialized in diagnostics_readparms, dimensions match READ_REC_XY_RS field:
-c      field(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-c           iG=bi+(myXGlobalLo-1)/sNx
-c           jG=bj+(myYGlobalLo-1)/sNy
+       DO ob_id = 1, nOB_mask
 
-       if (debug .eq. 1) then
-         print *, "April Shin: ob_subMask indices:",
-     &            1-Olx, sNx+Olx, 1-Oly, sNy+Oly
-         print *, "April Shin ob_subMask shape: ", shape(ob_subMask)
-       end if
+         DO time = 1, nfld_time
 
+C          Differing filenames yet to be figured out.
+           b_fileName = 'bathymetry.bin'
+           t_fileName = 'domain_temp.bin'
+           ob_fileName = 'domain_flt32_mask.bin'
 
-c       All Processes read:
+           CALL READ_REC_XY_RL( t_fileName,
+     &              temp_subMask(time,:,:,:,:),1, 0, myThid )
+           CALL READ_REC_XY_RL( b_fileName,
+     &              bath_subMask(time,:,:,:,:),1, 0, myThid )
+           CALL READ_REC_XY_RL( ob_fileName,
+     &              ob_subMask(time,:,:,:,:),1, 0, myThid )
 
-       b_fileName = 'bathymetry.bin'
-       t_fileName = 'domain_temp.bin'
-       ob_fileName = 'domain_flt32_mask.bin'
-       CALL READ_REC_XY_RS( t_fileName, temp_subMask, 1, 0, myThid )
-       CALL READ_REC_XY_RS( b_fileName, bath_subMask, 1, 0, myThid)
-       CALL READ_REC_XY_RS( ob_fileName, ob_subMask, 1, 0, myThid)
-
-       _EXCH_XY_RS(temp_subMask, myThid)
-       _EXCH_XY_RS(bath_subMask, myThid)
-       _EXCH_XY_RS(ob_subMask, myThid)
-
-C      Writing ob_subMask, bath_subMask, temp_subMask to bin file
-       call WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy,ob_subMask,
-     &                          bath_subMask, temp_subMask)
-
-C      Computing left bottom most global element number
-       iG = mpi_myXGlobalLo(mpiMyId+1)
-       jG = mpi_myYGlobalLo(mpiMyId+1)
-       global_ob_index = Nx*(jG -1)  + iG
-
-       if (print_debug .eq. 1) then
-         print *, "process id: ", mpiMyId
-         print *, "iG:", iG, "jG:", jG
-         print *, "OB_EXTRACT_LOOKUP:global_ob_index", global_ob_index
-       end if
-
-       counter = 2
-       new_goi = global_ob_index
+           _EXCH_XY_RL(temp_subMask(time,:,:,:,:), myThid)
+           _EXCH_XY_RL(bath_subMask(time,:,:,:,:), myThid)
+           _EXCH_XY_RL(ob_subMask(time,:,:,:,:), myThid)
 
 
-      if (debug .eq. 1) then
-C        Plotting for debugging
-        print *, "OB_EXTRACT_LOOKUP: Number of valid elements:",
-     &            counter-2
-        CALL PLOT_FIELD_XYRS( ob_subMask, 'Open Boundary Submask',
-     &                         -1, myThid )
+           CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, temp_subMask,
+     &                      "temp", ob_id)
 
-        CALL PLOT_FIELD_XYRS( bath_subMask, 'Bathymetry Submask',
-     &                         -1, myThid )
+           CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, bath_subMask,
+     &                      "bath", ob_id)
 
-        CALL PLOT_FIELD_XYRS( temp_subMask, 'Temperature Submask',
-     &                         -1, myThid )
+           CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, temp_subMask,
+     &                      "mask", ob_id)
 
-      end if
+           if (debug .eq. 1) then
+C           Plotting for debugging
+            CALL PLOT_FIELD_XYRL( ob_subMask(time,:,:,:,:),
+     &                      'Open Boundary Submask', -1, myThid )
+            CALL PLOT_FIELD_XYRL( bath_subMask(time,:,:,:,:),
+     &                      'Bathymetry Submask', -1, myThid )
+            CALL PLOT_FIELD_XYRL( temp_subMask(time,:,:,:,:),
+     &                      'Temperature Submask', -1, myThid )
+           end if
 
-       if (print_debug .eq .1) then
-         print *, "OB_EXTRACT_LOOKUP: MPI total num procs: ",mpiNprocs
-         print *, "OB_EXTRACT_LOOKUP: myThid: ", myThid
-       end if
+         ENDDO
+
+
+         ob_subMask_size = (abs(1-OLx)+(sNx+OLx))*(abs(1-OLy)+(sNy+OLy))
+     &                    *nSx*nSy
+
+         iG = mpi_myXGlobalLo(mpiMyId+1)
+         jG = mpi_myYGlobalLo(mpiMyId+1)
+         global_ob_index = Nx*(jG -1)  + iG
+
+         if (print_debug .eq. 1) then
+           print *, "process id: ", mpiMyId
+           print *, "iG:", iG, "jG:", jG
+           print *, "OB_EXTRACT_LOOKUP:global_ob_index",global_ob_index
+         end if
+
+         counter = 2
+         new_goi = global_ob_index
+
+
+         if (print_debug .eq .1) then
+           print *,"OB_EXTRACT_LOOKUP: MPI total num procs:",mpiNprocs
+           print *,"OB_EXTRACT_LOOKUP: myThid: ", myThid
+         end if
+
+
+         if (print_debug .eq .1) then
+           print *,"OB_EXTRACT_LOOKUP: MPI total num procs:",mpiNprocs
+           print *,"OB_EXTRACT_LOOKUP: myThid: ", myThid
+         end if
+
 
 
 C      In this program, we only have one open boundary. Therefore, first dimension
 C      of subBathOnMask and sub_global_indices is 1, referring to open boundary # 1
-       DO bj = myByLo(myThid), myByHi(myThid)
-         DO bi = myBxLo(myThid), myBxHi(myThid)
-           DO j=1-OLy,sNy+OLy
-             DO i=1-OLx,sNx+OLx
-               if ((j .ge. 1) .and. (i .ge. 1)) then
-                   new_goi = (j-1)*sNx+(j-1)*(Nx-(iG+sNx-1))+
+         DO bj = myByLo(myThid), myByHi(myThid)
+           DO bi = myBxLo(myThid), myBxHi(myThid)
+             DO j=1-OLy,sNy+OLy
+               DO i=1-OLx,sNx+OLx
+                 if ((j .ge. 1) .and. (i .ge. 1)) then
+                     new_goi = (j-1)*sNx+(j-1)*(Nx-(iG+sNx-1))+
      &                        j*(iG-1)+i
-                 if ((i .eq. 1) .and. (j .eq. 1)) then
-                   print *, "at 1,1: ", new_goi
+                   if ((i .eq. 1) .and. (j .eq. 1)) then
+                     print *, "at 1,1: ", new_goi
+                   end if
                  end if
-               end if
-               if (ob_subMask(i,j,bi,bj) .gt. 0.0 ) then
-                 if (print_debug .eq. 1) then
-                   print *, "OB_EXTRACT_LOOKUP: ob_subMask gt 1:",
-     &                    ob_subMask(i,j,bi,bj)
-                   print *, "OB_EXTRACT_LOOKUP: i j of ob_subMask gt 1",
-     &                     i, j
-                   print *, "OB_EXTRACT_LOOKUP: bath_subMask gt 1",
-     &                    bath_subMask(i,j,bi,bj)
-                 end if
-                 subBathOnMask(1, counter) = bath_subMask(i,j,bi,bj)
-                 subTempOnMask(1, counter) = temp_subMask(i,j,bi,bj)
-                 sub_global_indices(1, counter) = new_goi
-                 if (print_debug .eq. 1) then
-                   print *, "OB_EXTRACT_LOOKUP: new_goi:", new_goi
-                 end if
-                 counter = counter + 1
-               end if
 
+C                For all time steps, the open boundary mask will be the same:
+                 if (ob_subMask(1 ,i,j,bi,bj) .ge. 1.0 ) then
+
+                   if (print_debug .eq. 1) then
+                     print *, "OB_EXTRACT_LOOKUP: ob_subMask gt 1:",
+     &                    ob_subMask(1,i,j,bi,bj)
+                     print *, "OB_EXTRACT_LOOKUP: i j of ob_subMask",
+     &                    " gt 1", i, j
+                     print *, "OB_EXTRACT_LOOKUP: bath_subMask gt 1",
+     &                    bath_subMask(1,i,j,bi,bj)
+                   end if
+
+                   call AVERAGE(avg, bath_subMask(:,i,j,bi,bj))
+                   subBathOnMask(counter) = avg
+
+                   call AVERAGE(avg, temp_subMask(:,i,j,bi,bj))
+                   subTempOnMask(counter) = avg
+
+                   sub_global_indices(counter) = new_goi
+                   if (print_debug .eq. 1) then
+                     print *, "OB_EXTRACT_LOOKUP: new_goi:", new_goi
+                   end if
+                   counter = counter + 1
+                   if (((i .ge. 1) .and. (j .ge. 1))
+     &                 .and. ((i .le. sNx) .and. (j .le. sNy))) then
+                     num_valid = num_valid + 1
+                   end if
+                 end if
+
+               ENDDO
              ENDDO
            ENDDO
          ENDDO
-       ENDDO
+
+C       Inserting number of valid elements as first element of each array
+C        subBathOnMask(ob_id, 1) = counter - 2
+C        subTempOnMask(ob_id, 1) = counter - 2
+C        sub_global_indices(ob_id, 1) = counter - 2
+        subBathOnMask(1) = num_valid
+        subTempOnMask(1) = num_valid
+        sub_global_indices(1) = num_valid
 
 
-      ob_subMask_size = (abs(1-OLx)+(sNx+OLx))*(abs(1-OLy)+(sNy+OLy))
-     &                    *nSx*nSy
-
-C    Inserting number of valid elements as first element of each array
-      subBathOnMask(1, 1) = counter - 2
-      subTempOnMask(1, 1) = counter - 2
-      sub_global_indices(1, 1) = counter - 2
 
 
 #ifdef ALLOW_USE_MPI
-       if (usingMPI) then
-         if (mpiMyId .gt. 0) then
+        if (usingMPI) then
+          if (mpiMyId .gt. 0) then
 
-C          Processes 1 and onward, send sub arrays to Parent process
-           call MPI_SEND(sub_global_indices,num_openB*(sNx+sNy+1),
-     &                MPI_INT, 0, 1, MPI_COMM_WORLD, ierror)
-           call MPI_SEND(subBathOnMask, num_openB*(sNx+sNy+1), MPI_REAL
-     &               ,0, 2, MPI_COMM_MODEL, ierror)
-           call MPI_SEND(subTempOnMask, num_openB*(sNx+sNy+1), MPI_REAL
-     &               ,0, 2, MPI_COMM_MODEL, ierror)
+C           Processes 1 and onward, send sub arrays to Parent process
+            call MPI_SEND(sub_global_indices,(sNx+sNy+1),
+     &               MPI_REAL, 0, 1, MPI_COMM_WORLD, ierror)
+            call MPI_SEND(subBathOnMask, (sNx+sNy+1),
+     &               MPI_REAL,0, 2, MPI_COMM_MODEL, ierror)
+            call MPI_SEND(subTempOnMask, (sNx+sNy+1),
+     &               MPI_REAL,0, 3, MPI_COMM_MODEL, ierror)
 
-         end if
-       end if
+          else if (mpiMYId .eq. 0) then
+            if (print_debug .eq. 1) then
+              print *,"OB_EXTRACT_LOOKUP: l sub_global_indices count:"
+     &               ,  int(sub_global_indices(1))
+              print *, "OB_EXTRACT_LOOKUP: local sub_global_indices"
+              call PRINT_FLOAT_ARR( sub_global_indices(:),num_valid)
+            end if
+          end if
+
+        end if
 #endif
 
+
+        call GATHER_2D_R8(global_mask(1:Nx,1:Ny,1,1),
+     &                     ob_subMask(1,1:sNx,1:sNy,1,1),
+     &                     Nx, Ny, .true., .true., myThid)
+
+        if (mpiMYId .eq. 0) then
+          call PLOT_GLO_FIELD_XYRL(global_mask(1:,1:,1,1),
+     &                    "OB_EXTRACT_LOOKUP: global mask", myThid)
+        end if
+
+
+#ifdef ALLOW_USE_MPI
+        if (usingMPI) then
+          if (mpiMyId .eq. 0) then
+
+C           Store global_ob_masks into lookup table
+            counter = 1
+            do j=1, Ny, 1
+              do i=1, Nx, 1
+                lookup_table(counter)= int(global_mask(i,j,1,1))
+                if (print_debug .eq. 1) then
+                  if (lookup_table(counter) .ge. 1) then
+                    print *,"OB_EXTRACT_LOOKUP:global index positive:"
+     &                       ,lookup_table(counter),"at",counter
+                  end if
+                end if
+                counter = counter + 1
+              end do
+            end do
+
+
+C          Retrive sub_global_indicies and sub fields from every process > 0.
+            ob_index = 1
+
+C           Retrieving sub_global_indices first from all processes > 0
+            do pid=1, mpiNprocs-1
+              call MPI_RECV(recv_arr, sNx+sNy+1, MPI_REAL, pid, 1,
+     &                  MPI_COMM_WORLD, status, ierror)
+C             Save all global indices into array for future reference
+              do i=1, sNx+sNy+1
+                g_indices(pid,i) = recv_arr(i)
+              end do
+            end do
+
+C           Retrieving sub fields and appending to final global_ob array
+            DO tag=2, nOB_fld + 1
+              if (debug .eq. 1) then
+                if (tag .eq. 2) then
+                  print *, "TAG 2: to BATH field"
+                else if (tag .eq. 3) then 
+                  print *, "TAG 3: to TEMP field"
+                end if
+              end if
+
+              total_valid = 0
+              DO pid=1, mpiNprocs-1
+
+C                 First append process 0 local arrays to final global array if number of valid elements in those local arrays > 0:
+                if (print_debug .eq. 1) then
+                  print *, "OB_EXTRACT_LOOKUP: l sub_global_indices ",
+     &                     "after count: ",int(sub_global_indices(1))
+                end if
+
+                if (int(sub_global_indices(1)) .ge. 1) then
+
+                  if (print_debug .eq. 1) then
+                    print *,"OB_EXTRACT_LOOKUP: Appending local"
+                    print *, "OB_EXTRACT_LOOKUP: subBathOnMask local:"
+                    call PRINT_FLOAT_ARR(subBathOnMask(:),
+     &                                 int(sub_global_indices(1) + 1))
+                    print *, "OB_EXTRACT_LOOKUP: subTempOnMask local:"
+                    call PRINT_FLOAT_ARR(subTempOnMask(:),
+     &                                 int(sub_global_indices(1) + 1))
+                  end if
+
+                  total_valid = total_valid +
+     &                                  int(sub_global_indices(1))
+                  if (tag .eq. 2) then
+                    call APPEND_OB_VALUE(sub_global_indices(:),
+     &                                   subBathOnMask(:),
+     &                                   global_ob, lookup_table)
+                    if (debug .eq. 1) then
+                      print *,"APPEND_OB_VALUE: appending local bath ",
+     &"to global_ob with ",int(sub_global_indices(1)),"valid elements:"
+
+                      call PRINT_FLOAT_ARR(global_ob, total_valid)
+                    end if
+                  else if (tag .eq. 3) then
+                    call APPEND_OB_VALUE(sub_global_indices(:),
+     &                                   subTempOnMask(:),
+     &                                   global_ob, lookup_table)
+                    if (debug .eq. 1) then
+                      print *, "APPEND_OB_VALUE: appending local temp",
+     &"to global_ob with ",int(sub_global_indices(1)),"valid elements:"
+
+                      call PRINT_FLOAT_ARR(global_ob,total_valid)
+
+                    end if
+                  end if
+                end if
+
+C               Receive all sub arrays from processes with pid > 0. Only needs to be done once.
+                call MPI_RECV(recv_arr, sNx+sNy+1, MPI_REAL, pid, tag
+     &                  ,MPI_COMM_WORLD, status, ierror)
+                if (debug .eq. 1) then
+                  print *, "Received recv_arr with tag",tag
+                  print *, "Displaying FULL array, beyond number of ",
+     &                     "valid elements"
+                  call PRINT_FLOAT_ARR(recv_arr, sNx+sNy+1)
+                end if
+
+
+C               Appending all other processes' local arrays to final array if number of valid elements in arrays > 0:
+                if (int(g_indices(pid, 1)) .ge. 1) then
+                  call APPEND_OB_VALUE(g_indices(pid,:),recv_arr(:),
+     &                                 global_ob, lookup_table)
+
+                  total_valid = total_valid + g_indices(pid,1)
+
+                end if
+
+                print *, "OB_EXTRACT_LOOKUP: updated global ob by ",
+     &       "process",pid,"for tag",tag,"with",int(g_indices(pid,1)),
+     &       "valid elements"
+                call PRINT_FLOAT_ARR(global_ob,total_valid)
+
+              ENDDO
+              print *, "OB_EXTRACT_LOOKUP: final global ob by ",
+     &     "for tag", tag, "with total", total_valid, "valid elements"
+              call PRINT_FLOAT_ARR(global_ob,total_valid)
+
+              if (tag .eq. 2) then
+                fldNm = "bath"
+              else if (tag .eq. 3) then
+                fldNm = "temp"
+              end if
+
+              call WRITE_GLOBAL_BIN(global_ob,total_valid,fldNm,ob_id,
+     &                             mpiPx, mpiPy)
+
+              call PLOT_TEST_GLOBAL_OB(global_ob, lookup_table, myThid,
+     &                                 ob_id, fldNm)
+            ENDDO
+
+
+
+          end if
+        end if
+#endif
+
+      ENDDO
+
+      END
+
+
+
+C      Writing ob_subMask, bath_subMask, temp_subMask to bin file
+C         call WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy,ob_subMask,
+C     &                          bath_subMask, temp_subMask)
 
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
@@ -222,174 +445,68 @@ C useExch2GlobLayOut:: =T: Use Exch2 global-map layout (only with EXCH2)
 C zeroBuff (logical):: =T: initialise the buffer to zero before copy
 C myThid   (integer):: my Thread Id number
 
-       call GATHER_2D_R8(global_mask(1:Nx,1:Ny,1,1),
-     &                   ob_subMask(1:sNx, 1:sNy, 1, 1),
-     &                   Nx, Ny, .true., .true., myThid)
+      SUBROUTINE AVERAGE (avg, arr)
+      include "USER_INPUT.h"
+
+      _RL arr(nfld_time)
+      integer i, sum
+      real avg
+      sum = 0
+      do i=1, nfld_time
+        sum = sum + arr(i)
+      end do
+      avg = real(sum/nfld_time)
+
+      END
 
 
+      SUBROUTINE APPEND_OB_VALUE(global_indices,ob_values,global_ob,
+     &                           lookup_table)
+         include "SIZE.h"
+         include "USER_INPUT.h"
+         _RL global_indices(sNx + sNy + 1)
+         _RL ob_values(sNx + sNy + 1)
+         _RL global_ob((sNy+sNx)*(nPx*nPy))
+         _RL lookup_table(Ny*Nx)
+         integer num_valid, i, ob_index
+         integer, parameter :: print_debug = 0
 
+         if (print_debug .eq. 1) then
+           print *, "APPEND_OB_VALUE: global_indices:"
+           call PRINT_FLOAT_ARR(global_indices, sNx + sNy + 1)
+         end if
 
-#ifdef ALLOW_USE_MPI
-      if (usingMPI) then
-        if (mpiMyId .eq. 0) then
+         num_valid = int(global_indices(1))
+         if (print_debug .eq. 1) then
+           print *, "APPEND_OB_VALUE: num_valid", num_valid
+         end if
 
-          call PLOT_GLO_FIELD_XYRS(global_mask,
-     &                      "OB_EXTRACT_LOOKUP: global mask", myThid)
-
-C          Store global_ob_masks into lookup table
-           do ob=1, num_openB, 1
-             if (ob .eq. 1) then
-               total_valid1 = 0
-             end if
-             counter = 1
-             do j=1, Ny, 1
-               do i=1, Nx, 1
-                 lookup_table(ob, counter) = global_mask(i,j,1,1)
-                 if (lookup_table(ob, counter) .ge. 1) then
-                   print *, "OB_EXTRACT_LOOKUP:global index positive:",
-     &              lookup_table(ob, counter), "at", counter
-                 end if
-                 counter = counter + 1
-               end do
-             end do
-
-C            Append subBathOnMask values to global_ob1 if valid elements exist.
-             if (sub_global_indices(ob, 1) .gt. 0) then
-               if (print_debug .eq. 1) then
-                 print *, "OB_EXTRACT_LOOKUP: local subBathOnMask has",
-     &                     "valid elements:"
-               end if
-               if (ob .eq. 1) then
-                 total_valid1 = total_valid1+sub_global_indices(ob, 1)
-               end if
-               call PRINT_FLOAT_ARR(subBathOnMask, sNx+sNy+1)
-               do i=2, sub_global_indices(ob, 1) + 1
-                 ob_index = lookup_table(ob,
-     &                              sub_global_indices(ob, i))
-                 if (print_debug .eq. 1) then
-                   print *, "OB_EXTRACT_LOOKUP: sub_global_index:",
-     &                     sub_global_indices(ob, i)
-                   print *, "OB_EXTRACT_LOOKUP:process 0 ob_index:",
-     &                     ob_index
-                   print *, "OB_EXTRACT_LOOKUP:subBathOnMask at ob ",
-     &                     "points:" ,subBathOnMask(ob, i)
-                 end if
-                 global_ob1(1, ob_index) = sub_global_indices(ob,i)
-                 global_ob1(2, ob_index) = subBathOnMask(ob, i)
-                 global_ob1(3, ob_index) = subTempOnMask(ob, i)
-               end do
-             end if
-
-           end do
-
-           if (debug .eq. 1) then
-             print *, "OB_EXTRACT_LOOKUP:Locally added: global_ob1:"
-             call PRINT_FLOAT_ARR(global_ob1(1,1:(sNy+sNx)*(nPx*nPy)),
-     &                          1*(sNy+sNx)*(nPx*nPy))
+         do i=2, num_valid + 1
+           ob_index = lookup_table(int(global_indices(i)))
+           if (print_debug .eq. 1) then
+             print *, "APPEND_OB_VALUE: ob_index", ob_index
+             print *, "APPEND_OB_VALUE: ob_value", ob_values(i)
            end if
-
-C          Retrive sub_global_indicies and subBathOnMask from every process > 0.
-           ob_index = 1
-
-           do ob=1, num_openB
-             do pid=1, mpiNprocs-1
-
-              call MPI_RECV(sub_global_indices, num_openB*(sNx+sNy+1)
-     &                  ,MPI_INTEGER, pid, 1, MPI_COMM_WORLD, status,
-     &                  ierror)
-              call MPI_RECV(subBathOnMask, num_openB*(sNx+sNy+1),
-     &             MPI_REAL,pid, 2 ,MPI_COMM_MODEL, status, ierror)
-
-              call MPI_RECV(subTempOnMask, num_openB*(sNx+sNy+1),
-     &             MPI_REAL,pid, 2 ,MPI_COMM_MODEL, status, ierror)
-
-               if (sub_global_indices(ob, 1) .ge. 1) then
-                 if (ob .eq. 1) then
-                   total_valid1 = total_valid1+sub_global_indices(ob, 1)
-                 end if
-                 do i=2, sub_global_indices(ob, 1) + 1
-                   ob_index = lookup_table(ob,
-     &                              sub_global_indices(ob, i))
-                   if (print_debug .eq. 1) then
-                     print *, "OB_EXTRACT_LOOKUP: ob_index:",ob_index
-                   end if
-
-                   global_ob1(1, ob_index) = sub_global_indices(ob,i)
-                   global_ob1(2, ob_index) = subBathOnMask(ob, i)
-                   global_ob1(3, ob_index) = subTempOnMask(ob, i)
-                 end do
-               end if
-               if (debug .eq. 1) then
-                 print *, "OB_EXTRACT_LOOKUP:Parent received from",
-     &                  " Process",status(MPI_SOURCE)
-               end if
-               print *, "OB_EXTRACT_LOOKUP:subBathOnMask from ",
-     &                  "Process:",status(MPI_SOURCE)
-               call PRINT_FLOAT_ARR(subBathOnMask, sNx+sNy+1)
-               print *, "OB_EXTRACT_LOOKUP:Process",pid,"subBathOnMask"
-     &                 ," appended to global_ob1:"
-               call PRINT_FLOAT_ARR(global_ob1(2,1:(sNy+sNx)*(nPx*nPy))
-     &                       ,(sNy+sNx)*(nPx*nPy))
-               print *, "OB_EXTRACT_LOOKUP:subTempOnMask from ",
-     &                  "Process:",status(MPI_SOURCE)
-               call PRINT_FLOAT_ARR(subTempOnMask, sNx+sNy+1)
-               print *, "OB_EXTRACT_LOOKUP:Process",pid,"subTempOnMask"
-     &                 ," appended to global_ob1:"
-               call PRINT_FLOAT_ARR(global_ob1(3,1:(sNy+sNx)*(nPx*nPy))
-     &                       ,(sNy+sNx)*(nPx*nPy))
-            end do
-          end do
-          print *, "OB_EXTRACT_LOOKUP: FINAL global_ob1 indices:"
-          call PRINT_FLOAT_ARR(global_ob1(1,1:),(sNy+sNx)*(nPx*nPy))
-          print *, "OB_EXTRACT_LOOKUP: FINAL global_ob1 bath:"
-          call PRINT_FLOAT_ARR(global_ob1(2,1:),(sNy+sNx)*(nPx*nPy))
-          print *, "OB_EXTRACT_LOOKUP: FINAL global_ob1 temp:"
-          call PRINT_FLOAT_ARR(global_ob1(3,1:),(sNy+sNx)*(nPx*nPy))
-
-C         Write global_ob1 to bin file
-          call WRITE_GLOBAL_BIN(global_ob1, total_valid1)
-
-C         Plot global_ob1 back on Nx by Ny dim array and tests for correctness
-          call PLOT_TEST_GLOBAL_OB(global_ob1, global_mask, myThid,
-     & myByLo(myThid), myByHi(myThid), myBxLo(myThid), myBxHi(myThid)
-     & ,total_valid1)
-        end if
-      end if
-#endif
+           global_ob(ob_index) = ob_values(i)
+         end do
+         if (print_debug .eq. 1) then
+           print *, "APPEND_OB_VALUE: global_ob:"
+           call PRINT_FLOAT_ARR(global_ob, (sNy+sNx)*(nPx*nPy))
+         end if
 
        end
 
 
-
-       SUBROUTINE PRINT_FLOAT_ARR(array, arr_length)
-c     Edit Descriptor:
-c       w: the number of positions to be used
-c       m: the minimum number of positions to be used
-c       d: the number of digits to the right of the decimal point
-c       e: the number of digits in the exponent part
-
-c       Reading/writing REALs Decimal form Fw.d
-       integer arr_length, i
-       real*8 array(arr_length)
-       do, i=1, arr_length
-         write(*,"(F6.0,$)") array(i)
-           if (i .EQ. arr_length) then
-              write(*, '(A,/)') ''
-           endif
-       enddo
-       print *, " "
-       end
-
-
-
-       SUBROUTINE CREATE_FILENAME(prefix, is_child, filename, mpiPx,
-     &                            mpiPy)
+       SUBROUTINE CREATE_FILENAME(dir, fldNm, ob_id, filename,
+     &                            is_child, mpiPx, mpiPy)
 c       Creating filenames for all binary files.
 
-       integer is_child, mpiPx, mpiPy
-       character*40 filename
+       integer is_child, mpiPx, mpiPy, ob_id
+       character*30 filename
+       character*4 fldNm
+       character*2 dir
        character*3 str_px, str_py
-       character*15 prefix
+       character str_ob
 
 c       From EESUPPORT.h
 C       mpiPx     - My MPI proc. grid X coord
@@ -399,103 +516,89 @@ c       If creating a filename for a child process, create a name in the format:
 c       T for temp or mask for mask
 c       001 for index 1 in x axis
 c       002 for index 2 in x axis
+       write(str_ob, "(I1)") ob_id
        if (is_child .eq. 1) then
          write(str_px, "(I3.3)") mpiPx
          write(str_py, "(I3.3)") mpiPy
-         write(filename, "(5A)") prefix, str_px(1:3),
-     &                            ".", str_py(1:3), ".bin"
+         write(filename, "(10A)") dir, "ob",str_ob,".",fldNm,".",
+     &                            str_px, ".", str_py, ".bin"
        else
 c         Creating a filename for global arrays
-         write(filename, "(2A)") prefix, "_global.bin"
+         write(filename, "(5A)") dir, fldNm, "_on_mask", str_ob,
+     &                           "_global.bin"
        end if
 
        end
 
 
-       SUBROUTINE WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy,ob_subMask,
-     &                          bath_subMask, temp_subMask)
+       SUBROUTINE WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, subMask,
+     &                          fldNm, ob_id)
 C      Writing all sub arrays read from binary fie containing global array
        include "SIZE.h"
 
-       integer mpiMyId, mpiPx, mpiPy
-       character*15 prefix
-       character*40 filename
+       integer mpiMyId, mpiPx, mpiPy, ob_id
+       character*4 fldNm
+       character*2 dir
+       character*30 filename
+       _RL subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
        integer, parameter :: print_write = 1
-       REAL*8 ob_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-       REAL*8 bath_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-       REAL*8 temp_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
-       prefix = "./ob1.mask."
-       call CREATE_FILENAME(prefix, 1, filename, mpiPx, mpiPy)
+       dir = "./"
+       call CREATE_FILENAME(dir, fldNm, ob_id, filename, 1,
+     &                      mpiPx, mpiPy)
        open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
-       write(1) ob_subMask
+       write(1) subMask
        close(1)
        if (print_write .eq. 1) then
-         print *, "ob_subMask for ob1 for", mpiMyId,
-     &            "is written to ",filename
-       end if
-
-       prefix = "./ob1.bath."
-       call CREATE_FILENAME(prefix, 1, filename, mpiPx, mpiPy)
-       open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
-       write(1) bath_subMask
-       close(1)
-       if (print_write .eq. 1) then
-         print *, "bath_subMask for ob1 for", mpiMyId,
-     &            "is written to ",filename
-       end if
-
-       prefix = "./ob1.temp."
-       call CREATE_FILENAME(prefix, 1, filename, mpiPx, mpiPy)
-       open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
-       write(1) temp_subMask
-       close(1)
-       if (print_write .eq. 1) then
-         print *, "temp_subMask for ob1 for", mpiMyId,
+         print *, fldNm, " for ob",ob_id,"process", mpiMyId,
      &            "is written to ",filename
        end if
 
        end
 
 
-       SUBROUTINE WRITE_GLOBAL_BIN(global_ob1, total_valid1)
+       SUBROUTINE WRITE_GLOBAL_BIN(global_ob,total_valid,fldNm,ob_id,
+     &                             mpiPx, mpiPy)
        include "SIZE.h"
 
-       REAL*8 global_ob1(2, (sNy+sNx)*(nPx*nPy))
-       integer total_valid1
+       _RL global_ob((sNy+sNx)*(nPx*nPy))
+       integer total_valid, ob_id, mpiPx, mpiPy
 
-       character*15 prefix
-       character*40 filename
+       character*2 dir
+       character*4 fldNm
+       character*30 filename
 
-c       Writing global tempOnMask to binary file
-       prefix = "./T_on_mask1"
-       call CREATE_FILENAME(prefix, 0, filename, 0, 0)
+c      Writing global array to binary file
+       dir = "./"
+       call CREATE_FILENAME(dir, fldNm, ob_id, filename, 0,
+     &                      mpiPx, mpiPy)
        open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
-       write(1) global_ob1(1, 1:total_valid1)
+       write(1) global_ob(1:total_valid)
        close(1)
-
-c       Writing global tempOnMask to binary file
-       prefix = "./bath_on_mask1"
-       call CREATE_FILENAME(prefix, 0, filename, 0, 0)
-       open(2, FILE=filename, FORM="unformatted", ACCESS="stream")
-       write(2) global_ob1(2, 1:total_valid1)
-       close(2)
 
        end
 
-       SUBROUTINE PLOT_TEST_GLOBAL_OB(global_ob, global_mask, myThid,
-     & myByLo_myThid, myByHi_myThid, myBxLo_myThid, myBxHi_myThid,
-     & total_valid1)
-c      Unravels global_ob1 and plots onto an array with dimensions Nx by Ny
+
+       SUBROUTINE PLOT_TEST_GLOBAL_OB(global_ob, lookup_table, myThid,
+     &                                ob_id, fldNm)
+c      Unravels global_ob and plots onto an array with dimensions Nx by Ny
        include "SIZE.h"
-       REAL*8 global_ob(3, (sNy+sNx)*(nPx*nPy))
-       REAL*8 global_correct((sNy+sNx)*(nPx*nPy))
-       REAL*8 global_NxNy(Nx,Ny,nSx,nSy)
-       REAL*8 global_mask(Nx,Ny,nSx,nSy)
+       _RL global_ob((sNy+sNx)*(nPx*nPy))
+       _RL global_mask(Nx,Ny,nSx,nSy)
+       _RL lookup_table(Ny*Nx)
+       _RL global_correct((sNy+sNx)*(nPx*nPy))
+       _RL global_NxNy(Nx,Ny,nSx,nSy)
+
        integer i,j, bi, bj, counter, ob_counter, correct, myThid
-       integer myByLo_myThid, myByHi_myThid, total_valid1
+       integer myByLo_myThid, myByHi_myThid, total_valid, ob_id
        integer myBxLo_myThid, myBxHi_myThid
        integer, parameter :: plot_on_NxNy = 1
+       character*4 fldNm
+       character*30 plotTitle
+
+       common / local_var / global_mask, total_valid
+       common / myBxy_LoHi / myByLo_myThid, myByHi_myThid,
+     &                       myBxLo_myThid, myBxHi_myThid
 
 C      Initializing global_correct, used to indicate if elements of global_ob is correct or not
        DO i=1,(sNy+sNx)*(nPx*nPy)
@@ -514,7 +617,7 @@ C       Initialize NxNy array:
           ENDDO
         ENDDO
 
-
+C      If lookup table contains ob mask point location (1-90) then extract corresponding point in global_ob at location
        correct = 1
        counter = 1
        ob_counter = 1
@@ -522,12 +625,10 @@ C       Initialize NxNy array:
          DO bi = myBxLo_myThid, myBxHi_myThid
            DO j=1, Ny
              DO i=1, Nx
-               if (ob_counter .le. total_valid1) then
-                 if (counter .eq. global_ob(1,ob_counter)) then
+               if (ob_counter .le. total_valid) then
+                 if (lookup_table(counter) .eq. ob_counter) then
 C                Inserting bathymetry points into NxNy array
-                   global_NxNy(i,j,bi,bj) = global_ob(2,ob_counter)
-                   print *,"PLOT_TEST_GLOBAL_OB: inserting:",
-     &                    global_ob(2,ob_counter)
+                   global_NxNy(i,j,bi,bj) = global_ob(ob_counter)
                    if (global_mask(i,j,bi,bj) .eq. 0) then
                      correct = 0
                      global_correct(ob_counter) = 0.0
@@ -543,22 +644,44 @@ C                Inserting bathymetry points into NxNy array
 
        if (correct .eq. 0) then
          print *, "PLOT_TEST_GLOBAL_OB: global_ob final array is ",
-     &            "incorrect."
+     &            "incorrect for ", fldNm, "for ob", ob_id
          call PRINT_FLOAT_ARR(global_correct, (sNy+sNx)*(nPx*nPy))
        else
          print *, "PLOT_TEST_GLOBAL_OB: global_ob final array is ",
-     &            "correct."
+     &         "correct for the ", fldNm, " field for ob", ob_id
          if (plot_on_NxNy .eq. 1) then
            print *, "PLOT_TEST_GLOBAL_OB: plotting global_ob ",
      &              "on NxNy dimension array:"
-           call PLOT_GLO_FIELD_XYRS(global_NxNy,"PLOT_TEST_GLOBAL_OB",
-     &                              myThid)
+           write(plotTitle, "(2A)") "PLOT_TEST_GLOBAL_OB: ", fldNm
+           call PLOT_GLO_FIELD_XYRL(global_NxNy,plotTitle,myThid)
          end if
        end if
        end
 
 
-       SUBROUTINE PLOT_GLO_FIELD_XYRS(fld, fldNam, myThid)
+
+       SUBROUTINE PRINT_FLOAT_ARR(array, arr_length)
+c      Edit Descriptor:
+c       w: the number of positions to be used
+c       m: the minimum number of positions to be used
+c       d: the number of digits to the right of the decimal point
+c       e: the number of digits in the exponent part
+
+c       Reading/writing REALs Decimal form Fw.d
+        integer arr_length, i
+        _RL array(arr_length)
+        do, i=1, arr_length
+          write(*,"(F6.0,$)") array(i)
+            if (i .EQ. arr_length) then
+               write(*, '(A,/)') ''
+            endif
+        enddo
+        print *, " "
+        end
+
+
+
+       SUBROUTINE PLOT_GLO_FIELD_XYRL(fld, fldNam, myThid)
 
 C      Building on top of subroutine PLOT_FIELD_XYRS:
 C     /==========================================================\
@@ -586,9 +709,9 @@ C     fld - Field to plot
 C     fldNam - Name of field
 C     myIter - Iteration number for plot
 C     myThid - Thread id of thread instance calling plot_field
-       real*8 fld(Nx, Ny, nSx, nSy)
+       _RL fld(Nx, Ny, nSx, nSy)
 
-C       _RS fld(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
+C       _RL fld(1-OLx:sNx+OLx,1-OLy:sNy+OLy,nSx,nSy)
        CHARACTER*(*) fldNam
        INTEGER myThid
 
@@ -624,7 +747,7 @@ C      Substitute other plotting utilities here!
         bjStart  =  nSy
         bjEnd    =  1
         bjStride = -1
-        CALL PRINT_MAPRS(
+        CALL PRINT_MAPRL(
      &        fld, fldTitle, PRINT_MAP_XY,
      &         1,Nx,1,Ny,1,1,  nSx,  nSy,
      &         iStart,   iEnd,  iStride,

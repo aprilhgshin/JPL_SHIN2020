@@ -1,3 +1,4 @@
+#include "USER_INPUT.h"
 C ======================================================================
 C  Common blocks for diagnostics package.
 C  - DIAG_DEFINE contains the definition of all available diagnostics
@@ -196,19 +197,17 @@ C     diagSt_Fname(n)  :: output file name for output stream # n
 C     ================== Global Variables for open boundary ====================
       CHARACTER*40 ob_fileName
       CHARACTER*40 t_fileName
-      REAL*8 ob_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      REAL*8 bath_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      REAL*8 temp_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
-C     First dimension accounts for number of open boundaries
-      REAL*8 subBathOnMask(1, sNx + sNy + 1)
-      REAL*8 subTempOnMask(1, sNx + sNy + 1)
-      INTEGER sub_global_indices(1, sNx + sNy + 1)
-      REAL*8 lookup_table(1, Ny*Nx)
+C     First dimension accounts for number of each field outputted during entire time duration
+      _RL ob_subMask(nfld_time,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      _RL bath_subMask(nfld_time,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      _RL temp_subMask(nfld_time,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
-C     First dimension accounts for number of info arrays laid on mask
-C     In ob_extract_lookup.F, bathymetry and temperature arrays are used.
-      REAL*8 global_ob1(3, (sNy+sNx)*(nPx*nPy))
+      _RL subBathOnMask(sNx + sNy + 1)
+      _RL subTempOnMask(sNx + sNy + 1)
+      _RL sub_global_indices(sNx + sNy + 1)
+      _RL lookup_table(Ny*Nx)
+      _RL global_ob((sNy+sNx)*(nPx*nPy))
 C     ==========================================================================
 
 
@@ -226,7 +225,7 @@ C     ==========================================================================
 
       COMMON / DIAG_OB_EXTRACT /
      & ob_fileName, t_fileName, ob_subMask,
-     & lookup_table, global_ob1, sub_global_indices,
+     & lookup_table, global_ob, sub_global_indices,
      & temp_subMask, bath_subMask,
      & subBathOnMask, subTempOnMask
 
