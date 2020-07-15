@@ -108,23 +108,23 @@ C--   per level statistics output:
      &     diagSt_regMaskFile, nSetRegMskFile
 
 
-      NAMELIST / DIAG_OB_EXTRACT /
-     &     ob_subMask,lookup_table, ob_fileName,
-     &     global_ob, sub_global_indices,t_fileName,
-     &     temp_subMask, bath_subMask,
-     &     subBathOnMask, subTempOnMask
-
-C      NAMELIST / DIAG_OB_EXTRACT_R /
-C     &     ob_subMask,
-C     &     global_ob, sub_global_indices,
+C      NAMELIST / DIAG_OB_EXTRACT /
+C     &     ob_subMask,lookup_table, ob_fileName,
+C     &     global_ob, sub_global_indices,t_fileName,
 C     &     temp_subMask, bath_subMask,
 C     &     subBathOnMask, subTempOnMask
 
-C      NAMELIST / DIAG_OB_EXTRACT_I /
-C     &     lookup_table
+      NAMELIST / DIAG_OB_EXTRACT_R /
+     &     ob_subMask,
+     &     global_ob, sub_global_indices,
+     &     temp_subMask, bath_subMask,
+     &     subBathOnMask, subTempOnMask
 
-C      NAMELIST / DIAG_OB_EXTRACT_C /
-C     &     ob_fileName, t_fileName
+      NAMELIST / DIAG_OB_EXTRACT_I /
+     &     lookup_table
+
+      NAMELIST / DIAG_OB_EXTRACT_C /
+     &     ob_fileName, t_fileName
 
 
       IF ( .NOT.useDiagnostics ) THEN

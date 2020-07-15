@@ -222,21 +222,21 @@ C     ==========================================================================
       COMMON / DIAG_STATIS_L /
      &     diagSt_Ascii, diagSt_mnc
 
-      COMMON / DIAG_OB_EXTRACT /
-     &     ob_subMask,lookup_table, ob_fileName,
-     &     global_ob, sub_global_indices,t_fileName,
-     &     temp_subMask, bath_subMask,
-     &     subBathOnMask, subTempOnMask
-
-C      COMMON / DIAG_OB_EXTRACT_R /
-C     &     ob_subMask,
-C     &     global_ob, sub_global_indices,
+C      COMMON / DIAG_OB_EXTRACT /
+C     &     ob_subMask,lookup_table, ob_fileName,
+C     &     global_ob, sub_global_indices,t_fileName,
 C     &     temp_subMask, bath_subMask,
 C     &     subBathOnMask, subTempOnMask
-C      COMMON / DIAG_OB_EXTRACT_I /
-C     &     lookup_table
-C      COMMON / DIAG_OB_EXTRACT_C /
-C     &     ob_fileName, t_fileName
+
+      COMMON / DIAG_OB_EXTRACT_R /
+     &     ob_subMask,
+     &     global_ob, sub_global_indices,
+     &     temp_subMask, bath_subMask,
+     &     subBathOnMask, subTempOnMask
+      COMMON / DIAG_OB_EXTRACT_I /
+     &     lookup_table
+      COMMON / DIAG_OB_EXTRACT_C /
+     &     ob_fileName, t_fileName
 
 
 CEH3 ;;; Local Variables: ***
