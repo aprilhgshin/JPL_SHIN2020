@@ -96,6 +96,11 @@ c           jG=bj+(myYGlobalLo-1)/sNy
 
 C       myThid  ::  my Thread Id number
 
+C     From PARAMS.h:
+C     nIter0              :: Start time-step number of for this run
+C     nTimeSteps          :: Number of timesteps to execute
+C     nTimeSteps_l2       :: Number of inner timesteps to execute per timestep
+
 C     From EESUPPORT.h : all initialized by subroutine INI_PROCS:
 C     mpiNprocs - No. of MPI processes.
 C     mpiMyId   - MPI process id of me.
@@ -110,8 +115,10 @@ C     mpi_myXGlobalLo :: List of all processors bottom-left X-index in global do
 C     mpi_myYGlobalLo :: List of all processors bottom-left Y-index in global domain
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
-
-
+#ifdef ALLOW_FIZHI
+       print *, "OB_EXTRACT_LOOKUP: nTimeSteps", nTimeSteps
+       print *, "TEST APRIL SHIN"
+#endif
 c      All Processes :
 
        DO ob_id = 1, nOB_mask

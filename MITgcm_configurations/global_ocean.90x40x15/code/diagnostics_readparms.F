@@ -112,7 +112,8 @@ C--   per level statistics output:
      &     ob_subMask,lookup_table, ob_fileName,
      &     global_ob, sub_global_indices,t_fileName,
      &     temp_subMask, bath_subMask,
-     &     subBathOnMask, subTempOnMask
+     &     subBathOnMask, subTempOnMask,
+     &     avgPeriod
 
 C      NAMELIST / DIAG_OB_EXTRACT_R /
 C     &     ob_subMask,
@@ -244,6 +245,9 @@ C     k limited to total number of open boundaries
       DO j=1, (sNy+sNx)*(nPx*nPy)
         global_ob(j) = 0.0
       ENDDO
+
+C     Initializing avgPeriod
+      avgPeriod = 0
 
 
 

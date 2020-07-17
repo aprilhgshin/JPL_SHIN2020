@@ -208,6 +208,8 @@ C     First dimension accounts for number of each field outputted during entire 
       _RL sub_global_indices(sNx + sNy + 1)
       INTEGER lookup_table(Ny*Nx)
       _RL global_ob((sNy+sNx)*(nPx*nPy))
+
+      INTEGER avgPeriod
 C     ==========================================================================
 
 
@@ -226,7 +228,8 @@ C     ==========================================================================
      &     ob_subMask,lookup_table, ob_fileName,
      &     global_ob, sub_global_indices,t_fileName,
      &     temp_subMask, bath_subMask,
-     &     subBathOnMask, subTempOnMask
+     &     subBathOnMask, subTempOnMask,
+     &     avgPeriod
 
 C      COMMON / DIAG_OB_EXTRACT_R /
 C     &     ob_subMask,
