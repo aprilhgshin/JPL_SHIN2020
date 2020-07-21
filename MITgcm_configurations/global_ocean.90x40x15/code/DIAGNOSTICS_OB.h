@@ -67,7 +67,7 @@ C     ================== Global Variables for open boundary ====================
 C     ==========================================================================
 
       COMMON /DIAG_OB_EXTRACT/
-     &     ob_fldNames, ob_fnames
+     &     ob_fldNames, ob_fnames,
      &     ob_subMask,lookup_table, ob_fileName,
      &     global_ob, sub_global_indices,t_fileName,
      &     temp_subMask, bath_subMask,

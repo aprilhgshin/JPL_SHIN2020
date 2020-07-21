@@ -44,7 +44,7 @@ C     iUnit      :: Work variable for IO unit number
      &       diagOB_Surf1File,  diagOB_Surf2File
 
       NAMELIST /DIAG_OB_EXTRACT/
-     &       ob_fldNames, ob_fnames
+     &       ob_fldNames, ob_fnames,
      &       ob_subMask, lookup_table, ob_fileName,
      &       global_ob, sub_global_indices,t_fileName,
      &       temp_subMask, bath_subMask,
@@ -108,7 +108,7 @@ C     Initializing to empty string
       ENDDO
       DO k=1, nOB_fld + nOB_mask
         ob_fnames(k) = ' '
-      ENDDO 
+      ENDDO
 
 C     Initializing open boundary sub mask
       DO bj = myByLo(myThid), myByHi(myThid)
