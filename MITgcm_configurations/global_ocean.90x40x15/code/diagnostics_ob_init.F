@@ -36,28 +36,31 @@ C     diagTitle :: local string (80c): description of field in diagnostic
       CHARACTER*8   diagName
       CHARACTER*16  diagCode
       CHARACTER*16  diagUnits
-      CHARACTER*(80) diagTitle
+      CHARACTER*80  diagTitle
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
 c     IF ( useDiagnotics ) THEN
 
         diagName  = 'diagOBSta1'
-        diagTitle = 'Scalar state variable 1 for package DIAGNOSTICS_OB'
+        diagTitle =
+     &        'Scalar state variable 1 for package DIAGNOSTICS_OB'
         diagUnits = 'unit            '
         diagCode  = 'SM      MR      '
         CALL DIAGNOSTICS_ADDTOLIST( diagNum,
      I          diagName, diagCode, diagUnits, diagTitle, 0, myThid )
 
         diagName  = 'diagOBSta2'
-        diagTitle = 'Scalar state variable 2 for package DIAGNOSTICS_OB'
+        diagTitle =
+     &        'Scalar state variable 2 for package DIAGNOSTICS_OB'
         diagUnits = 'unit            '
         diagCode  = 'SM      MR      '
         CALL DIAGNOSTICS_ADDTOLIST( diagNum,
      I          diagName, diagCode, diagUnits, diagTitle, 0, myThid )
 
         diagName  = 'diagOBStaU'
-        diagTitle = 'uVel-type state variable for package DIAGNOSTICS_OB'
+        diagTitle =
+     &        'uVel-type state variable for package DIAGNOSTICS_OB'
         diagUnits = 'unit            '
         diagCode  = 'UM      MR      '
         diagMate  = diagNum + 2
@@ -66,7 +69,8 @@ c     IF ( useDiagnotics ) THEN
      I   diagName, diagCode, diagUnits, diagTitle, diagMate, myThid )
 
         diagName  = 'diagOBStaV'
-        diagTitle = 'vVel-type state variable for package DIAGNOSTICS_OB'
+        diagTitle =
+     &        'vVel-type state variable for package DIAGNOSTICS_OB'
         diagUnits = 'unit            '
         diagCode  = 'VM      MR      '
         diagMate  = diagNum

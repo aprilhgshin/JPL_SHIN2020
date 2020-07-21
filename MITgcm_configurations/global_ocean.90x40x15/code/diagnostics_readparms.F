@@ -108,26 +108,6 @@ C--   per level statistics output:
      &     diagSt_regMaskFile, nSetRegMskFile
 
 
-      NAMELIST / DIAG_OB_EXTRACT /
-     &     ob_subMask,lookup_table, ob_fileName,
-     &     global_ob, sub_global_indices,t_fileName,
-     &     temp_subMask, bath_subMask,
-     &     subBathOnMask, subTempOnMask,
-     &     avgPeriod
-
-C      NAMELIST / DIAG_OB_EXTRACT_R /
-C     &     ob_subMask,
-C     &     global_ob, sub_global_indices,
-C     &     temp_subMask, bath_subMask,
-C     &     subBathOnMask, subTempOnMask
-
-C      NAMELIST / DIAG_OB_EXTRACT_I /
-C     &     lookup_table
-
-C      NAMELIST / DIAG_OB_EXTRACT_C /
-C     &     ob_fileName, t_fileName
-
-
       IF ( .NOT.useDiagnostics ) THEN
 C-    pkg DIAGNOSTICS is not used
         _BEGIN_MASTER(myThid)
@@ -212,44 +192,6 @@ C     useDiag4AdjOutp will be to set to T if ADJ diags are found in namelist
       useDiag4AdjOutp = .FALSE.
 C-    Track diagnostics pkg activation status:
       diag_pkgStatus = 1
-
-C     Initializing to empty string
-      ob_fileName = ' '
-      t_fileName = ' '
-C     Initializing open boundary sub mask
-      DO l=1, nfld_time
-        DO bj = myByLo(myThid), myByHi(myThid)
-          DO bi = myBxLo(myThid), myBxHi(myThid)
-            DO j=1-OLy,sNy+OLy
-              DO k=1-OLx,sNx+OLx
-                ob_subMask(l,k,j,bi,bj)   = 0.0
-                bath_subMask(l,k,j,bi,bj) = 0.0
-                temp_subMask(l,k,j,bi,bj) = 0.0
-              ENDDO
-            ENDDO
-          ENDDO
-        ENDDO
-      ENDDO
-
-      DO l = 1, sNy+sNx+1
-        subBathOnMask(l) = 0.0
-        subTempOnMask(l) = 0.0
-        sub_global_indices(l) = 0
-      ENDDO
-
-C     k limited to total number of open boundaries
-      DO l = 1, Ny*Nx
-        lookup_table(l) = 0.0
-      ENDDO
-
-      DO j=1, (sNy+sNx)*(nPx*nPy)
-        global_ob(j) = 0.0
-      ENDDO
-
-C     Initializing avgPeriod
-      avgPeriod = 0
-
-
 
 
       WRITE(msgBuf,'(2A)')

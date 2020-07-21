@@ -20,6 +20,9 @@ C     !USES:
 #endif
 #include "DIAGNOSTICS_SIZE.h"
 #include "DIAGNOSTICS.h"
+C#ifdef ALLOW_DIAGNOSTICS_OB
+C#include "DIAGNOSTICS_OB.h"
+C#endif
 
 
 C#include "EEPARAMS.h"
@@ -54,9 +57,9 @@ C--   Calculate pointers for statistics-diags set to non-zero frequency
 
       CALL DIAGSTATS_INI_IO( myThid )
 
-C      CALL OB_EXTRACT( myThid )
-      CALL OB_EXTRACT_LOOKUP( myThid )
-
+#ifdef ALLOW_DIAGNOSTICS_OB
+      CALL DIAGNOSTICS_OB_INIT_FIXED( myThid )
+#endif
 
 
 #ifdef ALLOW_FIZHI

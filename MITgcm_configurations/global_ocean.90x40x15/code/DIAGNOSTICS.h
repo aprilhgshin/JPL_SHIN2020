@@ -194,24 +194,6 @@ C     diagSt_Fname(n)  :: output file name for output stream # n
 
       LOGICAL   diagSt_ascii, diagSt_mnc
 
-C     ================== Global Variables for open boundary ====================
-      CHARACTER*40 ob_fileName
-      CHARACTER*40 t_fileName
-
-C     First dimension accounts for number of each field outputted during entire time duration
-      _RL ob_subMask(nfld_time,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      _RL bath_subMask(nfld_time,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      _RL temp_subMask(nfld_time,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-
-      _RL subBathOnMask(sNx + sNy + 1)
-      _RL subTempOnMask(sNx + sNy + 1)
-      _RL sub_global_indices(sNx + sNy + 1)
-      INTEGER lookup_table(Ny*Nx)
-      _RL global_ob((sNy+sNx)*(nPx*nPy))
-
-      INTEGER avgPeriod
-C     ==========================================================================
-
 
       COMMON / DIAG_STATIS_R /
      &     diagSt_freq, diagSt_phase
@@ -223,23 +205,6 @@ C     ==========================================================================
      &     diagSt_Flds, diagSt_Fname
       COMMON / DIAG_STATIS_L /
      &     diagSt_Ascii, diagSt_mnc
-
-      COMMON / DIAG_OB_EXTRACT /
-     &     ob_subMask,lookup_table, ob_fileName,
-     &     global_ob, sub_global_indices,t_fileName,
-     &     temp_subMask, bath_subMask,
-     &     subBathOnMask, subTempOnMask,
-     &     avgPeriod
-
-C      COMMON / DIAG_OB_EXTRACT_R /
-C     &     ob_subMask,
-C     &     global_ob, sub_global_indices,
-C     &     temp_subMask, bath_subMask,
-C     &     subBathOnMask, subTempOnMask
-C      COMMON / DIAG_OB_EXTRACT_I /
-C     &     lookup_table
-C      COMMON / DIAG_OB_EXTRACT_C /
-C     &     ob_fileName, t_fileName
 
 
 CEH3 ;;; Local Variables: ***

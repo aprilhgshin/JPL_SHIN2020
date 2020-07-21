@@ -33,9 +33,12 @@ C     === Local variables ===
 
 #ifdef ALLOW_DIAGNOSTICS
       IF ( useDiagnostics ) THEN
-        CALL DIAGNOSTICS_OB_DIAGNOSTICS_INIT( myThid )
+        CALL DIAGNOSTICS_OB_INIT( myThid )
       ENDIF
 #endif
+
+C      CALL OB_EXTRACT( myThid )
+      CALL OB_EXTRACT_LOOKUP( myThid )
 
       RETURN
       END

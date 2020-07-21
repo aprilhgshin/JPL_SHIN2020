@@ -15,7 +15,7 @@ C     !USES:
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "PARAMS.h"
-#include "DIAGNOSTICS_OB_OPTIONS.h"
+#include "DIAGNOSTICS_OB.h"
 
 C     !INPUT PARAMETERS:
       INTEGER myThid
@@ -28,6 +28,7 @@ C     msgBuf     :: Informational/error message buffer
 C     iUnit      :: Work variable for IO unit number
       CHARACTER*(MAX_LEN_MBUF) msgBuf
       INTEGER iUnit
+      INTEGER bi,bj,i,j,k,l
 
       NAMELIST /DIAGNOSTICS_OB_PARM01/
      &       diagOB_MNC,
@@ -41,6 +42,25 @@ C     iUnit      :: Work variable for IO unit number
      &       diagOB_Scal1File,  diagOB_Scal2File,
      &       diagOB_VelUFile,   diagOB_VelVFile,
      &       diagOB_Surf1File,  diagOB_Surf2File
+
+      NAMELIST /DIAG_OB_EXTRACT/
+     &       ob_subMask, lookup_table, ob_fileName,
+     &       global_ob, sub_global_indices,t_fileName,
+     &       temp_subMask, bath_subMask,
+     &       subBathOnMask, subTempOnMask,
+     &       avgPeriod_ob, deltaT_ob, totPhase_ob
+
+C      NAMELIST / DIAG_OB_EXTRACT_R /
+C     &     ob_subMask,
+C     &     global_ob, sub_global_indices,
+C     &     temp_subMask, bath_subMask,
+C     &     subBathOnMask, subTempOnMask
+
+C      NAMELIST / DIAG_OB_EXTRACT_I /
+C     &     lookup_table
+
+C      NAMELIST / DIAG_OB_EXTRACT_C /
+C     &     ob_fileName, t_fileName
 
       IF ( .NOT.useDIAGNOSTICS_OB ) THEN
 C-    pkg DIAGNOSTICS_OB is not used
@@ -79,18 +99,57 @@ C-    file names for initial conditions:
       diagOB_Surf1File   = ' '
       diagOB_Surf2File   = ' '
 
-      WRITE(msgBuf,'(A)') 'DIAGNOSTICS_OB_READPARMS: opening data.diagnostics_ob'
+C     Initializing to empty string
+      ob_fileName = ' '
+      t_fileName = ' '
+C     Initializing open boundary sub mask
+      DO bj = myByLo(myThid), myByHi(myThid)
+        DO bi = myBxLo(myThid), myBxHi(myThid)
+          DO j=1-OLy,sNy+OLy
+            DO k=1-OLx,sNx+OLx
+              ob_subMask(k,j,bi,bj)   = 0.0
+              bath_subMask(k,j,bi,bj) = 0.0
+              temp_subMask(k,j,bi,bj) = 0.0
+            ENDDO
+          ENDDO
+        ENDDO
+      ENDDO
+
+      DO l = 1, sNy+sNx+1
+        subBathOnMask(l) = 0.0
+        subTempOnMask(l) = 0.0
+        sub_global_indices(l) = 0
+      ENDDO
+
+C     k limited to total number of open boundaries
+      DO l = 1, Ny*Nx
+        lookup_table(l) = 0.0
+      ENDDO
+
+      DO j=1, (sNy+sNx)*(nPx*nPy)
+        global_ob(j) = 0.0
+      ENDDO
+
+C     Initializing averaging period (avgPeriod_ob) and time counter (deltaT_ob)
+      avgPeriod_ob = 1
+      deltaT_ob = 1
+      totPhase_ob = 1
+
+
+
+      WRITE(msgBuf,'(A)')
+     &      'DIAGNOSTICS_OB_READPARMS: opening data.diagnostics_ob'
       CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
      &                    SQUEEZE_RIGHT , 1)
       CALL OPEN_COPY_DATA_FILE(
-     I                     'data.diagnostics_ob', 'DIAGNOSTICS_OB_READPARMS',
-     O                     iUnit,
-     I                     myThid )
+     I             'data.diagnostics_ob', 'DIAGNOSTICS_OB_READPARMS',
+     O              iUnit,
+     I              myThid )
 
 C     Read parameters from open data file
       READ(UNIT=iUnit,NML=DIAGNOSTICS_OB_PARM01)
       WRITE(msgBuf,'(A)')
-     &    'DIAGNOSTICS_OB_READPARMS: finished reading data.diagnostics_ob'
+     & 'DIAGNOSTICS_OB_READPARMS: finished reading data.diagnostics_ob'
       CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
      &    SQUEEZE_RIGHT , 1)
 C     Close the open data file

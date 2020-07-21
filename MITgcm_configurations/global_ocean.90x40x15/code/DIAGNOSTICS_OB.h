@@ -1,4 +1,5 @@
 #ifdef ALLOW_DIAGNOSTICS_OB
+#include "USER_INPUT.h"
 
 C     Package flag
       LOGICAL diagOB_MNC
@@ -43,6 +44,43 @@ C-    file names for initial conditions:
      &       diagOB_Scal1File, diagOB_Scal2File,
      &       diagOB_VelUFile,  diagOB_VelVFile,
      &       diagOB_Surf1File, diagOB_Surf2File
+
+C     ================== Global Variables for open boundary ====================
+      CHARACTER*(40) ob_fileName
+      CHARACTER*(40) t_fileName
+
+C     First dimension accounts for number of each field outputted during entire time duration
+      _RL ob_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      _RL bath_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      _RL temp_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+
+      _RL subBathOnMask(sNx + sNy + 1)
+      _RL subTempOnMask(sNx + sNy + 1)
+      _RL sub_global_indices(sNx + sNy + 1)
+      INTEGER lookup_table(Ny*Nx)
+      _RL global_ob((sNy+sNx)*(nPx*nPy))
+
+      INTEGER avgPeriod_ob
+      INTEGER deltaT_ob
+      INTEGER totPhase_ob
+C     ==========================================================================
+
+      COMMON /DIAG_OB_EXTRACT/
+     &     ob_subMask,lookup_table, ob_fileName,
+     &     global_ob, sub_global_indices,t_fileName,
+     &     temp_subMask, bath_subMask,
+     &     subBathOnMask, subTempOnMask,
+     &     avgPeriod_ob, deltaT_ob, totPhase_ob
+
+C      COMMON / DIAG_OB_EXTRACT_R /
+C     &     ob_subMask,
+C     &     global_ob, sub_global_indices,
+C     &     temp_subMask, bath_subMask,
+C     &     subBathOnMask, subTempOnMask
+C      COMMON / DIAG_OB_EXTRACT_I /
+C     &     lookup_table
+C      COMMON / DIAG_OB_EXTRACT_C /
+C     &     ob_fileName, t_fileName
 
 #ifdef DIAGNOSTICS_OB_3D_STATE
 C     DIAGOB 3-dim. fields
