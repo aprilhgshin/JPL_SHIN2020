@@ -126,16 +126,18 @@ c      All Processes :
 
            if (step_ob .eq. avgPeriod_ob) then
 
-C            Differing filenames yet to be figured out.
-             b_fileName = 'bathymetry.bin'
-             t_fileName = 'domain_temp.bin'
-             ob_fileName = 'domain_flt32_mask.bin'
+             ob_fnames(1) = 'domain_flt32_mask.bin'
+             ob_fnames(2) = 'bathymetry.bin'
+             ob_fnames(3) = 'domain_temp.bin'
 
-             CALL READ_REC_XY_RL( t_fileName,
+             ob_fldNames(1) = 'bath'
+             ob_fldNames(2) = 'temp'
+
+             CALL READ_REC_XY_RL( ob_fnames(3),
      &               temp_subMask(:,:,:,:),1, 0, myThid )
-             CALL READ_REC_XY_RL( b_fileName,
+             CALL READ_REC_XY_RL( ob_fnames(2),
      &                bath_subMask(:,:,:,:),1, 0, myThid )
-             CALL READ_REC_XY_RL( ob_fileName,
+             CALL READ_REC_XY_RL( ob_fnames(1),
      &               ob_subMask(:,:,:,:),1, 0, myThid )
 
              _EXCH_XY_RL(temp_subMask(:,:,:,:), myThid)

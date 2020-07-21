@@ -1,4 +1,3 @@
-#include "USER_INPUT.h"
 C ======================================================================
 C  Common blocks for diagnostics package.
 C  - DIAG_DEFINE contains the definition of all available diagnostics

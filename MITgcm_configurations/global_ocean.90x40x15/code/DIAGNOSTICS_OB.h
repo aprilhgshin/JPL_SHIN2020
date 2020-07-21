@@ -48,8 +48,9 @@ C-    file names for initial conditions:
 C     ================== Global Variables for open boundary ====================
       CHARACTER*(40) ob_fileName
       CHARACTER*(40) t_fileName
+      CHARACTER*8 ob_fldNames(nOB_fld)
+      CHARACTER*80 ob_fnames(nOB_mask + nOB_fld)
 
-C     First dimension accounts for number of each field outputted during entire time duration
       _RL ob_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
       _RL bath_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
       _RL temp_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
@@ -66,6 +67,7 @@ C     First dimension accounts for number of each field outputted during entire 
 C     ==========================================================================
 
       COMMON /DIAG_OB_EXTRACT/
+     &     ob_fldNames, ob_fnames
      &     ob_subMask,lookup_table, ob_fileName,
      &     global_ob, sub_global_indices,t_fileName,
      &     temp_subMask, bath_subMask,
