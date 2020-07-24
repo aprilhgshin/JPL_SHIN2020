@@ -25,14 +25,6 @@ C#include "DIAGNOSTICS_OB.h"
 C#endif
 
 
-C#include "EEPARAMS.h"
-C#ifdef ALLOW_FIZHI
-C#include "PARAMS.h"
-C#endif
-C#include "GRID.h"
-C#include "DIAGNOSTICS_SIZE.h"
-C#include "DIAGNOSTICS.h"
-
 C     !INPUT PARAMETERS:
       INTEGER myThid
 CEOP
@@ -58,7 +50,9 @@ C--   Calculate pointers for statistics-diags set to non-zero frequency
       CALL DIAGSTATS_INI_IO( myThid )
 
 #ifdef ALLOW_DIAGNOSTICS_OB
-      CALL DIAGNOSTICS_OB_INIT_FIXED( myThid )
+C      if (useDIAGNOSTICS_OB) then
+        CALL DIAGNOSTICS_OB_INIT_FIXED( myThid )
+C      end if
 #endif
 
 
