@@ -126,13 +126,6 @@ c      All Processes :
 
            if (step_ob .eq. avgPeriod_ob) then
 
-             ob_fnames(1) = 'domain_flt32_mask.bin'
-             ob_fnames(2) = 'bathymetry.bin'
-             ob_fnames(3) = 'domain_temp.bin'
-
-             ob_fldNames(1) = 'bath'
-             ob_fldNames(2) = 'temp'
-
              CALL READ_REC_XY_RL( ob_fnames(3),
      &               temp_subMask(:,:,:,:),1, 0, myThid )
              CALL READ_REC_XY_RL( ob_fnames(2),
@@ -415,7 +408,7 @@ C               Appending all other processes' local arrays to final array if nu
                   if (tag .eq. 2) then
                     fldNm = ob_fldNames(1)
                   else if (tag .eq. 3) then
-                    fldNm = b_fldNames(2)
+                    fldNm = ob_fldNames(2)
                   end if
 
                   call WRITE_GLOBAL_BIN(global_ob,total_valid,fldNm,

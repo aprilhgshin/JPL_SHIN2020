@@ -49,12 +49,6 @@ C--   Calculate pointers for statistics-diags set to non-zero frequency
 
       CALL DIAGSTATS_INI_IO( myThid )
 
-#ifdef ALLOW_DIAGNOSTICS_OB
-C      if (useDIAGNOSTICS_OB) then
-        CALL DIAGNOSTICS_OB_INIT_FIXED( myThid )
-C      end if
-#endif
-
 
 #ifdef ALLOW_FIZHI
       if( useFIZHI) then

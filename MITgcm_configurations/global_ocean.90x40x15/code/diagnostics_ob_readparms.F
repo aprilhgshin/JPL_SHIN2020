@@ -45,8 +45,8 @@ C     iUnit      :: Work variable for IO unit number
 
       NAMELIST /DIAG_OB_EXTRACT/
      &       ob_fldNames, ob_fnames,
-     &       ob_subMask, lookup_table, ob_fileName,
-     &       global_ob, sub_global_indices,t_fileName,
+     &       ob_subMask, lookup_table,
+     &       global_ob, sub_global_indices,
      &       temp_subMask, bath_subMask,
      &       subBathOnMask, subTempOnMask,
      &       avgPeriod_ob, deltaT_ob, totPhase_ob
@@ -101,8 +101,6 @@ C-    file names for initial conditions:
       diagOB_Surf2File   = ' '
 
 C     Initializing to empty string
-      ob_fileName = ' '
-      t_fileName = ' '
       DO k=1, nOB_fld
         ob_fldNames(k) = ' '
       ENDDO
