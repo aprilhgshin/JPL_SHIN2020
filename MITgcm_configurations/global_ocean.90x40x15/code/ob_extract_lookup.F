@@ -120,9 +120,9 @@ c      All Processes :
 
        DO ob_id = 1, nOB_mask
 
-         DO incr=1, totPhase_ob, deltaT_ob
+         step_ob = 1
 
-           step_ob = 1
+         DO incr=1, totPhase_ob, deltaT_ob
 
            if (step_ob .eq. avgPeriod_ob) then
 
@@ -297,11 +297,12 @@ C           Store global_ob_masks into lookup table
                 counter = 1
                 do j=1, Ny, 1
                   do i=1, Nx, 1
-                    lookup_table(counter)= int(global_mask(i,j,1,1))
+                    lookup_table(ob_id,counter) =
+     &                               int(global_mask(i,j,1,1))
                     if (print_debug .eq. 1) then
-                      if (lookup_table(counter) .ge. 1) then
+                      if (lookup_table(ob_id,counter) .ge. 1) then
                         print *,"OB_EXTRACT_LOOKUP:global index ",
-     &                   "positive:",lookup_table(counter),"at",counter
+     &           "positive:",lookup_table(ob_id,counter),"at",counter
                       end if
                     end if
                     counter = counter + 1
@@ -357,8 +358,8 @@ C                 First append process 0 local arrays to final global array if n
      &                                  int(sub_global_indices(1))
                       if (tag .eq. 2) then
                         call APPEND_OB_VALUE(sub_global_indices(:),
-     &                                       subBathOnMask(:),
-     &                                       global_ob, lookup_table)
+     &                                    subBathOnMask(:), global_ob,
+     &                                    lookup_table, ob_id)
                         if (debug .eq. 1) then
                          print *,"APPEND_OB_VALUE: appending local "
      &                    ,"bath to global_ob with ",
@@ -368,8 +369,8 @@ C                 First append process 0 local arrays to final global array if n
                         end if
                       else if (tag .eq. 3) then
                         call APPEND_OB_VALUE(sub_global_indices(:),
-     &                                       subTempOnMask(:),
-     &                                       global_ob, lookup_table)
+     &                                    subTempOnMask(:), global_ob,
+     &                                    lookup_table, ob_id)
                         if (debug .eq. 1) then
                           print *,"APPEND_OB_VALUE: appending local "
      &                    ,"temp to global_ob with ",
@@ -395,7 +396,7 @@ C               Receive all sub arrays from processes with pid > 0. Only needs t
 C               Appending all other processes' local arrays to final array if number of valid elements in arrays > 0:
                     if (int(g_indices(pid, 1)) .ge. 1) then
                      call APPEND_OB_VALUE(g_indices(pid,:),recv_arr(:)
-     &                                   ,global_ob, lookup_table)
+     &                                 ,global_ob, lookup_table, ob_id)
 
                      total_valid = total_valid + g_indices(pid,1)
 
@@ -412,9 +413,9 @@ C               Appending all other processes' local arrays to final array if nu
                   call PRINT_FLOAT_ARR(global_ob,total_valid)
 
                   if (tag .eq. 2) then
-                    fldNm = "bath"
+                    fldNm = ob_fldNames(1)
                   else if (tag .eq. 3) then
-                    fldNm = "temp"
+                    fldNm = b_fldNames(2)
                   end if
 
                   call WRITE_GLOBAL_BIN(global_ob,total_valid,fldNm,
@@ -471,14 +472,14 @@ C      END
 
 
       SUBROUTINE APPEND_OB_VALUE(global_indices,ob_values,global_ob,
-     &                           lookup_table)
+     &                           lookup_table, ob_id)
          include "SIZE.h"
          include "USER_INPUT.h"
          _RL global_indices(sNx + sNy + 1)
          _RL ob_values(sNx + sNy + 1)
          _RL global_ob((sNy+sNx)*(nPx*nPy))
-         INTEGER lookup_table(Ny*Nx)
-         integer num_valid, i, ob_index
+         INTEGER lookup_table(nOB_mask, Ny*Nx)
+         integer num_valid, i, ob_index, ob_id
          integer, parameter :: print_debug = 0
 
          if (print_debug .eq. 1) then
@@ -492,7 +493,7 @@ C      END
          end if
 
          do i=2, num_valid + 1
-           ob_index = lookup_table(int(global_indices(i)))
+           ob_index = lookup_table(ob_id, int(global_indices(i)))
            if (print_debug .eq. 1) then
              print *, "APPEND_OB_VALUE: ob_index", ob_index
              print *, "APPEND_OB_VALUE: ob_value", ob_values(i)
@@ -593,9 +594,10 @@ c      Writing global array to binary file
      &                                ob_id, fldNm)
 c      Unravels global_ob and plots onto an array with dimensions Nx by Ny
        include "SIZE.h"
+       include "USER_INPUT.h"
        _RL global_ob((sNy+sNx)*(nPx*nPy))
        _RL global_mask(Nx,Ny,nSx,nSy)
-       INTEGER lookup_table(Ny*Nx)
+       INTEGER lookup_table(nOB_mask, Ny*Nx)
        _RL global_correct((sNy+sNx)*(nPx*nPy))
        _RL global_NxNy(Nx,Ny,nSx,nSy)
 
@@ -636,7 +638,7 @@ C      If lookup table contains ob mask point location (1-90) then extract corre
            DO j=1, Ny
              DO i=1, Nx
                if (ob_counter .le. total_valid) then
-                 if (lookup_table(counter) .eq. ob_counter) then
+                 if (lookup_table(ob_id,counter).eq.ob_counter) then
 C                Inserting bathymetry points into NxNy array
                    global_NxNy(i,j,bi,bj) = global_ob(ob_counter)
                    if (global_mask(i,j,bi,bj) .eq. 0) then

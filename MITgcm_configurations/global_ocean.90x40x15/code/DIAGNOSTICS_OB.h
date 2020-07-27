@@ -58,7 +58,7 @@ C     ================== Global Variables for open boundary ====================
       _RL subBathOnMask(sNx + sNy + 1)
       _RL subTempOnMask(sNx + sNy + 1)
       _RL sub_global_indices(sNx + sNy + 1)
-      INTEGER lookup_table(Ny*Nx)
+      INTEGER lookup_table(nOB_mask, Ny*Nx)
       _RL global_ob((sNy+sNx)*(nPx*nPy))
 
       INTEGER avgPeriod_ob

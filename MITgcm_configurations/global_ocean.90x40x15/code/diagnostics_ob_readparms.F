@@ -130,8 +130,10 @@ C     Initializing open boundary sub mask
       ENDDO
 
 C     k limited to total number of open boundaries
-      DO l = 1, Ny*Nx
-        lookup_table(l) = 0.0
+      DO j = 1, nOB_mask
+        DO l = 1, Ny*Nx
+        lookup_table(j,l) = 0.0
+        ENDDO
       ENDDO
 
       DO j=1, (sNy+sNx)*(nPx*nPy)
