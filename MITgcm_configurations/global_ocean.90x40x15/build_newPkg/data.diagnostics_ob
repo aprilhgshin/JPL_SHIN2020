@@ -1,0 +1,18 @@
+# Diagnostics_ob Package Choices
+#--------------------
+#     nml_fldNames : field names for ocean state and flux variables
+#     nml_fnames : filenames for all files used in OB_EXTRACT_LOOKUP
+#     avgPeriod_nml : averaging period
+#     deltaT_nml : size of time step
+#     totPhase_nml : total time phase
+#--------------------
+ &DIAG_OB_EXTRACT
+ avgPeriod_nml = 1,
+ deltaT_nml = 100,
+ totPhase_nml = 1,
+ nml_fnames(1) = 'domain_flt32_mask.bin',
+ nml_fldNames(1) = 'bath',
+ nml_fnames(2) = 'bathymetry.bin',
+ nml_fldNames(2) = 'temp',
+ nml_fnames(3) = 'domain_temp.bin',
+ &

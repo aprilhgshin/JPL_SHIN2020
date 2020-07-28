@@ -1,0 +1,4 @@
+(PID.TID 0001.0001) ** Warning ** MNC_READPARMS: ignores "data.mnc" file since
+(PID.TID 0001.0001) ** Warning ** MNC_READPARMS: useMNC= F (set from "data.pkg")
+(PID.TID 0001.0001) *** ERROR ***  MDS_READ_FIELD: filename: domain_temp.bin , domain_temp.bin.002.001.data
+(PID.TID 0001.0001) *** ERROR ***  MDS_READ_FIELD: Files DO not exist

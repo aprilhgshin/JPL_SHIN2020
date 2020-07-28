@@ -1,0 +1,1 @@
+/home/mitgcm/Work/MITgcm/pkg/diagnostics/diagnostics_is_on.F

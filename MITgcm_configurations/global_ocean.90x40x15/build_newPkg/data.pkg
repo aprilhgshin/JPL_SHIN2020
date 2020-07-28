@@ -1,0 +1,8 @@
+# Packages (lines beginning "#" are comments)
+ &PACKAGES
+ useGMRedi=.TRUE.,
+ useSBO=.TRUE.,
+ useDiagnostics=.TRUE.,
+ useDiagnostics_ob = .TRUE.,
+#useMNC=.TRUE.,
+ &

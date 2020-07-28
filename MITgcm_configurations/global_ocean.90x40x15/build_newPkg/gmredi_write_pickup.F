@@ -1,0 +1,1 @@
+/home/mitgcm/Work/MITgcm/pkg/gmredi/gmredi_write_pickup.F

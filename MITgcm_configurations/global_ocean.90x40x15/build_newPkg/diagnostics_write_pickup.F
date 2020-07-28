@@ -1,0 +1,1 @@
+/home/mitgcm/Work/MITgcm/pkg/diagnostics/diagnostics_write_pickup.F
