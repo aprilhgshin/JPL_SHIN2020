@@ -49,8 +49,8 @@ C--   Calculate pointers for statistics-diags set to non-zero frequency
 
       CALL DIAGSTATS_INI_IO( myThid )
 
-      print *, "ABOUT TO CALL OB"
-      CALL OB_EXTRACT_LOOKUP( myThid )
+C      print *, "ABOUT TO CALL OB"
+C      CALL OB_EXTRACT_LOOKUP( myThid )
 
 
 #ifdef ALLOW_FIZHI

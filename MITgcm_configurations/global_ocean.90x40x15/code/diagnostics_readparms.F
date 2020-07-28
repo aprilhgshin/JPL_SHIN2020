@@ -115,11 +115,11 @@ C     avgPeriod_nml : averaging period
 C     deltaT_nml : size of time step
 C     totPhase_nml : total time phase
 C -----------------------------
-      CHARACTER*4 nml_fldNames(nOB_fld)
-      CHARACTER*21 nml_fnames(nOB_mask + nOB_fld)
-      INTEGER avgPeriod_nml
-      INTEGER deltaT_nml
-      INTEGER totPhase_nml
+C      CHARACTER*4 nml_fldNames(nOB_fld)
+C      CHARACTER*21 nml_fnames(nOB_mask + nOB_fld)
+C      INTEGER avgPeriod_nml
+C      INTEGER deltaT_nml
+C      INTEGER totPhase_nml
 
 C      NAMELIST / DIAG_OB_EXTRACT /
 C     &       ob_fldNames, ob_fnames,
@@ -135,9 +135,9 @@ C     &     global_ob, sub_global_indices,
 C     &     temp_subMask, bath_subMask,
 C     &     subBathOnMask, subTempOnMask
 
-      NAMELIST / DIAG_OB_EXTRACT /
-     &     nml_fnames, nml_fldNames,
-     &     avgPeriod_nml, deltaT_nml, totPhase_nml
+C      NAMELIST / DIAG_OB_EXTRACT /
+C     &     nml_fnames, nml_fldNames,
+C     &     avgPeriod_nml, deltaT_nml, totPhase_nml
 
 
       IF ( .NOT.useDiagnostics ) THEN
@@ -227,47 +227,47 @@ C-    Track diagnostics pkg activation status:
 
 
 C     Initializing open boundary sub mask
-      DO bj = myByLo(myThid), myByHi(myThid)
-        DO bi = myBxLo(myThid), myBxHi(myThid)
-          DO j=1-OLy,sNy+OLy
-            DO k=1-OLx,sNx+OLx
-              ob_subMask(k,j,bi,bj)   = 0.0
-              bath_subMask(k,j,bi,bj) = 0.0
-              temp_subMask(k,j,bi,bj) = 0.0
-            ENDDO
-          ENDDO
-        ENDDO
-      ENDDO
+C      DO bj = myByLo(myThid), myByHi(myThid)
+C        DO bi = myBxLo(myThid), myBxHi(myThid)
+C          DO j=1-OLy,sNy+OLy
+C            DO k=1-OLx,sNx+OLx
+C              ob_subMask(k,j,bi,bj)   = 0.0
+C              bath_subMask(k,j,bi,bj) = 0.0
+C              temp_subMask(k,j,bi,bj) = 0.0
+C            ENDDO
+C          ENDDO
+C        ENDDO
+C      ENDDO
 
-      DO l = 1, sNy+sNx+1
-        subBathOnMask(l) = 0.0
-        subTempOnMask(l) = 0.0
-        sub_global_indices(l) = 0
-      ENDDO
+C      DO l = 1, sNy+sNx+1
+C        subBathOnMask(l) = 0.0
+C        subTempOnMask(l) = 0.0
+C        sub_global_indices(l) = 0
+C      ENDDO
 
 C     k limited to total number of open boundaries
-      DO j = 1, nOB_mask
-        DO l = 1, Ny*Nx
-        lookup_table(j,l) = 0.0
-        ENDDO
-      ENDDO
+C      DO j = 1, nOB_mask
+C        DO l = 1, Ny*Nx
+C        lookup_table(j,l) = 0.0
+C        ENDDO
+C      ENDDO
 
-      DO j=1, (sNy+sNx)*(nPx*nPy)
-        global_ob(j) = 0.0
-      ENDDO
+C      DO j=1, (sNy+sNx)*(nPx*nPy)
+C        global_ob(j) = 0.0
+C      ENDDO
 
 C     Initializing to empty string
-      DO k=1, nOB_fld
-        nml_fldNames(k) = ' '
-      ENDDO
-      DO k=1, nOB_fld + nOB_mask
-        nml_fnames(k) = ' '
-      ENDDO
+C      DO k=1, nOB_fld
+C        nml_fldNames(k) = ' '
+C      ENDDO
+C      DO k=1, nOB_fld + nOB_mask
+C        nml_fnames(k) = ' '
+C      ENDDO
 
 C     Initializing averaging period (avgPeriod_ob) and time counter (deltaT_ob)
-      avgPeriod_nml = 1
-      deltaT_nml = 1
-      totPhase_nml = 1
+C      avgPeriod_nml = 1
+C      deltaT_nml = 1
+C      totPhase_nml = 1
 
 
 
@@ -302,15 +302,15 @@ C-    set default for statistics output according to the main flag
       CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
      &                    SQUEEZE_RIGHT , 1)
 
-      WRITE(msgBuf,'(2A)') 'S/R DIAGNOSTICS_READPARMS,',
-     &     ' read namelist "DIAG_OB_EXTRACT": start'
-      CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
-     &                    SQUEEZE_RIGHT , 1)
-      READ  (ku,NML=DIAG_OB_EXTRACT)
-      WRITE(msgBuf,'(2A)') 'S/R DIAGNOSTICS_READPARMS,',
-     &     ' read namelist "DIAG_OB_EXTRACT": OK'
-      CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
-     &                    SQUEEZE_RIGHT , 1)
+C      WRITE(msgBuf,'(2A)') 'S/R DIAGNOSTICS_READPARMS,',
+C     &     ' read namelist "DIAG_OB_EXTRACT": start'
+C      CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+C     &                    SQUEEZE_RIGHT , 1)
+C      READ  (ku,NML=DIAG_OB_EXTRACT)
+C      WRITE(msgBuf,'(2A)') 'S/R DIAGNOSTICS_READPARMS,',
+C     &     ' read namelist "DIAG_OB_EXTRACT": OK'
+C      CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+C     &                    SQUEEZE_RIGHT , 1)
 
 #ifdef SINGLE_DISK_IO
       CLOSE(ku)
@@ -354,15 +354,15 @@ C     Fix to avoid running without getting any output:
 #endif
 
 C     Fill Diagnostics Common Block with Namelist Info
-      ob_fnames(1) = nml_fnames(1)
-      ob_fnames(2) = nml_fnames(2)
-      ob_fnames(3) = nml_fnames(3)
-      ob_fldNames(1) = nml_fldNames(1)
-      ob_fldNames(2) = nml_fldNames(2)
+C      ob_fnames(1) = nml_fnames(1)
+C      ob_fnames(2) = nml_fnames(2)
+C      ob_fnames(3) = nml_fnames(3)
+C      ob_fldNames(1) = nml_fldNames(1)
+C      ob_fldNames(2) = nml_fldNames(2)
 
-      avgPeriod_ob = avgPeriod_nml
-      deltaT_ob = deltaT_nml
-      totPhase_ob = totPhase_nml
+C      avgPeriod_ob = avgPeriod_nml
+C      deltaT_ob = deltaT_nml
+C      totPhase_ob = totPhase_nml
 
       diagSt_mnc = diagSt_mnc .AND. useMNC
       diag_mdsio = (.NOT. diag_mnc) .OR. outputTypesInclusive

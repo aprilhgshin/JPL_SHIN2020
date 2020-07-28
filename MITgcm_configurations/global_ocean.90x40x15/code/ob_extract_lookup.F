@@ -13,8 +13,8 @@ C All variables in header file are global to header files included below
 #include "PARAMS.h"
 #endif
 #include "DIAGNOSTICS_SIZE.h"
-#include "DIAGNOSTICS.h"
-C#include "DIAGNOSTICS_OB.h"
+C#include "DIAGNOSTICS.h"
+#include "DIAGNOSTICS_OB.h"
 C No need to include "mpif.h" becaues EESUPPORT.h already includes it.
 
 C Putting everything under do loop ob_id (EVERYTHING)
