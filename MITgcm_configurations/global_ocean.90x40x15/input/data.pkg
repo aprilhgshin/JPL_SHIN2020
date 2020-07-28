@@ -3,5 +3,6 @@
  useGMRedi=.TRUE.,
  useSBO=.TRUE.,
  useDiagnostics=.TRUE.,
+#useDIAGNOSTICS_OB = .TRUE.,
 #useMNC=.TRUE.,
  &
