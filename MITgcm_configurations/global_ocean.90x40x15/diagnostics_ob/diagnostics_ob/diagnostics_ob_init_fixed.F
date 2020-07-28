@@ -43,8 +43,5 @@ C     === Local variables ===
       ENDIF
 #endif
 
-      CALL NML_READPARMS( myThid )
-
-
       RETURN
       END
