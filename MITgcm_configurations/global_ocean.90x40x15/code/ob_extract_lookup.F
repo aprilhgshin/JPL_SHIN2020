@@ -13,8 +13,8 @@ C All variables in header file are global to header files included below
 #include "PARAMS.h"
 #endif
 #include "DIAGNOSTICS_SIZE.h"
-C#include "DIAGNOSTICS.h"
-#include "DIAGNOSTICS_OB.h"
+#include "DIAGNOSTICS.h"
+C#include "DIAGNOSTICS_OB.h"
 C No need to include "mpif.h" becaues EESUPPORT.h already includes it.
 
 C Putting everything under do loop ob_id (EVERYTHING)
@@ -58,6 +58,7 @@ C      So global_mask, ob_subMask, and bath_subMask are set as _RL or _RS.
        common / myBxy_LoHi / myByLo_myThid, myByHi_myThid,
      &                       myBxLo_myThid, myBxHi_myThid
 
+       print *, "HERE IN OB"
        myByLo_myThid = myByLo(myThid)
        myByHi_myThid = myByHi(myThid)
        myBxLo_myThid = myBxLo(myThid)
@@ -88,6 +89,7 @@ C       Initialize local arrays:
             g_indices(pid, i)=0.0
           ENDDO
         ENDDO
+
 
 
 c      ob_subMask initialized in diagnostics_readparms, dimensions match READ_REC_XY_RS field:
@@ -122,38 +124,45 @@ c      All Processes :
 
          step_ob = 1
 
-         DO incr=1, totPhase_ob, deltaT_ob
+         DO incr=1, int(totPhase_ob), int(deltaT_ob)
 
            if (step_ob .eq. avgPeriod_ob) then
 
-             CALL READ_REC_XY_RL( ob_fnames(3),
-     &               temp_subMask(:,:,:,:),1, 0, myThid )
-             CALL READ_REC_XY_RL( ob_fnames(2),
-     &                bath_subMask(:,:,:,:),1, 0, myThid )
-             CALL READ_REC_XY_RL( ob_fnames(1),
-     &               ob_subMask(:,:,:,:),1, 0, myThid )
+C             ob_fnames(1) = 'domain_flt32_mask.bin'
+C             ob_fnames(2) = 'bathymetry.bin'
+C             ob_fnames(3) = 'domain_temp.bin'
 
-             _EXCH_XY_RL(temp_subMask(:,:,:,:), myThid)
-             _EXCH_XY_RL(bath_subMask(:,:,:,:), myThid)
-             _EXCH_XY_RL(ob_subMask(:,:,:,:), myThid)
+             b_fileName = ob_fnames(3)
+C             ob_fldNames(1) = 'bath'
+C             ob_fldNames(2) = 'temp'
+             CALL READ_REC_XY_RL( ob_fnames(3),
+     &               temp_subMask,1, 0, myThid )
+             CALL READ_REC_XY_RL( ob_fnames(2),
+     &                bath_subMask,1, 0, myThid )
+             CALL READ_REC_XY_RL( ob_fnames(1),
+     &               ob_subMask,1, 0, myThid )
+
+             _EXCH_XY_RL(temp_subMask, myThid)
+             _EXCH_XY_RL(bath_subMask, myThid)
+             _EXCH_XY_RL(ob_subMask, myThid)
 
 
              CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, temp_subMask,
-     &                      "temp", ob_id)
+     &                      ob_fldNames(2), ob_id)
 
              CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, bath_subMask,
-     &                      "bath", ob_id)
+     &                      ob_fldNames(1), ob_id)
 
              CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, temp_subMask,
      &                      "mask", ob_id)
 
              if (debug .eq. 1) then
 C              Plotting for debugging
-               CALL PLOT_FIELD_XYRL( ob_subMask(:,:,:,:),
+               CALL PLOT_FIELD_XYRL( ob_subMask,
      &                        'Open Boundary Submask', -1, myThid )
-               CALL PLOT_FIELD_XYRL( bath_subMask(:,:,:,:),
+               CALL PLOT_FIELD_XYRL( bath_subMask,
      &                       'Bathymetry Submask', -1, myThid )
-               CALL PLOT_FIELD_XYRL( temp_subMask(:,:,:,:),
+               CALL PLOT_FIELD_XYRL( temp_subMask,
      &                        'Temperature Submask', -1, myThid )
              end if
 
@@ -301,6 +310,7 @@ C           Store global_ob_masks into lookup table
                     counter = counter + 1
                   end do
                 end do
+
 
 
 C          Retrive sub_global_indicies and sub fields from every process > 0.
@@ -462,7 +472,8 @@ C      end do
 C      avg = real(sum/nfld_time)
 
 C      END
-
+Cg_indices(pid,:),recv_arr(:)
+C&                                 ,global_ob, lookup_table, ob_id)
 
       SUBROUTINE APPEND_OB_VALUE(global_indices,ob_values,global_ob,
      &                           lookup_table, ob_id)
@@ -480,18 +491,23 @@ C      END
            call PRINT_FLOAT_ARR(global_indices, sNx + sNy + 1)
          end if
 
-         num_valid = int(global_indices(1))
+         num_valid = int(ob_values(1))
          if (print_debug .eq. 1) then
            print *, "APPEND_OB_VALUE: num_valid", num_valid
+           print *, "APPEND_OB_VALUE: shape values:", shape(ob_values)
+           print *, "APPEND_OB_VALUE: shape global_ob", shape(global_ob)
          end if
 
          do i=2, num_valid + 1
            ob_index = lookup_table(ob_id, int(global_indices(i)))
-           if (print_debug .eq. 1) then
-             print *, "APPEND_OB_VALUE: ob_index", ob_index
-             print *, "APPEND_OB_VALUE: ob_value", ob_values(i)
+           if (ob_index .le. (sNy+sNx)*(nPx*nPy)) then
+             if (print_debug .eq. 1) then
+               print *, "APPEND_OB_VALUE: ob_index", ob_index
+               print *, "APPEND_OB_VALUE: counter i",i
+               print *, "APPEND_OB_VALUE: ob_value", ob_values(i)
+             end if
+             global_ob(ob_index) = ob_values(i)
            end if
-           global_ob(ob_index) = ob_values(i)
          end do
          if (print_debug .eq. 1) then
            print *, "APPEND_OB_VALUE: global_ob:"

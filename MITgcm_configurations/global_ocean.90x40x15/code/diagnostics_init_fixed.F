@@ -12,7 +12,7 @@ C     finish setting up the list of available diagnostics and
 C     prepare for storing selected diagnostics and statistics-diags.
 
 C     !USES:
-      IMPLICIT NONE
+C      IMPLICIT NONE
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #ifdef ALLOW_FIZHI
@@ -48,6 +48,9 @@ C--   Calculate pointers for statistics-diags set to non-zero frequency
       CALL DIAGSTATS_SET_POINTERS( myThid )
 
       CALL DIAGSTATS_INI_IO( myThid )
+
+      print *, "ABOUT TO CALL OB"
+      CALL OB_EXTRACT_LOOKUP( myThid )
 
 
 #ifdef ALLOW_FIZHI
