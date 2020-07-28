@@ -12,7 +12,7 @@ C     finish setting up the list of available diagnostics and
 C     prepare for storing selected diagnostics and statistics-diags.
 
 C     !USES:
-      IMPLICIT NONE
+C      IMPLICIT NONE
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #ifdef ALLOW_FIZHI
@@ -20,15 +20,10 @@ C     !USES:
 #endif
 #include "DIAGNOSTICS_SIZE.h"
 #include "DIAGNOSTICS.h"
-
-
-C#include "EEPARAMS.h"
-C#ifdef ALLOW_FIZHI
-C#include "PARAMS.h"
+C#ifdef ALLOW_DIAGNOSTICS_OB
+C#include "DIAGNOSTICS_OB.h"
 C#endif
-C#include "GRID.h"
-C#include "DIAGNOSTICS_SIZE.h"
-C#include "DIAGNOSTICS.h"
+
 
 C     !INPUT PARAMETERS:
       INTEGER myThid
@@ -54,9 +49,8 @@ C--   Calculate pointers for statistics-diags set to non-zero frequency
 
       CALL DIAGSTATS_INI_IO( myThid )
 
-C      CALL OB_EXTRACT( myThid )
+      print *, "ABOUT TO CALL OB"
       CALL OB_EXTRACT_LOOKUP( myThid )
-
 
 
 #ifdef ALLOW_FIZHI

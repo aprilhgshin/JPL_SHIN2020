@@ -107,24 +107,37 @@ C--   per level statistics output:
      &     set_regMask, val_regMask,
      &     diagSt_regMaskFile, nSetRegMskFile
 
+C ----------------------------
+C     Open Boundary Extraction Namelist:
+C     nml_fldNames : field names for ocean state and flux variables
+C     nml_fnames : filenames for all files used in OB_EXTRACT_LOOKUP
+C     avgPeriod_nml : averaging period
+C     deltaT_nml : size of time step
+C     totPhase_nml : total time phase
+C -----------------------------
+      CHARACTER*4 nml_fldNames(nOB_fld)
+      CHARACTER*21 nml_fnames(nOB_mask + nOB_fld)
+      INTEGER avgPeriod_nml
+      INTEGER deltaT_nml
+      INTEGER totPhase_nml
 
 C      NAMELIST / DIAG_OB_EXTRACT /
-C     &     ob_subMask,lookup_table, ob_fileName,
-C     &     global_ob, sub_global_indices,t_fileName,
+C     &       ob_fldNames, ob_fnames,
+C     &       ob_subMask, lookup_table,
+C     &       global_ob, sub_global_indices,
+C     &       temp_subMask, bath_subMask,
+C     &       subBathOnMask, subTempOnMask,
+C     &       avgPeriod_ob, deltaT_ob, totPhase_ob
+
+C      NAMELIST / DIAG_OB_EXTRACT_R /
+C     &     ob_subMask,
+C     &     global_ob, sub_global_indices,
 C     &     temp_subMask, bath_subMask,
 C     &     subBathOnMask, subTempOnMask
 
-      NAMELIST / DIAG_OB_EXTRACT_R /
-     &     ob_subMask,
-     &     global_ob, sub_global_indices,
-     &     temp_subMask, bath_subMask,
-     &     subBathOnMask, subTempOnMask
-
-      NAMELIST / DIAG_OB_EXTRACT_I /
-     &     lookup_table
-
-      NAMELIST / DIAG_OB_EXTRACT_C /
-     &     ob_fileName, t_fileName
+      NAMELIST / DIAG_OB_EXTRACT /
+     &     nml_fnames, nml_fldNames,
+     &     avgPeriod_nml, deltaT_nml, totPhase_nml
 
 
       IF ( .NOT.useDiagnostics ) THEN
@@ -212,19 +225,15 @@ C     useDiag4AdjOutp will be to set to T if ADJ diags are found in namelist
 C-    Track diagnostics pkg activation status:
       diag_pkgStatus = 1
 
-C     Initializing to empty string
-      ob_fileName = ' '
-      t_fileName = ' '
+
 C     Initializing open boundary sub mask
-      DO l=1, nfld_time
-        DO bj = myByLo(myThid), myByHi(myThid)
-          DO bi = myBxLo(myThid), myBxHi(myThid)
-            DO j=1-OLy,sNy+OLy
-              DO k=1-OLx,sNx+OLx
-                ob_subMask(l,k,j,bi,bj)   = 0.0
-                bath_subMask(l,k,j,bi,bj) = 0.0
-                temp_subMask(l,k,j,bi,bj) = 0.0
-              ENDDO
+      DO bj = myByLo(myThid), myByHi(myThid)
+        DO bi = myBxLo(myThid), myBxHi(myThid)
+          DO j=1-OLy,sNy+OLy
+            DO k=1-OLx,sNx+OLx
+              ob_subMask(k,j,bi,bj)   = 0.0
+              bath_subMask(k,j,bi,bj) = 0.0
+              temp_subMask(k,j,bi,bj) = 0.0
             ENDDO
           ENDDO
         ENDDO
@@ -237,14 +246,28 @@ C     Initializing open boundary sub mask
       ENDDO
 
 C     k limited to total number of open boundaries
-      DO l = 1, Ny*Nx
-        lookup_table(l) = 0.0
+      DO j = 1, nOB_mask
+        DO l = 1, Ny*Nx
+        lookup_table(j,l) = 0.0
+        ENDDO
       ENDDO
 
       DO j=1, (sNy+sNx)*(nPx*nPy)
         global_ob(j) = 0.0
       ENDDO
 
+C     Initializing to empty string
+      DO k=1, nOB_fld
+        nml_fldNames(k) = ' '
+      ENDDO
+      DO k=1, nOB_fld + nOB_mask
+        nml_fnames(k) = ' '
+      ENDDO
+
+C     Initializing averaging period (avgPeriod_ob) and time counter (deltaT_ob)
+      avgPeriod_nml = 1
+      deltaT_nml = 1
+      totPhase_nml = 1
 
 
 
@@ -279,11 +302,22 @@ C-    set default for statistics output according to the main flag
       CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
      &                    SQUEEZE_RIGHT , 1)
 
+      WRITE(msgBuf,'(2A)') 'S/R DIAGNOSTICS_READPARMS,',
+     &     ' read namelist "DIAG_OB_EXTRACT": start'
+      CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &                    SQUEEZE_RIGHT , 1)
+      READ  (ku,NML=DIAG_OB_EXTRACT)
+      WRITE(msgBuf,'(2A)') 'S/R DIAGNOSTICS_READPARMS,',
+     &     ' read namelist "DIAG_OB_EXTRACT": OK'
+      CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,
+     &                    SQUEEZE_RIGHT , 1)
+
 #ifdef SINGLE_DISK_IO
       CLOSE(ku)
 #else
       CLOSE(ku,STATUS='DELETE')
 #endif /* SINGLE_DISK_IO */
+
 
 C     Initialise DIAG_SELECT common block (except pointers)
       nlists = 0
@@ -320,6 +354,16 @@ C     Fix to avoid running without getting any output:
 #endif
 
 C     Fill Diagnostics Common Block with Namelist Info
+      ob_fnames(1) = nml_fnames(1)
+      ob_fnames(2) = nml_fnames(2)
+      ob_fnames(3) = nml_fnames(3)
+      ob_fldNames(1) = nml_fldNames(1)
+      ob_fldNames(2) = nml_fldNames(2)
+
+      avgPeriod_ob = avgPeriod_nml
+      deltaT_ob = deltaT_nml
+      totPhase_ob = totPhase_nml
+
       diagSt_mnc = diagSt_mnc .AND. useMNC
       diag_mdsio = (.NOT. diag_mnc) .OR. outputTypesInclusive
       diag_pickup_read_mnc  = diag_pickup_read_mnc .AND. diag_mnc
@@ -437,6 +481,8 @@ c        write(6,*) 'list summary:',n,nfields(n),nlevels(n)
          STOP 'ABNORMAL END: S/R DIAGNOSTICS_READPARMS'
        ENDIF
       ENDDO
+
+
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 

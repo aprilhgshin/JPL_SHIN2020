@@ -1,4 +1,5 @@
 #include "USER_INPUT.h"
+
 C ======================================================================
 C  Common blocks for diagnostics package.
 C  - DIAG_DEFINE contains the definition of all available diagnostics
@@ -194,22 +195,6 @@ C     diagSt_Fname(n)  :: output file name for output stream # n
 
       LOGICAL   diagSt_ascii, diagSt_mnc
 
-C     ================== Global Variables for open boundary ====================
-      CHARACTER*40 ob_fileName
-      CHARACTER*40 t_fileName
-
-C     First dimension accounts for number of each field outputted during entire time duration
-      _RL ob_subMask(nfld_time,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      _RL bath_subMask(nfld_time,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      _RL temp_subMask(nfld_time,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-
-      _RL subBathOnMask(sNx + sNy + 1)
-      _RL subTempOnMask(sNx + sNy + 1)
-      _RL sub_global_indices(sNx + sNy + 1)
-      INTEGER lookup_table(Ny*Nx)
-      _RL global_ob((sNy+sNx)*(nPx*nPy))
-C     ==========================================================================
-
 
       COMMON / DIAG_STATIS_R /
      &     diagSt_freq, diagSt_phase
@@ -222,11 +207,32 @@ C     ==========================================================================
       COMMON / DIAG_STATIS_L /
      &     diagSt_Ascii, diagSt_mnc
 
-C      COMMON / DIAG_OB_EXTRACT /
-C     &     ob_subMask,lookup_table, ob_fileName,
-C     &     global_ob, sub_global_indices,t_fileName,
+C     ================== Global Variables for open boundary ====================
+      CHARACTER*4 ob_fldNames(nOB_fld)
+      CHARACTER*21 ob_fnames(nOB_mask + nOB_fld)
+
+      _RL ob_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      _RL bath_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      _RL temp_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+
+      _RL subBathOnMask(sNx + sNy + 1)
+      _RL subTempOnMask(sNx + sNy + 1)
+      _RL sub_global_indices(sNx + sNy + 1)
+      INTEGER lookup_table(nOB_mask, Ny*Nx)
+      _RL global_ob((sNy+sNx)*(nPx*nPy))
+
+      INTEGER avgPeriod_ob
+      INTEGER deltaT_ob
+      INTEGER totPhase_ob
+C     ==========================================================================
+
+C      COMMON / DIAG_OB_EXTRACTS /
+C     &     ob_fldNames, ob_fnames,
+C     &     ob_subMask,lookup_table,
+C     &     global_ob, sub_global_indices,
 C     &     temp_subMask, bath_subMask,
-C     &     subBathOnMask, subTempOnMask
+C     &     subBathOnMask, subTempOnMask,
+C     &     avgPeriod_ob, deltaT_ob, totPhase_ob
 
       COMMON / DIAG_OB_EXTRACT_R /
      &     ob_subMask,
@@ -234,10 +240,9 @@ C     &     subBathOnMask, subTempOnMask
      &     temp_subMask, bath_subMask,
      &     subBathOnMask, subTempOnMask
       COMMON / DIAG_OB_EXTRACT_I /
-     &     lookup_table
+     &     lookup_table, avgPeriod_ob, deltaT_ob, totPhase_ob
       COMMON / DIAG_OB_EXTRACT_C /
-     &     ob_fileName, t_fileName
-
+     &     ob_fldNames, ob_fnames
 
 CEH3 ;;; Local Variables: ***
 CEH3 ;;; mode:fortran ***
