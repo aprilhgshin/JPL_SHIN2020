@@ -117,6 +117,8 @@ C       |-- EMBED_FILES_INIT
 C       |
 C       |-- MYPACKAGE_INIT_FIXED
 C       |
+C       |-- DIAGNOSTICS_OB_INIT_FIXED
+C       |
 C       |-- CTRL_INIT
 C       |-- CTRL_ADMTLM
 C       |
@@ -627,6 +629,16 @@ C--   needs to be called after the OASIS_INIT
       ENDIF
 #endif
 
+#ifdef ALLOW_DIAGNOSTICS_OB
+      IF ( useDIAGNOSTICS_OB ) THEN
+# ifdef ALLOW_DEBUG
+        IF (debugMode) CALL DEBUG_CALL('DIAGNOSTICS_OB_INIT_FIXED',
+     &                                  myThid)
+# endif
+        CALL DIAGNOSTICS_OB_INIT_FIXED( myThid )
+      ENDIF
+#endif
+
 #ifdef ALLOW_CTRL
       IF (useCTRL) THEN
 C--   Initialise the control variables. Moved to the end of this S/R
@@ -658,15 +670,7 @@ C-    needs to call DIAGNOSTICS_INIT_FIXED after all package-diag-init calls
       ENDIF
 #endif
 
-#ifdef ALLOW_DIAGNOSTICS_OB
-      IF ( useDIAGNOSTICS_OB ) THEN
-# ifdef ALLOW_DEBUG
-        IF (debugMode) CALL DEBUG_CALL('DIAGNOSTICS_OB_INIT_FIXED',
-     &                                  myThid)
-# endif
-        CALL DIAGNOSTICS_OB_INIT_FIXED( myThid )
-      ENDIF
-#endif
+
 
 #ifdef ALLOW_DEBUG
       IF (debugMode) CALL DEBUG_LEAVE('PACKAGES_INIT_FIXED',myThid)

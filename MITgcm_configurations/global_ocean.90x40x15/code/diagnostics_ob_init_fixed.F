@@ -37,10 +37,11 @@ C     === Local variables ===
       ENDIF
 #endif
 
+      print *, "now calling OB_EXTRACT_LOOKUP"
 #ifdef ALLOW_DIAGNOSTICS_OB
       IF ( useDIAGNOSTICS_OB ) THEN
         CALL OB_EXTRACT_LOOKUP( myThid )
-      ENDIF 
+      ENDIF
 #endif
 
       RETURN

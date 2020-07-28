@@ -8,7 +8,6 @@
 #--------------------
  &DIAG_OB_EXTRACT
 #--
-
   ob_fnames(1) = 'domain_flt32_mask.bin',
   ob_fnames(2) = 'bathymetry.bin',
   ob_fnames(3) = 'domain_temp.bin',

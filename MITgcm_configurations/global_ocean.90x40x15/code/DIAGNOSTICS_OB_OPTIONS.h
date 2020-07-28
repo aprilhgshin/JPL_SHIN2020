@@ -1,5 +1,5 @@
-C CPP options file for diagnostics_ob
-C Use this file for selecting options within package "diagnostics_ob"
+C CPP options file for DIAGNOSTICS_OB
+C Use this file for selecting options within package "DIAGNOSTICS_OB"
 
 #ifndef DIAGNOSTICS_OB_OPTIONS_H
 #define DIAGNOSTICS_OB_OPTIONS_H

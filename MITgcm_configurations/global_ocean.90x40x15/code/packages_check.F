@@ -75,8 +75,6 @@ C       |-- ECCO_CHECK
 C       |
 C       |-- DIAGNOSTICS_CHECK
 C       |
-C       |-- DIAGNOSTICS_OB_CHECK
-C       |
 C       |-- REGRID_CHECK
 C       |
 C       |-- LAYERS_CHECK
@@ -90,6 +88,8 @@ C       |
 C       |-- RUNCLOCK_CHECK
 C       |
 C       |-- MYPACKAGE_CHECK
+C       |
+C       |-- DIAGNOSTICS_OB_CHECK
 C       |
 C       |-- GAD_CHECK
 
@@ -431,13 +431,6 @@ C---  Continue with standard packages (with standard usePKG flag)
      &   CALL PACKAGES_ERROR_MSG( 'Diagnostics', ' ', myThid )
 #endif
 
-#ifdef ALLOW_DIAGNOSTICS_OB
-      IF (useDIAGNOSTICS_OB) CALL DIAGNOSTICS_OB_CHECK( myThid )
-#else
-      IF (useDIAGNOSTICS_OB)
-     &   CALL PACKAGES_ERROR_MSG( 'diagnostics_ob', ' ', myThid )
-#endif
-
 #ifdef ALLOW_REGRID
       IF (useREGRID) CALL REGRID_CHECK( myThid )
 #else
@@ -485,6 +478,13 @@ C---  Continue with standard packages (with standard usePKG flag)
       IF (useMYPACKAGE) CALL MYPACKAGE_CHECK( myThid )
 #else
       IF (useMYPACKAGE) CALL PACKAGES_ERROR_MSG('MYPACKAGE',' ',myThid)
+#endif
+
+#ifdef ALLOW_DIAGNOSTICS_OB
+      IF (useDIAGNOSTICS_OB) CALL DIAGNOSTICS_OB_CHECK( myThid )
+#else
+      IF (useDIAGNOSTICS_OB)
+     &   CALL PACKAGES_ERROR_MSG( 'diagnostics_ob', ' ', myThid )
 #endif
 
 #ifdef ALLOW_GENERIC_ADVDIFF

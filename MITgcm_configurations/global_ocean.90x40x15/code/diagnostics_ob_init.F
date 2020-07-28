@@ -44,7 +44,7 @@ c     IF ( useDiagnotics ) THEN
 
         diagName  = 'diagOBSta1'
         diagTitle =
-     &        'Scalar state variable 1 for package DIAGNOSTICS_OB'
+     &        'Scalar state variable 1 for package diagnostics_ob'
         diagUnits = 'unit            '
         diagCode  = 'SM      MR      '
         CALL DIAGNOSTICS_ADDTOLIST( diagNum,
@@ -52,7 +52,7 @@ c     IF ( useDiagnotics ) THEN
 
         diagName  = 'diagOBSta2'
         diagTitle =
-     &        'Scalar state variable 2 for package DIAGNOSTICS_OB'
+     &        'Scalar state variable 2 for package diagnostics_ob'
         diagUnits = 'unit            '
         diagCode  = 'SM      MR      '
         CALL DIAGNOSTICS_ADDTOLIST( diagNum,
@@ -60,7 +60,7 @@ c     IF ( useDiagnotics ) THEN
 
         diagName  = 'diagOBStaU'
         diagTitle =
-     &        'uVel-type state variable for package DIAGNOSTICS_OB'
+     &        'uVel-type state variable for package diagnostics_ob'
         diagUnits = 'unit            '
         diagCode  = 'UM      MR      '
         diagMate  = diagNum + 2
@@ -70,7 +70,7 @@ c     IF ( useDiagnotics ) THEN
 
         diagName  = 'diagOBStaV'
         diagTitle =
-     &        'vVel-type state variable for package DIAGNOSTICS_OB'
+     &        'vVel-type state variable for package diagnostics_ob'
         diagUnits = 'unit            '
         diagCode  = 'VM      MR      '
         diagMate  = diagNum
@@ -79,35 +79,35 @@ c     IF ( useDiagnotics ) THEN
      I   diagName, diagCode, diagUnits, diagTitle, diagMate, myThid )
 
         diagName  = 'diagOBSur1'
-        diagTitle = 'Surface field 1 for package DIAGNOSTICS_OB'
+        diagTitle = 'Surface field 1 for package diagnostics_ob'
         diagUnits = 'unit            '
         diagCode  = 'SM      L1      '
         CALL DIAGNOSTICS_ADDTOLIST( diagNum,
      I          diagName, diagCode, diagUnits, diagTitle, 0, myThid )
 
         diagName  = 'diagOBSur2'
-        diagTitle = 'Surface field 2 for package DIAGNOSTICS_OB'
+        diagTitle = 'Surface field 2 for package diagnostics_ob'
         diagUnits = 'unit            '
         diagCode  = 'SM      L1      '
         CALL DIAGNOSTICS_ADDTOLIST( diagNum,
      I          diagName, diagCode, diagUnits, diagTitle, 0, myThid )
 
         diagName  = 'diagOBdTdt'
-        diagTitle = ' Pot.Temp. tendency from package DIAGNOSTICS_OB'
+        diagTitle = ' Pot.Temp. tendency from package diagnostics_ob'
         diagUnits = 'K/s             '
         diagCode  = 'SMR     MR      '
         CALL DIAGNOSTICS_ADDTOLIST( diagNum,
      I          diagName, diagCode, diagUnits, diagTitle, 0, myThid )
 
         diagName  = 'diagOBdSdt'
-        diagTitle = ' Salinity  tendency from package DIAGNOSTICS_OB'
+        diagTitle = ' Salinity  tendency from package diagnostics_ob'
         diagUnits = 'psu/s           '
         diagCode  = 'SMR     MR      '
         CALL DIAGNOSTICS_ADDTOLIST( diagNum,
      I          diagName, diagCode, diagUnits, diagTitle, 0, myThid )
 
         diagName  = 'diagOBdUdt'
-        diagTitle = 'u-Velocity tendency from package DIAGNOSTICS_OB'
+        diagTitle = 'u-Velocity tendency from package diagnostics_ob'
         diagUnits = 'm/s^2           '
         diagCode  = 'UMR     MR      '
         diagMate  = diagNum + 2
@@ -116,7 +116,7 @@ c     IF ( useDiagnotics ) THEN
      I   diagName, diagCode, diagUnits, diagTitle, diagMate, myThid )
 
         diagName  = 'diagOBdVdt'
-        diagTitle = 'v-Velocity tendency from package DIAGNOSTICS_OB'
+        diagTitle = 'v-Velocity tendency from package diagnostics_ob'
         diagUnits = 'm/s^2           '
         diagCode  = 'VMR     MR      '
         diagMate  = diagNum
@@ -126,7 +126,7 @@ c     IF ( useDiagnotics ) THEN
 
 C--     an example of how to set "free levels option" diagnostics
         diagName  = 'diagOBLev3'
-        diagTitle = '3-levels field for package DIAGNOSTICS_OB'
+        diagTitle = '3-levels field for package diagnostics_ob'
         diagUnits = 'unit            '
         diagCode  = 'SM      MX      '
         CALL DIAGNOSTICS_ADDTOLIST( diagNum,

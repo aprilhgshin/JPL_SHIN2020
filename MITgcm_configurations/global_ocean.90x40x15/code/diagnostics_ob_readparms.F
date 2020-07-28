@@ -155,7 +155,7 @@ C     Initializing averaging period (avgPeriod_ob) and time counter (deltaT_ob)
      I              myThid )
 
 C     Read parameters from open data file
-      READ(UNIT=iUnit,NML=DIAGNOSTICS_OB_PARM01)
+      READ(UNIT=iUnit,NML=DIAG_OB_EXTRACT)
       WRITE(msgBuf,'(A)')
      & 'DIAGNOSTICS_OB_READPARMS: finished reading data.diagnostics_ob'
       CALL PRINT_MESSAGE( msgBuf, standardMessageUnit,

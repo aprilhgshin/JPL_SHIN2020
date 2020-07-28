@@ -24,8 +24,6 @@ C     PACKAGES_INIT_VARIABLES
 C       |
 C       |-- DIAGNOSTICS_INIT_VARIA
 C       |
-C       |-- DIAGNOSTICS_OB_INIT_VARIA
-C       |
 C       |-- OFFLINE_INIT_VARIA
 C       |
 C       |-- GAD_INIT_VARIA
@@ -103,6 +101,8 @@ C       |-- CPL_INI_VARS
 C       |
 C       |-- MYPACKAGE_INIT_VARIA
 C       |
+C       |-- DIAGNOSTICS_OB_INIT_VARIA
+C       |
 C       |-- SMOOTH_INIT_VARIA
 C       |-- PROFILES_INIT_VARIA
 C       |-- ECCO_INIT_VARIA
@@ -138,13 +138,6 @@ CEOP
         CALL DIAGNOSTICS_INIT_VARIA( myThid )
       ENDIF
 #endif /* ALLOW_DIAGNOSTICS */
-
-#ifdef ALLOW_DIAGNOSTICS_OB
-      IF ( useDIAGNOSTICS_OB ) THEN
-        CALL DIAGNOSTICS_OB_INIT_VARIA( myThid )
-      ENDIF
-#endif /* ALLOW_DIAGNOSTICS_OB */
-
 
 #ifdef ALLOW_OFFLINE
 C--   Here we call OFFLINE_INIT_VARIA (which calls OFFLINE_FIELDS_LOAD)
@@ -482,6 +475,13 @@ C--   Initialise the 2-Way Nesting packages variables
         CALL MYPACKAGE_INIT_VARIA( myThid )
       ENDIF
 #endif /* ALLOW_MYPACKAGE */
+
+#ifdef ALLOW_DIAGNOSTICS_OB
+      IF ( useDIAGNOSTICS_OB ) THEN
+        CALL DIAGNOSTICS_OB_INIT_VARIA( myThid )
+      ENDIF
+#endif /* ALLOW_DIAGNOSTICS_OB */
+
 
 #ifdef ALLOW_AUTODIFF_TAMC
 CADJ STORE theta  = tapelev_init, key = 1
