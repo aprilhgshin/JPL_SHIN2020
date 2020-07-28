@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/eesupp/src/eeset_parms.F

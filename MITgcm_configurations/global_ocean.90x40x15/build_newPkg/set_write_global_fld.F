@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/rw/set_write_global_fld.F

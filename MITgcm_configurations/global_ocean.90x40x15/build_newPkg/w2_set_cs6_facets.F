@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/exch2/w2_set_cs6_facets.F

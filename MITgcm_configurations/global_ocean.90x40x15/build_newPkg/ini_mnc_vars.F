@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/model/src/ini_mnc_vars.F

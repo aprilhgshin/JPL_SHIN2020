@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/exch2/exch2_rs2_cube_ad.F

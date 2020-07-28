@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/generic_advdiff/gad_dst3_adv_r.F

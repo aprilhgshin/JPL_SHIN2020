@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/eesupp/src/eewrite_eeenv.F

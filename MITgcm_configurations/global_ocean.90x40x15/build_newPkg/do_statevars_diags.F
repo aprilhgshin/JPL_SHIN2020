@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/model/src/do_statevars_diags.F

@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/model/src/initialise_fixed.F

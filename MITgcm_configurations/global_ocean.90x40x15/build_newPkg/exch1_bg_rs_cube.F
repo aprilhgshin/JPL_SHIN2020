@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/eesupp/src/exch1_bg_rs_cube.F

@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/ggl90/ggl90_init_varia.F

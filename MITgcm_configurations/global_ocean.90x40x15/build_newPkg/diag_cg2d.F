@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/diagnostics/diag_cg2d.F

@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/eesupp/src/exch0_rs.F

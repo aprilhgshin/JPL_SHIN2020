@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/mom_vecinv/MOM_VECINV_OPTIONS.h

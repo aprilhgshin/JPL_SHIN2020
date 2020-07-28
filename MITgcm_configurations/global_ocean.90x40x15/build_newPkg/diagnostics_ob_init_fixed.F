@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/diagnostics_ob/diagnostics_ob_init_fixed.F

@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/sbo/sbo_output.F

@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/cd_code/cd_code_write_pickup.F

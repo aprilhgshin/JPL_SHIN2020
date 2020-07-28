@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/exch2/exch2_sm_3d_r8.F
