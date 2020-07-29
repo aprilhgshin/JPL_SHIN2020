@@ -46,16 +46,17 @@ C     iUnit      :: Work variable for IO unit number
 C ----------------------------
 C     Open Boundary Extraction Namelist:
 C     nml_fldNames : field names for ocean state and flux variables
-C     nml_fnames : filenames for all files used in OB_EXTRACT_LOOKUP
+C     nml_fldFiles : filenames for field files used in OB_EXTRACT_LOOKUP
 C     avgPeriod_nml : averaging period
 C     deltaT_nml : size of time step
 C     totPhase_nml : total time phase
 C -----------------------------
-      CHARACTER*4 nml_fldNames(nOB_fld)
-      CHARACTER*21 nml_fnames(nOB_mask + nOB_fld)
+      CHARACTER*10 nml_fldNames(3)
+      CHARACTER*40 nml_fldFiles(3)
       INTEGER avgPeriod_nml
       INTEGER deltaT_nml
       INTEGER totPhase_nml
+      LOGICAL fld_choice(3)
 
 C      NAMELIST / DIAG_OB_EXTRACT /
 C     &       ob_fldNames, ob_fnames,
@@ -66,7 +67,7 @@ C     &       subBathOnMask, subTempOnMask,
 C     &       avgPeriod_ob, deltaT_ob, totPhase_ob
 
       NAMELIST / DIAG_OB_EXTRACT /
-     &     nml_fnames, nml_fldNames,
+     &     nml_fldFiles, nml_fldNames,
      &     avgPeriod_nml, deltaT_nml, totPhase_nml
 
       IF ( .NOT.useDIAGNOSTICS_OB ) THEN
@@ -106,23 +107,31 @@ C-    file names for initial conditions:
       diagOB_Surf1File   = ' '
       diagOB_Surf2File   = ' '
 
+
+C     Initializing local array:
+      DO j=1,3
+        fld_choice(j) = .FALSE.
+      ENDDO
+
 C     Initializing open boundary sub mask
       DO bj = myByLo(myThid), myByHi(myThid)
         DO bi = myBxLo(myThid), myBxHi(myThid)
           DO j=1-OLy,sNy+OLy
             DO k=1-OLx,sNx+OLx
               ob_subMask(k,j,bi,bj)   = 0.0
-              bath_subMask(k,j,bi,bj) = 0.0
-              temp_subMask(k,j,bi,bj) = 0.0
+              DO i=1, nOB_fld
+                subField_avg(i,k,j,bi,bj) = 0.0
+              ENDDO
             ENDDO
           ENDDO
         ENDDO
       ENDDO
 
       DO l = 1, sNy+sNx+1
-        subBathOnMask(l) = 0.0
-        subTempOnMask(l) = 0.0
         sub_global_indices(l) = 0
+        DO k=1, nOB_fld
+          subFieldOnMask(k,l) = 0.0
+        ENDDO
       ENDDO
 
 C     k limited to total number of open boundaries
@@ -138,16 +147,26 @@ C     k limited to total number of open boundaries
 
 C     Initializing to empty string
       DO k=1, nOB_fld
+        ob_fldNames(k) = ' '
+        ob_fldFiles(k) = ' '
+      ENDDO
+
+      DO k=1, nOB_mask
+        ob_filenames(k) = ' '
+      ENDDO
+
+
+      DO k=1, 3
         nml_fldNames(k) = ' '
       ENDDO
-      DO k=1, nOB_fld + nOB_mask
-        nml_fnames(k) = ' '
+      DO k=1, 3
+        nml_fldFiles(k) = ' '
       ENDDO
 
 C     Initializing averaging period (avgPeriod_ob) and time counter (deltaT_ob)
-      avgPeriod_nml = 1
-      deltaT_nml = 1
-      totPhase_nml = 1
+      avgPeriod_nml = 86400
+      deltaT_nml = 86400
+      totPhase_nml = 86400
 
 
 
@@ -186,12 +205,21 @@ C     Fix to avoid running without getting any output:
 #endif
       diagOB_MDSIO = (.NOT. diagOB_MNC) .OR. outputTypesInclusive
 
+C     Organize user input booleans into an array:
+      fld_choice(1) = ob_hydrogSalt
+      fld_choice(2) = ob_hydrogTheta
+      fld_choice(3) = ob_bathymetry
+
 C     Fill DIAGNOSTICS_OB.h Common Block with Namelist Info
-      ob_fnames(1) = nml_fnames(1)
-      ob_fnames(2) = nml_fnames(2)
-      ob_fnames(3) = nml_fnames(3)
-      ob_fldNames(1) = nml_fldNames(1)
-      ob_fldNames(2) = nml_fldNames(2)
+      k = 1
+      DO j=1, 3
+        if ((fld_choice(j) .eqv. .TRUE.) .AND.
+     &                (k .le. nOB_fld)) then
+          ob_fldFiles(k) = nml_fldFiles(j)
+          ob_fldNames(k) = nml_fldNames(j)
+          k = k + 1
+        end if
+      ENDDO
 
       avgPeriod_ob = avgPeriod_nml
       deltaT_ob = deltaT_nml

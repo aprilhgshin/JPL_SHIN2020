@@ -46,15 +46,14 @@ C-    file names for initial conditions:
      &       diagOB_Surf1File, diagOB_Surf2File
 
 C     ================== Global Variables for open boundary ====================
-      CHARACTER*4 ob_fldNames(nOB_fld)
-      CHARACTER*21 ob_fnames(nOB_mask + nOB_fld)
+      CHARACTER*10 ob_fldNames(nOB_fld)
+      CHARACTER*40 ob_fldFiles(nOB_fld)
+      CHARACTER*40 ob_filenames(nOB_mask)
 
       _RL ob_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      _RL bath_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      _RL temp_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      _RL subField_avg(nOB_fld,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
-      _RL subBathOnMask(sNx + sNy + 1)
-      _RL subTempOnMask(sNx + sNy + 1)
+      _RL subFieldOnMask(nOB_fld, sNx + sNy + 1)
       _RL sub_global_indices(sNx + sNy + 1)
       INTEGER lookup_table(nOB_mask, Ny*Nx)
       _RL global_ob((sNy+sNx)*(nPx*nPy))
@@ -65,7 +64,7 @@ C     ================== Global Variables for open boundary ====================
 C     ==========================================================================
 
 C      COMMON / DIAG_OB_EXTRACTS /
-C     &     ob_fldNames, ob_fnames,
+C     &     ob_fldNames, ob_fldFiles, ob_filenames
 C     &     ob_subMask,lookup_table,
 C     &     global_ob, sub_global_indices,
 C     &     temp_subMask, bath_subMask,
@@ -73,14 +72,13 @@ C     &     subBathOnMask, subTempOnMask,
 C     &     avgPeriod_ob, deltaT_ob, totPhase_ob
 
       COMMON / DIAG_OB_EXTRACT_R /
-     &     ob_subMask,
+     &     ob_subMask, subField_avg,
      &     global_ob, sub_global_indices,
-     &     temp_subMask, bath_subMask,
-     &     subBathOnMask, subTempOnMask
+     &     subFieldOnMask
       COMMON / DIAG_OB_EXTRACT_I /
      &     lookup_table, avgPeriod_ob, deltaT_ob, totPhase_ob
       COMMON / DIAG_OB_EXTRACT_C /
-     &     ob_fldNames, ob_fnames
+     &     ob_fldNames, ob_fldFiles, ob_filenames
 
 #ifdef DIAGNOSTICS_OB_3D_STATE
 C     DIAGOB 3-dim. fields
