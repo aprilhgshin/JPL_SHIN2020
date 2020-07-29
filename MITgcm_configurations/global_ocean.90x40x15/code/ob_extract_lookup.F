@@ -9,9 +9,9 @@ C All variables in header file are global to header files included below
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "EESUPPORT.h"
-#ifdef ALLOW_FIZHI
+C#ifdef ALLOW_FIZHI
 #include "PARAMS.h"
-#endif
+C#endif
 #include "DIAGNOSTICS_SIZE.h"
 C#include "DIAGNOSTICS.h"
 #include "DIAGNOSTICS_OB.h"
@@ -38,8 +38,9 @@ C      So global_mask, ob_subMask, and bath_subMask are set as _RL or _RS.
        _RL global_mask(Nx,Ny,nSx,nSy)
        _RL recv_arr(sNx + sNy + 1)
        _RL g_indices(nPx*nPy, sNx + sNy + 1)
+       _RL timeave_cum(Nr, nSx, nSy)
        CHARACTER*(MAX_LEN_MBUF) msgBuf
-       integer i,j, iG, jG, bi, bj, step_ob, incr
+       integer i,j, k, iG, jG, bi, bj, step_ob, incr
        integer ob, global_ob_index, ob_index, new_goi
        integer ob_subMask_size, counter, ob_id
        integer total_valid, tag, time, num_valid
@@ -90,7 +91,13 @@ C       Initialize local arrays:
           ENDDO
         ENDDO
 
-
+        DO i=1,Nr
+          DO j=1,nSx
+            DO k=1,nSy
+              timeave_cum(Nr, nSx, nSy) = deltaT_ob
+            ENDDO
+          ENDDO
+        ENDDO
 
 c      ob_subMask initialized in diagnostics_readparms, dimensions match READ_REC_XY_RS field:
 c      field(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
@@ -124,28 +131,27 @@ c      All Processes :
 
          step_ob = 1
 
-         DO incr=1, int(totPhase_ob), int(deltaT_ob)
-
+         DO incr=1, totPhase_ob, deltaT_ob
+C          call DIFFERENT_MULTIPLE(avgPeriod_ob, incr, deltaT_ob)
            if (step_ob .eq. avgPeriod_ob) then
 
-C             ob_fnames(1) = 'domain_flt32_mask.bin'
+             ob_filenames(1) = 'domain_flt32_mask.bin'
 C             ob_fnames(2) = 'bathymetry.bin'
 C             ob_fnames(3) = 'domain_temp.bin'
-
-             b_fileName = ob_fnames(3)
 C             ob_fldNames(1) = 'bath'
 C             ob_fldNames(2) = 'temp'
-             CALL READ_REC_XY_RL( ob_fnames(3),
+
+C            Loop through chosen fields to read from corresponding binary files
+             CALL READ_REC_XY_RL( ob_fldFiles(2),
      &               temp_subMask,1, 0, myThid )
-             CALL READ_REC_XY_RL( ob_fnames(2),
+             CALL READ_REC_XY_RL( ob_fldFiles(1),
      &                bath_subMask,1, 0, myThid )
-             CALL READ_REC_XY_RL( ob_fnames(1),
+             CALL READ_REC_XY_RL( ob_filenames(ob_id),
      &               ob_subMask,1, 0, myThid )
 
              _EXCH_XY_RL(temp_subMask, myThid)
              _EXCH_XY_RL(bath_subMask, myThid)
              _EXCH_XY_RL(ob_subMask, myThid)
-
 
              CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, temp_subMask,
      &                      ob_fldNames(2), ob_id)
@@ -153,8 +159,15 @@ C             ob_fldNames(2) = 'temp'
              CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, bath_subMask,
      &                      ob_fldNames(1), ob_id)
 
-             CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, temp_subMask,
+             CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, ob_subMask,
      &                      "mask", ob_id)
+
+             DO bj = myByLo(myThid), myByHi(myThid)
+              DO bi = myBxLo(myThid), myBxHi(myThid)
+               CALL TIMEAVE_NORMALIZ(ob_subMask, timeave_cum,1,bi,bj,
+     &                                myThid)
+              ENDDO
+            ENDDO
 
              if (debug .eq. 1) then
 C              Plotting for debugging
