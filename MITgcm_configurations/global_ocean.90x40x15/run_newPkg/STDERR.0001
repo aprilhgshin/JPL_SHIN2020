@@ -1,0 +1,16 @@
+(PID.TID 0001.0001) ** Warning ** MNC_READPARMS: ignores "data.mnc" file since
+(PID.TID 0001.0001) ** Warning ** MNC_READPARMS: useMNC= F (set from "data.pkg")
+(PID.TID 0001.0001) SETDIAG: Not enough space for Diagnostic #    45 UVELMASS
+(PID.TID 0001.0001) SETDIAG: Not enough space for Diagnostic #    46 VVELMASS
+(PID.TID 0001.0001) SETDIAG: Not enough space for Diagnostic #    32 WVEL
+(PID.TID 0001.0001) SETDIAG: Not enough space for Diagnostic #    26 THETA
+(PID.TID 0001.0001) SETDIAG: Not enough space for Diagnostic #    27 SALT
+(PID.TID 0001.0001) SETDIAG: Not enough space for Diagnostic #    38 WVELSQ
+(PID.TID 0001.0001) SETDIAG: Not enough space for Diagnostic #    64 RHOAnoma
+(PID.TID 0001.0001) SETDIAG: Not enough space for Diagnostic #    77 DRHODR
+(PID.TID 0001.0001) SETDIAG: Not enough space for Diagnostic #    78 CONVADJ
+(PID.TID 0001.0001) SETDIAG: Not enough space for Diagnostic #   204 GM_Kwx
+(PID.TID 0001.0001) SETDIAG: Not enough space for Diagnostic #   205 GM_Kwy
+(PID.TID 0001.0001) SETDIAG: Not enough space for Diagnostic #   206 GM_Kwz
+(PID.TID 0001.0001) *** ERROR *** DIAGNOSTICS_SET_POINTERS: Not enough space for all active diagnostics (from data.diagnostics)
+(PID.TID 0001.0001) *** ERROR *** DIAGNOSTICS_SET_POINTERS: numDiags=      15 but needs at least     185

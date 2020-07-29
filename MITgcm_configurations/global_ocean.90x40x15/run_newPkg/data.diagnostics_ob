@@ -1,0 +1,19 @@
+# Diagnostics_ob Package Choices
+#--------------------
+#     nml_fldNames : field names for ocean state and flux variables
+#     nml_fldFiles : filenames for all fields
+#     avgPeriod_nml : averaging period
+#     deltaT_nml : size of time step
+#     totPhase_nml : total time phase
+#--------------------
+ &DIAG_OB_EXTRACT
+ avgPeriod_nml = 1800,
+ deltaT_nml = 1800,
+ totPhase_nml = 3600,
+ nml_fldFiles(1) = 'bathymetry.bin'
+ nml_fldNames(1) = 'bath',
+ nml_fldFiles(2) = 'lev_s.bin',
+ nml_fldNames(2) = 'salt',
+ nml_fldFiles(3) = 'lev_t.bin',
+ nml_fldNames(3) = 'theta',
+ &
