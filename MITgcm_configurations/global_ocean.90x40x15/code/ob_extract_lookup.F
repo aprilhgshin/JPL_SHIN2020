@@ -36,21 +36,34 @@ C      debug: Integer used to hold either 1 or 0, 1 to print debug statements or
 C      Although we read REAL*4 values, most built in functions have _RS input which by default is _RL.
 C      So global_mask, ob_subMask, and bath_subMask are set as _RL or _RS.
        _RL global_mask(Nx,Ny,nSx,nSy)
-       _RL recv_arr(sNx + sNy + 1)
+       _RL recv_arr(nOB_fld,sNx + sNy + 1)
        _RL g_indices(nPx*nPy, sNx + sNy + 1)
        _RL timeave_cum(Nr, nSx, nSy)
+       _RL subField(nOB_fld,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+
        CHARACTER*(MAX_LEN_MBUF) msgBuf
-       integer i,j, k, iG, jG, bi, bj, step_ob, incr
+       integer i,j, k, fld, iG, jG, bi, bj, step_ob, incr
        integer ob, global_ob_index, ob_index, new_goi
        integer ob_subMask_size, counter, ob_id
-       integer total_valid, tag, time, num_valid
+       integer total_valid, tag, time, num_valid, myIter
        integer myByLo_myThid,myByHi_myThid,myBxLo_myThid,myBxHi_myThid
        real avg
        integer, parameter :: stop_program = 0
        integer, parameter :: debug = 1
        integer, parameter :: print_debug = 0
        character*10 fldNm
-       character*40 b_fileName
+       logical DIFFERENT_MULTIPLE
+
+C     == Routine arguments Function DIFFERENT_MULTIPLE ==
+C     freq       :: Frequency by which time is divided.
+C     val1       :: time that is checked
+C     step       :: length of time interval (around val1) that is checked
+C      _RL  freq, val1, step
+      _RL freq(1)
+      _RL val1(1)
+      _RL step(1)
+
+
 #ifdef ALLOW_USE_MPI
        integer pid, ierror, status(MPI_STATUS_SIZE)
 #endif
@@ -59,7 +72,6 @@ C      So global_mask, ob_subMask, and bath_subMask are set as _RL or _RS.
        common / myBxy_LoHi / myByLo_myThid, myByHi_myThid,
      &                       myBxLo_myThid, myBxHi_myThid
 
-       print *, "HERE IN OB"
        myByLo_myThid = myByLo(myThid)
        myByHi_myThid = myByHi(myThid)
        myBxLo_myThid = myBxLo(myThid)
@@ -80,8 +92,22 @@ C       Initialize local arrays:
           ENDDO
         ENDDO
 
-        DO i=1, sNx + sNy + 1
-          recv_arr(i) = 0.0
+        DO i=1, nOB_fld
+          DO bj = myByLo(myThid), myByHi(myThid)
+            DO bi = myBxLo(myThid), myBxHi(myThid)
+              DO j=1-OLy,sNy+OLy
+                DO k=1-OLx,sNx+OLx
+                  subField(i,k,j,bi,bj) = 0.0
+                ENDDO
+              ENDDO
+            ENDDO
+          ENDDO
+        ENDDO
+
+        DO fld=1, nOB_fld
+          DO i=1, sNx + sNy + 1
+            recv_arr(fld,i) = 0.0
+          ENDDO
         ENDDO
 
 
@@ -108,8 +134,8 @@ C       myThid  ::  my Thread Id number
 
 C     From PARAMS.h:
 C     nIter0              :: Start time-step number of for this run
-C     nTimeSteps          :: Number of timesteps to execute
-C     nTimeSteps_l2       :: Number of inner timesteps to execute per timestep
+C     startTime
+
 
 C     From EESUPPORT.h : all initialized by subroutine INI_PROCS:
 C     mpiNprocs - No. of MPI processes.
@@ -127,56 +153,95 @@ C     mpi_myYGlobalLo :: List of all processors bottom-left Y-index in global do
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 c      All Processes :
 
+
+
        DO ob_id = 1, nOB_mask
 
          step_ob = 1
+         myIter = nIter0
+         print *, "OB: deltaTMom, ", deltaTMom
+         DO incr=0, totPhase_ob, int(deltaTMom)
+C     freq       :: Frequency by which time is divided.
+C     val1       :: time that is checked
+C     step       :: length of time interval (around val1) that is checked
+           freq(1) = avgPeriod_ob
+           val1(1) = step_ob
+           step(1) = deltaT_ob
 
-         DO incr=1, totPhase_ob, deltaT_ob
-C          call DIFFERENT_MULTIPLE(avgPeriod_ob, incr, deltaT_ob)
+           CALL INI_OB_FILENAMES(ob_filenames)
+
+C          ob_filenames(1) = 'domain_flt32_mask1.bin'
+C          ob_fildFiles(1) = 'bathymetry.bin'
+C          ob_fildFiles(2) = 'lev_s.bin'
+C          ob_fldNames(1) = 'bath'
+C          ob_fldNames(2) = 'salt'
+
+
+C          Loop through chosen fields to read from corresponding binary files
+           DO fld=1, nOB_fld
+C             CALL READ_PICKUP(incr, myThid)
+
+             print *,"time step number:",myIter
+             CALL READ_REC_XY_RL( ob_fldFiles(fld),
+     &           subField(fld,:,:,:,:),1, myIter, myThid)
+             _EXCH_XY_RL(subField(fld,:,:,:,:), myThid)
+C             CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy,
+C     &                  subField(fld,:,:,:,:), ob_fldNames(fld), ob_id)
+
+             if (debug .eq. 1) then
+               CALL PLOT_FIELD_XYRL(subField(fld,:,:,:,:),
+     &                            ob_fldNames(fld), -1, myThid )
+
+             end if
+             DO bj = myByLo(myThid), myByHi(myThid)
+               DO bi = myBxLo(myThid), myBxHi(myThid)
+                 DO j=1-OLy,sNy+OLy
+                   DO k=1-OLx,sNx+OLx
+                     subField_avg(fld,k,j,bi,bj) =
+     &           subField_avg(fld,k,j,bi,bj) + subField(fld,k,j,bi,bj)
+                   ENDDO
+                 ENDDO
+               ENDDO
+             ENDDO
+           ENDDO
+
+C          If we incremented to the end of an averaging period:
            if (step_ob .eq. avgPeriod_ob) then
+C     &          .or. (DIFFERENT_MULTIPLE(freq, val1, step))) then
+C             CALL DIAGNOSTICS_OB_WRITE_PICKUP(.FALSE.,
+C     &         'flds',startTime+incr, incr/deltaTMom, myThid)
+             step_ob = 1
+             DO fld=1, nOB_fld
+               DO bj = myByLo(myThid), myByHi(myThid)
+                 DO bi = myBxLo(myThid), myBxHi(myThid)
+                   DO j=1-OLy,sNy+OLy
+                     DO k=1-OLx,sNx+OLx
+                       subField_avg(fld,k,j,bi,bj) =
+     &                    subField_avg(fld,k,j,bi,bj) / avgPeriod_ob
+                     ENDDO
+                   ENDDO
+                 ENDDO
+               ENDDO
+             ENDDO
 
-             ob_filenames(1) = 'domain_flt32_mask.bin'
-C             ob_fnames(2) = 'bathymetry.bin'
-C             ob_fnames(3) = 'domain_temp.bin'
-C             ob_fldNames(1) = 'bath'
-C             ob_fldNames(2) = 'temp'
-
-C            Loop through chosen fields to read from corresponding binary files
-             CALL READ_REC_XY_RL( ob_fldFiles(2),
-     &               temp_subMask,1, 0, myThid )
-             CALL READ_REC_XY_RL( ob_fldFiles(1),
-     &                bath_subMask,1, 0, myThid )
              CALL READ_REC_XY_RL( ob_filenames(ob_id),
      &               ob_subMask,1, 0, myThid )
-
-             _EXCH_XY_RL(temp_subMask, myThid)
-             _EXCH_XY_RL(bath_subMask, myThid)
              _EXCH_XY_RL(ob_subMask, myThid)
 
-             CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, temp_subMask,
-     &                      ob_fldNames(2), ob_id)
-
-             CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, bath_subMask,
-     &                      ob_fldNames(1), ob_id)
-
              CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, ob_subMask,
-     &                      "mask", ob_id)
+     &                          "mask", ob_id)
 
-             DO bj = myByLo(myThid), myByHi(myThid)
-              DO bi = myBxLo(myThid), myBxHi(myThid)
-               CALL TIMEAVE_NORMALIZ(ob_subMask, timeave_cum,1,bi,bj,
-     &                                myThid)
-              ENDDO
-            ENDDO
+C             DO bj = myByLo(myThid), myByHi(myThid)
+C              DO bi = myBxLo(myThid), myBxHi(myThid)
+C               CALL TIMEAVE_NORMALIZ(ob_subMask, timeave_cum,1,bi,bj,
+C     &                                myThid)
+C              ENDDO
+C            ENDDO
 
              if (debug .eq. 1) then
 C              Plotting for debugging
                CALL PLOT_FIELD_XYRL( ob_subMask,
      &                        'Open Boundary Submask', -1, myThid )
-               CALL PLOT_FIELD_XYRL( bath_subMask,
-     &                       'Bathymetry Submask', -1, myThid )
-               CALL PLOT_FIELD_XYRL( temp_subMask,
-     &                        'Temperature Submask', -1, myThid )
              end if
 
 
@@ -188,9 +253,9 @@ C              Plotting for debugging
              global_ob_index = Nx*(jG -1)  + iG
 
              if (print_debug .eq. 1) then
-              print *, "process id: ", mpiMyId
-              print *, "iG:", iG, "jG:", jG
-              print *, "OB_EXTRACT_LOOKUP:global_ob_index",
+               print *, "process id: ", mpiMyId
+               print *, "iG:", iG, "jG:", jG
+               print *, "OB_EXTRACT_LOOKUP:global_ob_index",
      &                  global_ob_index
              end if
 
@@ -199,18 +264,10 @@ C              Plotting for debugging
 
 
              if (print_debug .eq .1) then
-              print *,"OB_EXTRACT_LOOKUP: MPI total num procs:",
+               print *,"OB_EXTRACT_LOOKUP: MPI total num procs:",
      &                 mpiNprocs
-              print *,"OB_EXTRACT_LOOKUP: myThid: ", myThid
+               print *,"OB_EXTRACT_LOOKUP: myThid: ", myThid
              end if
-
-
-             if (print_debug .eq .1) then
-              print *,"OB_EXTRACT_LOOKUP: MPI total num procs:",
-     &                 mpiNprocs
-              print *,"OB_EXTRACT_LOOKUP: myThid: ", myThid
-             end if
-
 
 
              DO bj = myByLo(myThid), myByHi(myThid)
@@ -220,9 +277,6 @@ C              Plotting for debugging
                      if ((j .ge. 1) .and. (i .ge. 1)) then
                          new_goi = (j-1)*sNx+(j-1)*(Nx-(iG+sNx-1))+
      &                              j*(iG-1)+i
-                       if ((i .eq. 1) .and. (j .eq. 1)) then
-                         print *, "at 1,1: ", new_goi
-                       end if
                      end if
 
                      if (ob_subMask(i,j,bi,bj) .ge. 1.0 ) then
@@ -232,20 +286,13 @@ C              Plotting for debugging
      &                    ob_subMask(i,j,bi,bj)
                         print *,"OB_EXTRACT_LOOKUP: i j of ob_subMask",
      &                    " gt 1", i, j
-                        print *,"OB_EXTRACT_LOOKUP: bath_subMask gt 1",
-     &                    bath_subMask(i,j,bi,bj)
                        end if
 
-C                      call AVERAGE(avg, bath_subMask(:,i,j,bi,bj))
-                       subBathOnMask(counter) = bath_subMask(i,j,bi,bj)
-
-C                      call AVERAGE(avg, temp_subMask(:,i,j,bi,bj))
-                       subTempOnMask(counter) = temp_subMask(i,j,bi,bj)
-
+                       DO fld=1, nOB_fld
+                        subFieldOnMask(fld,counter) =
+     &                                     subField_avg(fld,i,j,bi,bj)
+                       ENDDO
                        sub_global_indices(counter) = new_goi
-                       if (print_debug .eq. 1) then
-                         print *,"OB_EXTRACT_LOOKUP: new_goi:",new_goi
-                       end if
                        counter = counter + 1
                        if (((i .ge. 1) .and. (j .ge. 1))
      &                  .and. ((i .le. sNx) .and. (j .le. sNy))) then
@@ -259,14 +306,10 @@ C                      call AVERAGE(avg, temp_subMask(:,i,j,bi,bj))
              ENDDO
 
 C           Inserting number of valid elements as first element of each array
-C           subBathOnMask(ob_id, 1) = counter - 2
-C           subTempOnMask(ob_id, 1) = counter - 2
-C           sub_global_indices(ob_id, 1) = counter - 2
-            subBathOnMask(1) = num_valid
-            subTempOnMask(1) = num_valid
+            DO fld=1,nOB_fld
+              subFieldOnMask(fld,1) = num_valid
+            ENDDO
             sub_global_indices(1) = num_valid
-
-
 
 
 #ifdef ALLOW_USE_MPI
@@ -276,10 +319,8 @@ C           sub_global_indices(ob_id, 1) = counter - 2
 C           Processes 1 and onward, send sub arrays to Parent process
                 call MPI_SEND(sub_global_indices,(sNx+sNy+1),
      &               MPI_REAL, 0, 1, MPI_COMM_MODEL, ierror)
-                call MPI_SEND(subBathOnMask, (sNx+sNy+1),
+                call MPI_SEND(subFieldOnMask, nOB_fld*(sNx+sNy+1),
      &               MPI_REAL,0, 2, MPI_COMM_MODEL, ierror)
-                call MPI_SEND(subTempOnMask, (sNx+sNy+1),
-     &               MPI_REAL,0, 3, MPI_COMM_MODEL, ierror)
 
               else if (mpiMYId .eq. 0) then
                 if (print_debug .eq. 1) then
@@ -293,7 +334,6 @@ C           Processes 1 and onward, send sub arrays to Parent process
             end if
 #endif
 
-
             call GATHER_2D_R8(global_mask(1:Nx,1:Ny,1,1),
      &                     ob_subMask(1:sNx,1:sNy,1,1),
      &                     Nx, Ny, .true., .true., myThid)
@@ -302,8 +342,6 @@ C           Processes 1 and onward, send sub arrays to Parent process
               call PLOT_GLO_FIELD_XYRL(global_mask(1:,1:,1,1),
      &                    "OB_EXTRACT_LOOKUP: global mask", myThid)
             end if
-
-
 #ifdef ALLOW_USE_MPI
             if (usingMPI) then
               if (mpiMyId .eq. 0) then
@@ -324,30 +362,36 @@ C           Store global_ob_masks into lookup table
                   end do
                 end do
 
-
-
+                print *, "End of lookup table loop"
 C          Retrive sub_global_indicies and sub fields from every process > 0.
                 ob_index = 1
-
+                print *, "mpiNprocs", mpiNprocs
 C           Retrieving sub_global_indices first from all processes > 0
                 do pid=1, mpiNprocs-1
-                  call MPI_RECV(recv_arr, sNx+sNy+1, MPI_REAL, pid, 1,
-     &                  MPI_COMM_MODEL, status, ierror)
+                  call MPI_RECV(recv_arr(1,:), sNx+sNy+1, MPI_REAL,
+     &                   pid, 1, MPI_COMM_MODEL, status, ierror)
+
 C             Save all global indices into array for future reference
                   do i=1, sNx+sNy+1
-                    g_indices(pid,i) = recv_arr(i)
+                    g_indices(pid,i) = recv_arr(1,i)
                   end do
                 end do
 
-C           Retrieving sub fields and appending to final global_ob array
-                DO tag=2, nOB_fld + 1
+C               Receive all sub arrays from processes with pid > 0. Only needs to be done once.
+                do pid=1, mpiNprocs-1
+                  call MPI_RECV(recv_arr, nOB_fld*(sNx+sNy+1),
+     &               MPI_REAL, pid, 2 ,MPI_COMM_MODEL, status, ierror)
                   if (debug .eq. 1) then
-                    if (tag .eq. 2) then
-                      print *, "TAG 2: to BATH field"
-                    else if (tag .eq. 3) then
-                      print *, "TAG 3: to TEMP field"
-                    end if
+                    print *, "Received recv_arr for fields"
+                    print *, "Displaying FULL array, beyond number"
+     &                        ," of valid elements"
+                    call PRINT_FLOAT_ARR(recv_arr, nOB_fld*sNx+sNy+1)
                   end if
+                end do
+
+C                Appending subFields to final global_ob array
+C                DO tag=2, nOB_fld + 1
+                 DO fld=1, nOB_fld
 
                   total_valid = 0
                   DO pid=1, mpiNprocs-1
@@ -362,57 +406,31 @@ C                 First append process 0 local arrays to final global array if n
 
                       if (print_debug .eq. 1) then
                        print *,"OB_EXTRACT_LOOKUP: Appending local"
-                       print *,"OB_EXTRACT_LOOKUP: subBathOnMask local:"
-                       call PRINT_FLOAT_ARR(subBathOnMask(:),
-     &                                 int(sub_global_indices(1) + 1))
-                       print *,"OB_EXTRACT_LOOKUP: subTempOnMask local:"
-                       call PRINT_FLOAT_ARR(subTempOnMask(:),
+                       call PRINT_FLOAT_ARR(subFieldOnMask(1,:),
      &                                 int(sub_global_indices(1) + 1))
                       end if
 
                       total_valid = total_valid +
      &                                  int(sub_global_indices(1))
-                      if (tag .eq. 2) then
-                        call APPEND_OB_VALUE(sub_global_indices(:),
-     &                                    subBathOnMask(:), global_ob,
-     &                                    lookup_table, ob_id)
-                        if (debug .eq. 1) then
-                         print *,"APPEND_OB_VALUE: appending local "
+
+                      call APPEND_OB_VALUE(sub_global_indices(:),
+     &                                subFieldOnMask(fld,:), global_ob,
+     &                                lookup_table, ob_id)
+                      if (debug .eq. 1) then
+                        print *,"APPEND_OB_VALUE: appending local "
      &                    ,"bath to global_ob with ",
      &                    int(sub_global_indices(1)),"valid elements:"
 
-                          call PRINT_FLOAT_ARR(global_ob, total_valid)
-                        end if
-                      else if (tag .eq. 3) then
-                        call APPEND_OB_VALUE(sub_global_indices(:),
-     &                                    subTempOnMask(:), global_ob,
-     &                                    lookup_table, ob_id)
-                        if (debug .eq. 1) then
-                          print *,"APPEND_OB_VALUE: appending local "
-     &                    ,"temp to global_ob with ",
-     &                    int(sub_global_indices(1)),"valid elements:"
-
-                          call PRINT_FLOAT_ARR(global_ob,total_valid)
-
-                        end if
+                        call PRINT_FLOAT_ARR(global_ob, total_valid)
                       end if
-                    end if
 
-C               Receive all sub arrays from processes with pid > 0. Only needs to be done once.
-                    call MPI_RECV(recv_arr, sNx+sNy+1, MPI_REAL, pid,
-     &                  tag ,MPI_COMM_MODEL, status, ierror)
-                    if (debug .eq. 1) then
-                      print *, "Received recv_arr with tag",tag
-                      print *, "Displaying FULL array, beyond number"
-     &                        ," of valid elements"
-                      call PRINT_FLOAT_ARR(recv_arr, sNx+sNy+1)
                     end if
 
 
 C               Appending all other processes' local arrays to final array if number of valid elements in arrays > 0:
                     if (int(g_indices(pid, 1)) .ge. 1) then
-                     call APPEND_OB_VALUE(g_indices(pid,:),recv_arr(:)
-     &                                 ,global_ob, lookup_table, ob_id)
+                     call APPEND_OB_VALUE(g_indices(pid,:),
+     &                 recv_arr(fld,:),global_ob, lookup_table, ob_id)
 
                      total_valid = total_valid + g_indices(pid,1)
 
@@ -424,30 +442,27 @@ C               Appending all other processes' local arrays to final array if nu
                     call PRINT_FLOAT_ARR(global_ob,total_valid)
 
                   ENDDO
+
                   print *, "OB_EXTRACT_LOOKUP: final global ob by ",
      &     "for tag", tag, "with total", total_valid, "valid elements"
                   call PRINT_FLOAT_ARR(global_ob,total_valid)
 
-                  if (tag .eq. 2) then
-                    fldNm = ob_fldNames(1)
-                  else if (tag .eq. 3) then
-                    fldNm = ob_fldNames(2)
-                  end if
-
-                  call WRITE_GLOBAL_BIN(global_ob,total_valid,fldNm,
-     &                                  ob_id, mpiPx, mpiPy)
+                  call WRITE_GLOBAL_BIN(global_ob,total_valid,
+     &                          ob_fldNames(fld), ob_id, mpiPx, mpiPy)
 
                   call PLOT_TEST_GLOBAL_OB(global_ob, lookup_table,
-     &                                     myThid, ob_id, fldNm)
+     &                                myThid, ob_id, ob_fldNames(fld))
                 ENDDO
               end if
             end if
 #endif
-
-          end if
-          step_ob = step_ob + deltaT_ob
+          endif
+          step_ob = step_ob + int(deltaTMom)
+          myIter = myIter + 1
         ENDDO
+
       ENDDO
+
 
       END
 
@@ -485,8 +500,20 @@ C      end do
 C      avg = real(sum/nfld_time)
 
 C      END
-Cg_indices(pid,:),recv_arr(:)
-C&                                 ,global_ob, lookup_table, ob_id)
+
+
+      SUBROUTINE INI_OB_FILENAMES(ob_filenames)
+        include "USER_INPUT.h"
+        CHARACTER*40 ob_filenames(nOB_mask)
+        INTEGER k
+C       Fill in array with filenames for each ob mask
+
+        DO k=1, nOB_mask
+          write(ob_filenames(k), "(A17,I1,A4)") "domain_flt32_mask",
+     &          k, '.bin'
+        ENDDO
+      END
+
 
       SUBROUTINE APPEND_OB_VALUE(global_indices,ob_values,global_ob,
      &                           lookup_table, ob_id)

@@ -106,6 +106,8 @@ C-    file names for initial conditions:
       diagOB_VelVFile    = ' '
       diagOB_Surf1File   = ' '
       diagOB_Surf2File   = ' '
+
+
 C     Initializing local array:
       DO j=1,3
         fld_choice(j) = .FALSE.
@@ -117,17 +119,19 @@ C     Initializing open boundary sub mask
           DO j=1-OLy,sNy+OLy
             DO k=1-OLx,sNx+OLx
               ob_subMask(k,j,bi,bj)   = 0.0
-              bath_subMask(k,j,bi,bj) = 0.0
-              temp_subMask(k,j,bi,bj) = 0.0
+              DO i=1, nOB_fld
+                subField_avg(i,k,j,bi,bj) = 0.0
+              ENDDO
             ENDDO
           ENDDO
         ENDDO
       ENDDO
 
       DO l = 1, sNy+sNx+1
-        subBathOnMask(l) = 0.0
-        subTempOnMask(l) = 0.0
         sub_global_indices(l) = 0
+        DO k=1, nOB_fld
+          subFieldOnMask(k,l) = 0.0
+        ENDDO
       ENDDO
 
 C     k limited to total number of open boundaries
@@ -159,9 +163,9 @@ C     Initializing to empty string
       ENDDO
 
 C     Initializing averaging period (avgPeriod_ob) and time counter (deltaT_ob)
-      avgPeriod_nml = 1
-      deltaT_nml = 1
-      totPhase_nml = 1
+      avgPeriod_nml = 86400
+      deltaT_nml = 86400
+      totPhase_nml = 86400
 
 
 
