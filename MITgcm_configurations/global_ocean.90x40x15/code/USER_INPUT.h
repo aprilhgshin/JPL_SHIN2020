@@ -17,6 +17,6 @@ C     ob_bathymetry :: logical value of whether bathymetry field should be outpu
       LOGICAL ob_hydrogTheta
       LOGICAL ob_bathymetry
       PARAMETER (
-     &           ob_hydrogSalt = .TRUE.,
-     &           ob_hydrogTheta = .FALSE.,
-     &           ob_bathymetry = .TRUE. )
+     &           ob_bathymetry = .TRUE.,
+     &           ob_hydrogSalt = .FALSE.,
+     &           ob_hydrogTheta = .TRUE.)
