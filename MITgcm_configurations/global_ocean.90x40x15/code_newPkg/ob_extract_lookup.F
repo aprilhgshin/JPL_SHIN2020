@@ -167,9 +167,9 @@ C     step       :: length of time interval (around val1) that is checked
 
 C          ob_filenames(1) = 'domain_flt32_mask1.bin'
 C          ob_fildFiles(1) = 'bathymetry.bin'
-C          ob_fildFiles(2) = 'lev_s.bin'
+C          ob_fildFiles(2) = 'lev_t.bin'
 C          ob_fldNames(1) = 'bath'
-C          ob_fldNames(2) = 'salt'
+C          ob_fldNames(2) = 'theta'
 
 
 C          Loop through chosen fields to read from corresponding binary files
@@ -207,9 +207,13 @@ C            Write subField to binary file
 
 C          If we incremented to/near the end of an averaging period:
            if ((step_ob .eq. avgPeriod_ob) .or.
-     &          (DIFFERENT_MULTIPLE(freq, val1, step) .and.
-     &          (step_ob .le. avgPeriod_ob))) then
+     &         (abs(avgPeriod_ob - step_ob) .lt. deltaT_ob )) then
+C     &          (DIFFERENT_MULTIPLE(freq, val1, step) .and.
+C     &          (step_ob .le. avgPeriod_ob))) then
 
+             print *,"step_ob",step_ob
+C     &      "DIFFERENT_MULTIPLE",DIFFERENT_MULTIPLE(freq, val1, step),
+C     &      "step_ob .le. avgPeriod_ob:",step_ob .le. avgPeriod_ob
 
 C             CALL DIAGNOSTICS_OB_WRITE_PICKUP(.FALSE.,
 C     &         'flds',startTime+incr, incr/deltaTMom, myThid)
@@ -238,7 +242,7 @@ C            Reading from binary file to retrieve open boundary sub mask
              CALL READ_REC_XY_RL( ob_filenames(ob_id),
      &               ob_subMask,1, 0, myThid )
              print *, "OB: READ SUCCESSFUL"
-             
+
              _EXCH_XY_RL(ob_subMask, myThid)
 
              CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, ob_subMask,

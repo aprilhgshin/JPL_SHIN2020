@@ -155,7 +155,6 @@ C     Initializing to empty string
         ob_filenames(k) = ' '
       ENDDO
 
-
       DO k=1, 3
         nml_fldNames(k) = ' '
       ENDDO
@@ -206,9 +205,9 @@ C     Fix to avoid running without getting any output:
       diagOB_MDSIO = (.NOT. diagOB_MNC) .OR. outputTypesInclusive
 
 C     Organize user input booleans into an array:
-      fld_choice(1) = ob_hydrogSalt
-      fld_choice(2) = ob_hydrogTheta
-      fld_choice(3) = ob_bathymetry
+      fld_choice(1) = ob_bathymetry
+      fld_choice(2) = ob_hydrogSalt
+      fld_choice(3) = ob_hydrogTheta
 
 C     Fill DIAGNOSTICS_OB.h Common Block with Namelist Info
       k = 1

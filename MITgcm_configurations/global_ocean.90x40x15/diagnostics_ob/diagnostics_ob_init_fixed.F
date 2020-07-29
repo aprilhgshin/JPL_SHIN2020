@@ -38,7 +38,7 @@ C     === Local variables ===
 #endif
 
 #ifdef ALLOW_DIAGNOSTICS_OB
-      IF ( useDIAGNOSTICS_OB ) THEN
+      IF ( useDiagnostics_ob ) THEN
         CALL OB_EXTRACT_LOOKUP( myThid )
       ENDIF
 #endif

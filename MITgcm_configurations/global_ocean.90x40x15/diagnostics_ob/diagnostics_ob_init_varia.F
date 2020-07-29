@@ -120,9 +120,9 @@ C-      Assume Agrid position:
        ENDIF
 #endif /* DIAGNOSTICS_OB_2D_STATE */
 
-      ELSE
+C      ELSE
 C--   restart from a pickup:
-         CALL DIAGNOSTICS_OB_READ_PICKUP( nIter0, myThid )
+C         CALL DIAGNOSTICS_OB_READ_PICKUP( nIter0, myThid )
 
 C--   end start-from-iter-zero if/else block
       ENDIF
