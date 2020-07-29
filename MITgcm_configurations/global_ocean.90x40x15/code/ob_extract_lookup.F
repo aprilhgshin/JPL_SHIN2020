@@ -36,7 +36,7 @@ C      debug: Integer used to hold either 1 or 0, 1 to print debug statements or
 C      Although we read REAL*4 values, most built in functions have _RS input which by default is _RL.
 C      So global_mask, ob_subMask, and bath_subMask are set as _RL or _RS.
        _RL global_mask(Nx,Ny,nSx,nSy)
-       _RL recv_arr(nOB_fld,sNx + sNy + 1)
+       _RL recv_arr(sNx + sNy + 1)
        _RL g_indices(nPx*nPy, sNx + sNy + 1)
        _RL timeave_cum(Nr, nSx, nSy)
        _RL subField(nOB_fld,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
@@ -77,9 +77,6 @@ C      _RL  freq, val1, step
        myBxLo_myThid = myBxLo(myThid)
        myBxHi_myThid = myBxHi(myThid)
 
-C      Initializing before adding onto total_valid
-       total_valid = 0
-       num_valid = 0
 
 C       Initialize local arrays:
         DO bj = myByLo(myThid), myByHi(myThid)
@@ -104,10 +101,8 @@ C       Initialize local arrays:
           ENDDO
         ENDDO
 
-        DO fld=1, nOB_fld
-          DO i=1, sNx + sNy + 1
-            recv_arr(fld,i) = 0.0
-          ENDDO
+        DO i=1, sNx + sNy + 1
+          recv_arr(i) = 0.0
         ENDDO
 
 
@@ -157,7 +152,7 @@ c      All Processes :
 
        DO ob_id = 1, nOB_mask
 
-         step_ob = 1
+         step_ob = 0
          myIter = nIter0
          print *, "OB: deltaTMom, ", deltaTMom
          DO incr=0, totPhase_ob, int(deltaTMom)
@@ -181,7 +176,7 @@ C          Loop through chosen fields to read from corresponding binary files
            DO fld=1, nOB_fld
 C             CALL READ_PICKUP(incr, myThid)
 
-             print *,"time step number:",myIter
+             print *,"time step #:",myIter
              CALL READ_REC_XY_RL( ob_fldFiles(fld),
      &           subField(fld,:,:,:,:),1, myIter, myThid)
              _EXCH_XY_RL(subField(fld,:,:,:,:), myThid)
@@ -191,8 +186,8 @@ C     &                  subField(fld,:,:,:,:), ob_fldNames(fld), ob_id)
              if (debug .eq. 1) then
                CALL PLOT_FIELD_XYRL(subField(fld,:,:,:,:),
      &                            ob_fldNames(fld), -1, myThid )
-
              end if
+
              DO bj = myByLo(myThid), myByHi(myThid)
                DO bi = myBxLo(myThid), myBxHi(myThid)
                  DO j=1-OLy,sNy+OLy
@@ -205,12 +200,21 @@ C     &                  subField(fld,:,:,:,:), ob_fldNames(fld), ob_id)
              ENDDO
            ENDDO
 
-C          If we incremented to the end of an averaging period:
-           if (step_ob .eq. avgPeriod_ob) then
-C     &          .or. (DIFFERENT_MULTIPLE(freq, val1, step))) then
+C          If we incremented to/near the end of an averaging period:
+           if ((step_ob .eq. avgPeriod_ob) .or.
+     &          (DIFFERENT_MULTIPLE(freq, val1, step) .and.
+     &          (step_ob .le. avgPeriod_ob))) then
+
+
 C             CALL DIAGNOSTICS_OB_WRITE_PICKUP(.FALSE.,
 C     &         'flds',startTime+incr, incr/deltaTMom, myThid)
-             step_ob = 1
+             print *, "OB: STEP_OB EQUAL "
+
+
+C            Initializing before adding onto total_valid
+             total_valid = 0
+             num_valid = 0
+             step_ob = 0
              DO fld=1, nOB_fld
                DO bj = myByLo(myThid), myByHi(myThid)
                  DO bi = myBxLo(myThid), myBxHi(myThid)
@@ -226,6 +230,7 @@ C     &         'flds',startTime+incr, incr/deltaTMom, myThid)
 
              CALL READ_REC_XY_RL( ob_filenames(ob_id),
      &               ob_subMask,1, 0, myThid )
+             print *, "OB: READ SUCCESSFUL"
              _EXCH_XY_RL(ob_subMask, myThid)
 
              CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, ob_subMask,
@@ -319,8 +324,10 @@ C           Inserting number of valid elements as first element of each array
 C           Processes 1 and onward, send sub arrays to Parent process
                 call MPI_SEND(sub_global_indices,(sNx+sNy+1),
      &               MPI_REAL, 0, 1, MPI_COMM_MODEL, ierror)
-                call MPI_SEND(subFieldOnMask, nOB_fld*(sNx+sNy+1),
-     &               MPI_REAL,0, 2, MPI_COMM_MODEL, ierror)
+                do fld=1, nOB_fld
+                  call MPI_SEND(subFieldOnMask(fld,:), sNx+sNy+1,
+     &               MPI_REAL,0, fld+1, MPI_COMM_MODEL, ierror)
+                end do
 
               else if (mpiMYId .eq. 0) then
                 if (print_debug .eq. 1) then
@@ -368,30 +375,18 @@ C          Retrive sub_global_indicies and sub fields from every process > 0.
                 print *, "mpiNprocs", mpiNprocs
 C           Retrieving sub_global_indices first from all processes > 0
                 do pid=1, mpiNprocs-1
-                  call MPI_RECV(recv_arr(1,:), sNx+sNy+1, MPI_REAL,
+                  call MPI_RECV(recv_arr, sNx+sNy+1, MPI_REAL,
      &                   pid, 1, MPI_COMM_MODEL, status, ierror)
 
 C             Save all global indices into array for future reference
                   do i=1, sNx+sNy+1
-                    g_indices(pid,i) = recv_arr(1,i)
+                    g_indices(pid,i) = recv_arr(i)
                   end do
                 end do
 
-C               Receive all sub arrays from processes with pid > 0. Only needs to be done once.
-                do pid=1, mpiNprocs-1
-                  call MPI_RECV(recv_arr, nOB_fld*(sNx+sNy+1),
-     &               MPI_REAL, pid, 2 ,MPI_COMM_MODEL, status, ierror)
-                  if (debug .eq. 1) then
-                    print *, "Received recv_arr for fields"
-                    print *, "Displaying FULL array, beyond number"
-     &                        ," of valid elements"
-                    call PRINT_FLOAT_ARR(recv_arr, nOB_fld*sNx+sNy+1)
-                  end if
-                end do
-
-C                Appending subFields to final global_ob array
-C                DO tag=2, nOB_fld + 1
-                 DO fld=1, nOB_fld
+C               Appending subFields to final global_ob array
+C               DO tag=2, nOB_fld + 1
+                DO fld=1, nOB_fld
 
                   total_valid = 0
                   DO pid=1, mpiNprocs-1
@@ -403,6 +398,8 @@ C                 First append process 0 local arrays to final global array if n
                     end if
 
                     if (int(sub_global_indices(1)) .ge. 1) then
+                      print *,"subFieldOnMask shape",
+     &                  shape(subFieldOnMask)
 
                       if (print_debug .eq. 1) then
                        print *,"OB_EXTRACT_LOOKUP: Appending local"
@@ -426,21 +423,33 @@ C                 First append process 0 local arrays to final global array if n
 
                     end if
 
+C                   Receive all sub arrays from processes with pid > 0.
+                    call MPI_RECV(recv_arr, (sNx+sNy+1),MPI_REAL,
+     &                   pid, fld+1 ,MPI_COMM_MODEL, status, ierror)
+                    if (debug .eq. 1) then
+                      print *, "Received recv_arr for fields"
+                      print *, "shape:", shape(recv_arr)
+                      print *, "Displaying FULL array, beyond number"
+     &                       ," of valid elements"
+                      call PRINT_FLOAT_ARR(recv_arr, sNx+sNy+1)
+                    end if
 
 C               Appending all other processes' local arrays to final array if number of valid elements in arrays > 0:
                     if (int(g_indices(pid, 1)) .ge. 1) then
+                      print *,"OB: recv fields:"
+                      print *,"OB: recv shape:", shape(recv_arr)
+                      call PRINT_FLOAT_ARR(recv_arr,sNx+sNy+1)
                      call APPEND_OB_VALUE(g_indices(pid,:),
-     &                 recv_arr(fld,:),global_ob, lookup_table, ob_id)
+     &                 recv_arr,global_ob, lookup_table, ob_id)
 
                      total_valid = total_valid + g_indices(pid,1)
 
                     end if
 
                     print *,"OB_EXTRACT_LOOKUP: updated global ob by "
-     &      ,"process",pid,"for tag",tag,"with",int(g_indices(pid,1)),
+     &      ,"process",pid,"with",int(g_indices(pid,1)),
      &       "valid elements"
                     call PRINT_FLOAT_ARR(global_ob,total_valid)
-
                   ENDDO
 
                   print *, "OB_EXTRACT_LOOKUP: final global ob by ",
@@ -732,7 +741,7 @@ c       Reading/writing REALs Decimal form Fw.d
         integer arr_length, i
         _RL array(arr_length)
         do, i=1, arr_length
-          write(*,"(F6.0,$)") array(i)
+          write(*,"(F6.3,$)") array(i)
             if (i .EQ. arr_length) then
                write(*, '(A,/)') ''
             endif

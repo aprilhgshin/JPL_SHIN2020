@@ -9,7 +9,7 @@
  &DIAG_OB_EXTRACT
  avgPeriod_nml = 1800,
  deltaT_nml = 1800,
- totPhase_nml = 3600,
+ totPhase_nml = 3000,
  nml_fldFiles(1) = 'bathymetry.bin'
  nml_fldNames(1) = 'bath',
  nml_fldFiles(2) = 'lev_s.bin',
