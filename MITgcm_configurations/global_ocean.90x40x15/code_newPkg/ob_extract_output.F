@@ -1,32 +1,24 @@
-C All variables in header file are global to header files included below
+C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
+C12345678
 #include "DIAG_OPTIONS.h"
 
 
-
-
-
-       SUBROUTINE OB_EXTRACT_LOOKUP( myThid )
+       SUBROUTINE OB_EXTRACT_OUTPUT( myTime, myIter, myThid )
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "EESUPPORT.h"
-C#ifdef ALLOW_FIZHI
 #include "PARAMS.h"
-C#endif
-#include "DIAGNOSTICS_SIZE.h"
-C#include "DIAGNOSTICS.h"
+#include "DYNVARS.h"
 #include "DIAGNOSTICS_OB.h"
-C No need to include "mpif.h" becaues EESUPPORT.h already includes it.
 
-C Putting everything under do loop ob_id (EVERYTHING)
-
-
-C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
-C12345678
 
        integer myThid
+       integer myIter
+       _RL myTime
 
 C      !LOCAL VARIABLES:
 C      global_mask: 4 dimensional _RL array that combines all open boundarys
+C      recv_arr: buffer array to store incoming arrays from MPI_RECV
 C      msgBuf: Used to write statements into the output file
 C      ob_subMask_size: Integer size of ob_subMask (ob_subMask from DIAGNOSTICS.h)
 C      global_ob_index: Integer indicating bottom-left global element number
@@ -39,13 +31,12 @@ C      So global_mask, ob_subMask, and bath_subMask are set as _RL or _RS.
        _RL recv_arr(sNx + sNy + 1)
        _RL g_indices(nPx*nPy, sNx + sNy + 1)
 C       _RL timeave_cum(Nr, nSx, nSy)
-       _RL subField(nOB_fld,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
        CHARACTER*(MAX_LEN_MBUF) msgBuf
        integer i,j, k, fld, iG, jG, bi, bj, step_ob, incr
        integer ob, global_ob_index, ob_index, new_goi
        integer ob_subMask_size, counter, ob_id
-       integer total_valid, tag, time, num_valid, myIter
+       integer total_valid, tag, time, num_valid
        integer myByLo_myThid,myByHi_myThid,myBxLo_myThid,myBxHi_myThid
        real avg
        integer, parameter :: stop_program = 0
@@ -84,18 +75,6 @@ C       Initialize local arrays:
             DO j=1, Ny
               DO i=1, Nx
                 global_mask(i,j,bi,bj) = 0.0
-              ENDDO
-            ENDDO
-          ENDDO
-        ENDDO
-
-        DO i=1, nOB_fld
-          DO bj = myByLo(myThid), myByHi(myThid)
-            DO bi = myBxLo(myThid), myBxHi(myThid)
-              DO j=1-OLy,sNy+OLy
-                DO k=1-OLx,sNx+OLx
-                  subField(i,k,j,bi,bj) = 0.0
-                ENDDO
               ENDDO
             ENDDO
           ENDDO
@@ -148,22 +127,28 @@ C     mpi_myYGlobalLo :: List of all processors bottom-left Y-index in global do
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 c      All Processes :
 
+       IF (myTime .eq. startTime) then
+         call INI_OB_FILENAMES()
+C        Reading from binary file to retrieve open boundary sub mask
+         DO i=1, nOB_mask
+           print *, "ob_filename:", ob_filenames(i)
+           CALL READ_REC_XY_RL( ob_filenames(i),
+     &               ob_subMask(i,:,:,:,:),1, 0, myThid )
+           _EXCH_XY_RL(ob_subMask(i,:,:,:,:), myThid)
+C              Plotting for debugging
+           CALL PLOT_FIELD_XYRL( ob_subMask(i,:,:,:,:),
+     &                        'Open Boundary Submask', -1, myThid )
+         ENDDO
 
+         DO i=1, nOB_fld
+           print *, "ob_fldNames", ob_fldNames(i)
+         ENDDO
 
-       DO ob_id = 1, nOB_mask
+       ENDIF
 
-         step_ob = 0
-         myIter = nIter0
-         print *, "OB: deltaTMom, ", deltaTMom
-         DO incr=0, totPhase_ob, int(deltaTMom)
-C     freq       :: Frequency by which time is divided.
-C     val1       :: time that is checked
-C     step       :: length of time interval (around val1) that is checked
-           freq(1) = avgPeriod_ob
-           val1(1) = step_ob
-           step(1) = deltaT_ob
+       ob_subMask_size = (abs(1-OLx)+(sNx+OLx))*
+     &                   (abs(1-OLy)+(sNy+OLy))*nSx*nSy
 
-           CALL INI_OB_FILENAMES(ob_filenames)
 
 C          ob_filenames(1) = 'domain_flt32_mask1.bin'
 C          ob_fildFiles(1) = 'bathymetry.bin'
@@ -171,146 +156,112 @@ C          ob_fildFiles(2) = 'lev_t.bin'
 C          ob_fldNames(1) = 'bath'
 C          ob_fldNames(2) = 'theta'
 
+C            CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, ob_subMask,
+C     &                          "mask", ob_id)
+        print *, "called SET_SUBFIELDS"
+        CALL SET_SUBFIELDS(myThid)
+        IF (print_debug .eq. 1) then
+         CALL PRINT_FLOAT_ARR(subField(1,:,:,:,:),ob_subMask_size)
+         CALL PRINT_FLOAT_ARR(salt(:,:,1,:,:),ob_subMask_size)
+       ENDIF
+       IF (debug .eq. 1) then
+         CALL  PLOT_FIELD_XYRL(subField(1,:,:,:,:),
+     &       'OB_EXTRACT_OUTPUT: salt copy in subField', -1, myThid )
+         CALL  PLOT_FIELD_XYRL(salt(:,:,1,:,:),
+     &            'OB_EXTRACT_OUTPUT: originalsalt', -1, myThid )
+      ENDIF
 
-C          Loop through chosen fields to read from corresponding binary files
-           DO fld=1, nOB_fld
-C             CALL READ_PICKUP(incr, myThid)
+C       deltaTClock = 43200.0
+C       endTime = endTime + totPhase_ob
+C        startTime = 0.0
 
-C            Read field file. Passing in time step # as argument.
-             print *,"time step #:",myIter
-             CALL READ_REC_XY_RL( ob_fldFiles(fld),
-     &           subField(fld,:,:,:,:),1, myIter, myThid)
 
-C            Fill in halo regions
-             _EXCH_XY_RL(subField(fld,:,:,:,:), myThid)
+       IF (myIter .eq. nIter0) then
+C          Initialize averages to zero and number of time steps to one
+         CALL SET_TO_INI_STATE(myThid)
+       ELSE
+C       Cumulate Diagnostics_ob fields and number of time steps (for Time Average)
+         CALL CUMULATE_FLD_TIME(myThid)
+       ENDIF
 
-C            Write subField to binary file
-             CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy,
-     &                  subField(fld,:,:,:,:), ob_fldNames(fld), ob_id)
+       if (debug .eq. 1) then
+         print *, "OB_EXTRACT_OUTPUT timepassed:", time_passed
+         print *, "OB_EXTRACT_OUTPUT deltaTClock:", deltaTClock
+         print *, "OB_EXTRACT_OUTPUT myTime:", myTime
+         print *, "OB_EXTRACT_OUTPUT startTime:",startTime
+         print *, "OB_EXTRACT_OUTPUT model endTIme", endTime
+         print *, "OB_EXTRACT_OUTPUT user end time:",
+     & startTime + totPhase_ob
+         print *, "OB_EXTRACT_OUTPUT DIFFERENT_MULTIPLE",
+     &          DIFFERENT_MULTIPLE(avgPeriod_ob,myTime,deltaTClock)
+      end if
 
-             if (debug .eq. 1) then
-               CALL PLOT_FIELD_XYRL(subField(fld,:,:,:,:),
-     &                            ob_fldNames(fld), -1, myThid )
-             end if
 
-             DO bj = myByLo(myThid), myByHi(myThid)
-               DO bi = myBxLo(myThid), myBxHi(myThid)
-                 DO j=1-OLy,sNy+OLy
-                   DO k=1-OLx,sNx+OLx
-                     subField_avg(fld,k,j,bi,bj) =
-     &           subField_avg(fld,k,j,bi,bj) + subField(fld,k,j,bi,bj)
-                   ENDDO
-                 ENDDO
-               ENDDO
-             ENDDO
+
+       IF (((myIter.NE.nIter0)
+     &       .AND.DIFFERENT_MULTIPLE(avgPeriod_ob,myTime,deltaTClock))
+     &       .AND. (time_passed .le. totPhase_ob)) THEN
+C          Compute time average of all sub fields
+         CALL TIMEAVE_OB_FLD(myThid)
+C         print *, "ob_output: different multiple"
+C         CALL PRINT_FLOAT_ARR(subField_avg(1,:,:,:,:),ob_subMask_size)
+
+         DO ob_id = 1, nOB_mask
+
+C          Initializing counting integers
+           total_valid = 0
+           num_valid = 0
+           step_ob = 0
+
+           iG = mpi_myXGlobalLo(mpiMyId+1)
+           jG = mpi_myYGlobalLo(mpiMyId+1)
+           global_ob_index = Nx*(jG -1)  + iG
+
+           counter = 2
+           new_goi = global_ob_index
+C          Computing global indices, storing values on open boundary points
+           DO bj = myByLo(myThid), myByHi(myThid)
+            DO bi = myBxLo(myThid), myBxHi(myThid)
+              DO j=1-OLy,sNy+OLy
+                DO i=1-OLx,sNx+OLx
+                  if ((j .ge. 1) .and. (i .ge. 1)) then
+                      new_goi = (j-1)*sNx+(j-1)*(Nx-(iG+sNx-1))+
+     &                              j*(iG-1)+i
+                  end if
+                  if (ob_subMask(ob_id,i,j,bi,bj) .ge. 1.0 ) then
+                    if (print_debug .eq. 1) then
+                     print *,"OB_EXTRACT_OUTPUT: ob_subMask gt 1:",
+     &                    ob_subMask(ob_id,i,j,bi,bj)
+                     print *,"OB_EXTRACT_OUTPUT: i j of ob_subMask",
+     &                    " gt 1", i, j
+                    end if
+
+                    DO fld=1, nOB_fld
+                     subFieldOnMask(fld,counter) =
+     &                                     subField_avg(fld,i,j,bi,bj)
+                    ENDDO
+                    sub_global_indices(counter) = new_goi
+                    counter = counter + 1
+                    if (((i .ge. 1) .and. (j .ge. 1))
+     &                  .and. ((i .le. sNx) .and. (j .le. sNy))) then
+                      num_valid = num_valid + 1
+                    end if
+                  end if
+
+                ENDDO
+              ENDDO
+            ENDDO
            ENDDO
 
-C          If we incremented to/near the end of an averaging period:
-           if ((step_ob .eq. avgPeriod_ob) .or.
-     &         (abs(avgPeriod_ob - step_ob) .lt. deltaT_ob )) then
-C     &          (DIFFERENT_MULTIPLE(freq, val1, step) .and.
-C     &          (step_ob .le. avgPeriod_ob))) then
+           if (print_debug .eq. 1) then
+             print *, "OB_EXTRACT_OUTPUT: num_valid:",num_valid
+           end if
 
-             print *,"step_ob",step_ob
-C     &      "DIFFERENT_MULTIPLE",DIFFERENT_MULTIPLE(freq, val1, step),
-C     &      "step_ob .le. avgPeriod_ob:",step_ob .le. avgPeriod_ob
-
-C             CALL DIAGNOSTICS_OB_WRITE_PICKUP(.FALSE.,
-C     &         'flds',startTime+incr, incr/deltaTMom, myThid)
-
-
-C            Initializing counting integers
-             total_valid = 0
-             num_valid = 0
-             step_ob = 0
-
-C            Computing field averages
-             DO fld=1, nOB_fld
-               DO bj = myByLo(myThid), myByHi(myThid)
-                 DO bi = myBxLo(myThid), myBxHi(myThid)
-                   DO j=1-OLy,sNy+OLy
-                     DO k=1-OLx,sNx+OLx
-                       subField_avg(fld,k,j,bi,bj) =
-     &                    subField_avg(fld,k,j,bi,bj) / avgPeriod_ob
-                     ENDDO
-                   ENDDO
-                 ENDDO
-               ENDDO
-             ENDDO
-
-C            Reading from binary file to retrieve open boundary sub mask
-             CALL READ_REC_XY_RL( ob_filenames(ob_id),
-     &               ob_subMask,1, 0, myThid )
-             print *, "OB: READ SUCCESSFUL"
-
-             _EXCH_XY_RL(ob_subMask, myThid)
-
-             CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, ob_subMask,
-     &                          "mask", ob_id)
-
-C             DO bj = myByLo(myThid), myByHi(myThid)
-C              DO bi = myBxLo(myThid), myBxHi(myThid)
-C               CALL TIMEAVE_NORMALIZ(ob_subMask, timeave_cum,1,bi,bj,
-C     &                                myThid)
-C              ENDDO
-C            ENDDO
-
-             if (debug .eq. 1) then
-C              Plotting for debugging
-               CALL PLOT_FIELD_XYRL( ob_subMask,
-     &                        'Open Boundary Submask', -1, myThid )
-             end if
-
-
-             ob_subMask_size = (abs(1-OLx)+(sNx+OLx))*
-     &                   (abs(1-OLy)+(sNy+OLy))*nSx*nSy
-
-             iG = mpi_myXGlobalLo(mpiMyId+1)
-             jG = mpi_myYGlobalLo(mpiMyId+1)
-             global_ob_index = Nx*(jG -1)  + iG
-
-             counter = 2
-             new_goi = global_ob_index
-
-C            Computing global indices, storing values on open boundary points
-             DO bj = myByLo(myThid), myByHi(myThid)
-               DO bi = myBxLo(myThid), myBxHi(myThid)
-                 DO j=1-OLy,sNy+OLy
-                   DO i=1-OLx,sNx+OLx
-                     if ((j .ge. 1) .and. (i .ge. 1)) then
-                         new_goi = (j-1)*sNx+(j-1)*(Nx-(iG+sNx-1))+
-     &                              j*(iG-1)+i
-                     end if
-                     if (ob_subMask(i,j,bi,bj) .ge. 1.0 ) then
-                       if (print_debug .eq. 1) then
-                        print *, "OB_EXTRACT_LOOKUP: ob_subMask gt 1:",
-     &                    ob_subMask(i,j,bi,bj)
-                        print *,"OB_EXTRACT_LOOKUP: i j of ob_subMask",
-     &                    " gt 1", i, j
-                       end if
-
-                       DO fld=1, nOB_fld
-                        subFieldOnMask(fld,counter) =
-     &                                     subField_avg(fld,i,j,bi,bj)
-                       ENDDO
-                       sub_global_indices(counter) = new_goi
-                       counter = counter + 1
-                       if (((i .ge. 1) .and. (j .ge. 1))
-     &                  .and. ((i .le. sNx) .and. (j .le. sNy))) then
-                         num_valid = num_valid + 1
-                       end if
-                     end if
-
-                   ENDDO
-                 ENDDO
-               ENDDO
-             ENDDO
-
-C           Inserting number of valid elements as first element of each array
-            DO fld=1,nOB_fld
-              subFieldOnMask(fld,1) = num_valid
-            ENDDO
-            sub_global_indices(1) = num_valid
+C          Inserting number of valid elements as first element of each array
+           DO fld=1,nOB_fld
+             subFieldOnMask(fld,1) = num_valid
+           ENDDO
+           sub_global_indices(1) = num_valid
 
 
 #ifdef ALLOW_USE_MPI
@@ -327,11 +278,11 @@ C               Processes 1 and onward send sub arrays to Parent process
 
               else if (mpiMYId .eq. 0) then
 C               Process 0 does not need to send arrays to itself.
-                if (print_debug .eq. 1) then
+                if (debug .eq. 1) then
                   print *,"OB_EXTRACT_LOOKUP: l sub_global_indices ",
      &                    "count:", int(sub_global_indices(1))
                   print *,"OB_EXTRACT_LOOKUP: local sub_global_indices"
-                  call PRINT_FLOAT_ARR( sub_global_indices(:),num_valid)
+                  call PRINT_FLOAT_ARR( sub_global_indices,num_valid)
                 end if
               end if
 
@@ -340,7 +291,7 @@ C               Process 0 does not need to send arrays to itself.
 
 C           Combining all sub masks to create one global mask
             call GATHER_2D_R8(global_mask(1:Nx,1:Ny,1,1),
-     &                     ob_subMask(1:sNx,1:sNy,1,1),
+     &                     ob_subMask(ob_id,1:sNx,1:sNy,1,1),
      &                     Nx, Ny, .true., .true., myThid)
 
             if (mpiMYId .eq. 0) then
@@ -399,7 +350,7 @@ C                 First append process 0 local arrays to final global array if n
 
                       if (debug .eq. 1) then
                         print *,"APPEND_OB_VALUE: appending local "
-     &                    ,"bath to global_ob with ",
+     &                    ,"field to global_ob with ",
      &                    int(sub_global_indices(1)),"valid elements:"
                         call PRINT_FLOAT_ARR(global_ob, total_valid)
                       end if
@@ -450,13 +401,10 @@ C                                   if number of valid elements in arrays > 0:
               end if
             end if
 #endif
-          endif
-          step_ob = step_ob + int(deltaTMom)
-          myIter = myIter + 1
         ENDDO
+       ENDIF
 
-      ENDDO
-
+       time_passed = time_passed + deltaTClock
 
       END
 
@@ -494,11 +442,12 @@ C      end do
 C      avg = real(sum/nfld_time)
 
 C      END
-
-
-      SUBROUTINE INI_OB_FILENAMES(ob_filenames)
-        include "USER_INPUT.h"
-        CHARACTER*40 ob_filenames(nOB_mask)
+      SUBROUTINE INI_OB_FILENAMES()
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "EESUPPORT.h"
+#include "PARAMS.h"
+#include "DIAGNOSTICS_OB.h"
         INTEGER k
 C       Fill in array with filenames for each ob mask
 
@@ -507,6 +456,138 @@ C       Fill in array with filenames for each ob mask
      &          k, '.bin'
         ENDDO
       END
+
+      SUBROUTINE SET_TO_INI_STATE(myThid)
+C     Initializes average fields and number of time steps to zero
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "PARAMS.h"
+#include "DIAGNOSTICS_OB.h"
+
+        INTEGER myThid
+        INTEGER j, k, bi, bj, fld
+
+        nTimeSteps_ob = 0
+        DO fld=1, nOB_fld
+          DO bj = myByLo(myThid), myByHi(myThid)
+            DO bi = myBxLo(myThid), myBxHi(myThid)
+              DO j=1-OLy,sNy+OLy
+                DO k=1-OLx,sNx+OLx
+                  subField_avg(fld,k,j,bi,bj) = 0.0
+                ENDDO
+              ENDDO
+            ENDDO
+          ENDDO
+        ENDDO
+
+      END
+
+      SUBROUTINE SET_SUBFIELDS(myThid)
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "PARAMS.h"
+#include "DYNVARS.h"
+#include "DIAGNOSTICS_OB.h"
+
+        INTEGER myThid
+        INTEGER j, k, bi, bj, fld, opt
+        print *,"Inside SET_SUBFIELDS"
+        print *,"SET_SUBFIELDS: shape fld_choice",shape(fld_choice)
+        print *,"SET_SUBFIELDS: nFldOpt",nFldOpt
+        print *,"SET_SUBFIELDS: fld_choice(nFldOpt)",fld_choice(nFldOpt)
+
+        DO fld=1, nFldOpt
+          print*, "SET_SUBFIELDS: fld_choice(opt)",fld_choice(fld)
+        ENDDO
+
+        DO fld=1, nOB_fld
+         DO opt=1, nFldOpt
+          IF (fld_choice(opt)) then
+            DO bj = myByLo(myThid), myByHi(myThid)
+              DO bi = myBxLo(myThid), myBxHi(myThid)
+                DO j=1-OLy,sNy+OLy
+                  DO k=1-OLx,sNx+OLx
+                    IF (opt .eq. 1) then
+                      subField(fld,k,j,bi,bj) = etaN(k,j,bi,bj)
+                    ELSE IF (opt .eq. 2) then
+                      subField(fld,k,j,bi,bj) = uVel(k,j,1,bi,bj)
+                    ELSE IF (opt .eq. 3) then
+                      subField(fld,k,j,bi,bj) = vVel(k,j,1,bi,bj)
+                    ELSE IF (opt .eq. 4) then
+                      subField(fld,k,j,bi,bj) = theta(k,j,1,bi,bj)
+                    ELSE IF (opt .eq. 5) then
+                      subField(fld,k,j,bi,bj) = salt(k,j,1,bi,bj)
+                    ELSE IF (opt .eq. 6) then
+                      subField(fld,k,j,bi,bj) = gU(k,j,1,bi,bj)
+                    ELSE IF (opt .eq. 7) then
+                      subField(fld,k,j,bi,bj) = gV(k,j,1,bi,bj)
+                    ELSE IF (opt .eq. 8) then
+                      subField(fld,k,j,bi,bj) = etaH(k,j,bi,bj)
+                    ENDIF
+                  ENDDO
+                ENDDO
+              ENDDO
+            ENDDO
+          ENDIF
+        ENDDO
+       ENDDO
+      END
+
+      SUBROUTINE CUMULATE_FLD_TIME(myThid)
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "PARAMS.h"
+#include "DIAGNOSTICS_OB.h"
+
+        INTEGER myThid
+        INTEGER j, k, bi, bj, fld
+
+        nTimeSteps_ob = nTimeSteps_ob + 1
+        DO fld=1, nOB_fld
+          DO bj = myByLo(myThid), myByHi(myThid)
+            DO bi = myBxLo(myThid), myBxHi(myThid)
+              DO j=1-OLy,sNy+OLy
+                DO k=1-OLx,sNx+OLx
+                  subField_avg(fld,k,j,bi,bj) =
+     &           subField_avg(fld,k,j,bi,bj)+subField(fld,k,j,bi,bj)
+                ENDDO
+              ENDDO
+            ENDDO
+          ENDDO
+        ENDDO
+      END
+
+      SUBROUTINE TIMEAVE_OB_FLD(myThid)
+C       Cumulate Diagnostics_ob fields and number of time steps (for Time Average)
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "EESUPPORT.h"
+#include "PARAMS.h"
+#include "DIAGNOSTICS_OB.h"
+
+        INTEGER myThid
+        INTEGER j, k, bi, bj, fld
+
+        DO fld=1, nOB_fld
+          DO bj = myByLo(myThid), myByHi(myThid)
+            DO bi = myBxLo(myThid), myBxHi(myThid)
+              DO j=1-OLy,sNy+OLy
+                DO k=1-OLx,sNx+OLx
+                  subField_avg(fld,k,j,bi,bj) =
+     &           subField_avg(fld,k,j,bi,bj)/nTimeSteps_ob
+                ENDDO
+              ENDDO
+            ENDDO
+          ENDDO
+C         Write subField_avg to binary file
+C          CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy,
+C     &           subField_avg(fld,:,:,:,:), ob_fldNames(fld), ob_id)
+        ENDDO
+
+
+      END
+
+
 
 
       SUBROUTINE APPEND_OB_VALUE(global_indices,ob_values,global_ob,
@@ -682,7 +763,7 @@ C      If lookup table contains ob mask point location (1-90) then extract corre
              DO i=1, Nx
                if (ob_counter .le. total_valid) then
                  if (lookup_table(ob_id,counter).eq.ob_counter) then
-C                Inserting bathymetry points into NxNy array
+C                Inserting field points into NxNy array
                    global_NxNy(i,j,bi,bj) = global_ob(ob_counter)
                    if (global_mask(i,j,bi,bj) .eq. 0) then
                      correct = 0
@@ -726,7 +807,7 @@ c       Reading/writing REALs Decimal form Fw.d
         integer arr_length, i
         _RL array(arr_length)
         do, i=1, arr_length
-          write(*,"(F6.3,$)") array(i)
+          write(*,"(F9.3,$)") array(i)
             if (i .EQ. arr_length) then
                write(*, '(A,/)') ''
             endif

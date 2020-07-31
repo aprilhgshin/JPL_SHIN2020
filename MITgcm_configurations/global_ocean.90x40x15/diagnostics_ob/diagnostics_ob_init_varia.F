@@ -27,7 +27,7 @@ CEOP
 
 C     !LOCAL VARIABLES:
 C     === Local variables ===
-      INTEGER i,j,k,bi,bj
+      INTEGER i,j,k,l, bi,bj, fld, ob
 
       DO bj = myByLo(myThid), myByHi(myThid)
        DO bi = myBxLo(myThid), myBxHi(myThid)
@@ -66,6 +66,9 @@ C     2-dim.
 C- end bi,bj loops
        ENDDO
       ENDDO
+
+
+C ----END OF DIAG_OB_EXTRACT COMMON block initializing ---------------
 
       IF ( startTime.EQ.baseTime .AND. nIter0.EQ.0
      &                           .AND. pickupSuff.EQ.' ' ) THEN

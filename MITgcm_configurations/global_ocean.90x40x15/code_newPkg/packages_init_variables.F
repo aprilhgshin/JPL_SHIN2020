@@ -110,6 +110,7 @@ C       |-- CTRL_INIT_VARIABLES
 C       |
 C       |-- OBCS_INIT_VARIABLES
 
+
 C     !USES:
       IMPLICIT NONE
 C     === Global variables ===
@@ -469,6 +470,7 @@ C--   Initialise the 2-Way Nesting packages variables
         CALL CPL_INI_VARS( myThid )
       ENDIF
 #endif /* COMPONENT_MODULE */
+      print *, "PACKAGES_INIT_VAR: DIAGNOSTICS_OB"
 
 #ifdef ALLOW_MYPACKAGE
       IF ( useMYPACKAGE ) THEN
@@ -539,6 +541,8 @@ C--   put this call in last position (needs to come after few {PKG}_init_varia)
       IF (debugMode)
      &     CALL DEBUG_LEAVE('PACKAGES_INIT_VARIABLES',myThid)
 #endif /* ALLOW_DEBUG */
+
+
 
       RETURN
       END

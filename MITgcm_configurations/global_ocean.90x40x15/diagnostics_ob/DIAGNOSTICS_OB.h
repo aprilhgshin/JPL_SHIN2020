@@ -46,39 +46,40 @@ C-    file names for initial conditions:
      &       diagOB_Surf1File, diagOB_Surf2File
 
 C     ================== Global Variables for open boundary ====================
-      CHARACTER*10 ob_fldNames(nOB_fld)
-      CHARACTER*40 ob_fldFiles(nOB_fld)
-      CHARACTER*40 ob_filenames(nOB_mask)
 
-      _RL ob_subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      CHARACTER*10 ob_fldNames(nOB_fld)
+      CHARACTER*40 ob_filenames(nOB_mask)
+      LOGICAL fld_choice(nFldOpt)
+
+
+      _RL ob_subMask(nOB_mask,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
       _RL subField_avg(nOB_fld,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+      _RL subField(nOB_fld,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+
 
       _RL subFieldOnMask(nOB_fld, sNx + sNy + 1)
       _RL sub_global_indices(sNx + sNy + 1)
       INTEGER lookup_table(nOB_mask, Ny*Nx)
       _RL global_ob((sNy+sNx)*(nPx*nPy))
 
-      INTEGER avgPeriod_ob
+      _RL avgPeriod_ob
       INTEGER deltaT_ob
       INTEGER totPhase_ob
+      _RL nTimeSteps_ob
+      _RL time_passed
 C     ==========================================================================
 
-C      COMMON / DIAG_OB_EXTRACTS /
-C     &     ob_fldNames, ob_fldFiles, ob_filenames
-C     &     ob_subMask,lookup_table,
-C     &     global_ob, sub_global_indices,
-C     &     temp_subMask, bath_subMask,
-C     &     subBathOnMask, subTempOnMask,
-C     &     avgPeriod_ob, deltaT_ob, totPhase_ob
-
       COMMON / DIAG_OB_EXTRACT_R /
-     &     ob_subMask, subField_avg,
+     &     ob_subMask, subField_avg, subField,
      &     global_ob, sub_global_indices,
-     &     subFieldOnMask
+     &     subFieldOnMask, nTimeSteps_ob, time_passed
       COMMON / DIAG_OB_EXTRACT_I /
-     &     lookup_table, avgPeriod_ob, deltaT_ob, totPhase_ob
+     &     lookup_table,
+     &     avgPeriod_ob, deltaT_ob, totPhase_ob
       COMMON / DIAG_OB_EXTRACT_C /
-     &     ob_fldNames, ob_fldFiles, ob_filenames
+     &     ob_fldNames, ob_filenames
+      COMMON / DIAG_OB_EXTRACT_L /
+     &     fld_choice
 
 #ifdef DIAGNOSTICS_OB_3D_STATE
 C     DIAGOB 3-dim. fields

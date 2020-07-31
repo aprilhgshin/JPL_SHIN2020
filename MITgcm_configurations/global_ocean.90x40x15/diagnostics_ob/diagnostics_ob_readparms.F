@@ -28,7 +28,7 @@ C     msgBuf     :: Informational/error message buffer
 C     iUnit      :: Work variable for IO unit number
       CHARACTER*(MAX_LEN_MBUF) msgBuf
       INTEGER iUnit
-      INTEGER bi,bj,i,j,k,l
+      INTEGER bi,bj,i,j,k,l, ob, fld
 
       NAMELIST /DIAGNOSTICS_OB_PARM01/
      &       diagOB_MNC,
@@ -45,30 +45,19 @@ C     iUnit      :: Work variable for IO unit number
 
 C ----------------------------
 C     Open Boundary Extraction Namelist:
+C     nFldOpt  :  Number of possible fields
 C     nml_fldNames : field names for ocean state and flux variables
-C     nml_fldFiles : filenames for field files used in OB_EXTRACT_LOOKUP
 C     avgPeriod_nml : averaging period
 C     deltaT_nml : size of time step
 C     totPhase_nml : total time phase
 C -----------------------------
-      CHARACTER*10 nml_fldNames(3)
-      CHARACTER*40 nml_fldFiles(3)
-      INTEGER avgPeriod_nml
-      INTEGER deltaT_nml
-      INTEGER totPhase_nml
-      LOGICAL fld_choice(3)
-
-C      NAMELIST / DIAG_OB_EXTRACT /
-C     &       ob_fldNames, ob_fnames,
-C     &       ob_subMask, lookup_table,
-C     &       global_ob, sub_global_indices,
-C     &       temp_subMask, bath_subMask,
-C     &       subBathOnMask, subTempOnMask,
-C     &       avgPeriod_ob, deltaT_ob, totPhase_ob
+      CHARACTER*10 nml_fldNames(nFldOpt)
+      _RL avgPeriod_nml
+      _RL totPhase_nml
 
       NAMELIST / DIAG_OB_EXTRACT /
-     &     nml_fldFiles, nml_fldNames,
-     &     avgPeriod_nml, deltaT_nml, totPhase_nml
+     &     nml_fldNames,
+     &     avgPeriod_nml, totPhase_nml
 
       IF ( .NOT.useDIAGNOSTICS_OB ) THEN
 C-    pkg DIAGNOSTICS_OB is not used
@@ -107,25 +96,41 @@ C-    file names for initial conditions:
       diagOB_Surf1File   = ' '
       diagOB_Surf2File   = ' '
 
-
 C     Initializing local array:
-      DO j=1,3
+      DO k=1, nFldOpt
+        nml_fldNames(k) = ' '
+      ENDDO
+
+C     Initializing averaging period (avgPeriod_ob) and time counter (deltaT_ob)
+      avgPeriod_nml = 0.0
+      totPhase_nml = 0.0
+
+
+C----------------------------------------------------------------------
+C       Initializing variables from DIAG_OB_EXTRACT COMMON block:
+C----------------------------------------------------------------------
+      time_passed = 0
+      DO j=1,nFldOpt
         fld_choice(j) = .FALSE.
       ENDDO
 
-C     Initializing open boundary sub mask
+C     Initializing open boundary sub mask and sub fields/avg
       DO bj = myByLo(myThid), myByHi(myThid)
         DO bi = myBxLo(myThid), myBxHi(myThid)
           DO j=1-OLy,sNy+OLy
-            DO k=1-OLx,sNx+OLx
-              ob_subMask(k,j,bi,bj)   = 0.0
-              DO i=1, nOB_fld
-                subField_avg(i,k,j,bi,bj) = 0.0
+            DO i=1-OLx,sNx+OLx
+              DO ob=1, nOB_mask
+                ob_subMask(ob,i,j,bi,bj)   = 0.0
+              ENDDO
+              DO fld=1, nOB_fld
+                subField(fld,i,j,bi,bj) = 0.0
+                subField_avg(fld,i,j,bi,bj) = 0.0
               ENDDO
             ENDDO
           ENDDO
         ENDDO
       ENDDO
+
 
       DO l = 1, sNy+sNx+1
         sub_global_indices(l) = 0
@@ -134,10 +139,9 @@ C     Initializing open boundary sub mask
         ENDDO
       ENDDO
 
-C     k limited to total number of open boundaries
       DO j = 1, nOB_mask
         DO l = 1, Ny*Nx
-        lookup_table(j,l) = 0.0
+        lookup_table(j,l) = 0
         ENDDO
       ENDDO
 
@@ -148,25 +152,11 @@ C     k limited to total number of open boundaries
 C     Initializing to empty string
       DO k=1, nOB_fld
         ob_fldNames(k) = ' '
-        ob_fldFiles(k) = ' '
       ENDDO
 
       DO k=1, nOB_mask
         ob_filenames(k) = ' '
       ENDDO
-
-      DO k=1, 3
-        nml_fldNames(k) = ' '
-      ENDDO
-      DO k=1, 3
-        nml_fldFiles(k) = ' '
-      ENDDO
-
-C     Initializing averaging period (avgPeriod_ob) and time counter (deltaT_ob)
-      avgPeriod_nml = 86400
-      deltaT_nml = 86400
-      totPhase_nml = 86400
-
 
 
       WRITE(msgBuf,'(A)')
@@ -205,23 +195,27 @@ C     Fix to avoid running without getting any output:
       diagOB_MDSIO = (.NOT. diagOB_MNC) .OR. outputTypesInclusive
 
 C     Organize user input booleans into an array:
-      fld_choice(1) = ob_bathymetry
-      fld_choice(2) = ob_hydrogSalt
-      fld_choice(3) = ob_hydrogTheta
+      fld_choice(1) = etaN_ob
+      fld_choice(2) = uVel_ob
+      fld_choice(3) = vVel_ob
+      fld_choice(4) = theta_ob
+      fld_choice(5) = salt_ob
+      fld_choice(6) = gU_ob
+      fld_choice(7) = gV_ob
+      fld_choice(8) = etaH_ob
+
 
 C     Fill DIAGNOSTICS_OB.h Common Block with Namelist Info
       k = 1
-      DO j=1, 3
+      DO j=1, nFldOpt
         if ((fld_choice(j) .eqv. .TRUE.) .AND.
      &                (k .le. nOB_fld)) then
-          ob_fldFiles(k) = nml_fldFiles(j)
           ob_fldNames(k) = nml_fldNames(j)
           k = k + 1
         end if
       ENDDO
 
       avgPeriod_ob = avgPeriod_nml
-      deltaT_ob = deltaT_nml
       totPhase_ob = totPhase_nml
 
       _END_MASTER(myThid)

@@ -62,6 +62,9 @@ C       |
 C       |-- CPL_WRITE_PICKUP
 C       |
 C       |-- MYPACKAGE_WRITE_PICKUP
+C       |
+C       |-- DIAGNOSTICS_OB_WRITE_PICKUP
+
 
 C     !USES:
       IMPLICIT NONE
