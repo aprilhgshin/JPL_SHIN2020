@@ -1,0 +1,33 @@
+(PID.TID 0005.0001) W2_E2SETUP: number of Active Tiles =       6
+(PID.TID 0005.0001) W2_E2SETUP: number of Blank Tiles  =       0
+(PID.TID 0005.0001) W2_E2SETUP: Total number of Tiles  =       6
+(PID.TID 0005.0001) W2_SET_SINGLE_FACET: preDefTopol=  1 selected
+(PID.TID 0005.0001) W2_E2SETUP: Total number of Facets =       1
+(PID.TID 0005.0001) W2_SET_F2F_INDEX: index matrix for connected Facet-Edges:
+(PID.TID 0005.0001) W2_SET_MAP_TILES: tile mapping within facet and global Map:
+(PID.TID 0005.0001)  Global Map (IO): X-size=      90 , Y-size=      40
+(PID.TID 0005.0001) W2_SET_MAP_TILES: tile offset within facet and global Map:
+- facet  1 : X-size=    90 , Y-size=    40 ;    6 tiles (Tx,Ty=   3,   2)
+(PID.TID 0005.0001) W2_SET_MAP_CUMSUM: setting Facet Matrix for CUMUL-SUM
+(PID.TID 0005.0001) W2_SET_MAP_CUMSUM: done (skip Tile Matrix setting)
+(PID.TID 0005.0001) W2_SET_TILE2TILES: tile neighbours and index connection:
+(PID.TID 0005.0001) current Max.Nb.Neighbours (e.g., on tile    1 ) =  4
+(PID.TID 0005.0001) ===== W2 TILE TOPOLOGY =====
+(PID.TID 0005.0001)  TILE:     6 (bi,bj=   1   1 ), Nb of Neighbours =  4
+(PID.TID 0005.0001)     NEIGHBOUR  1 = TILE    3 (n=  2) Comm = MSG (PROC=    5)
+(PID.TID 0005.0001)     NEIGHBOUR  2 = TILE    3 (n=  1) Comm = MSG (PROC=    5)
+(PID.TID 0005.0001)     NEIGHBOUR  3 = TILE    4 (n=  4) Comm = MSG (PROC=    2)
+(PID.TID 0005.0001)     NEIGHBOUR  4 = TILE    5 (n=  3) Comm = MSG (PROC=    4)
+Tile     6 (pr=   6) sends pts i=  -2:  33, j=  18:  20
+                        to pts i=  -2:  33, j=  -2:   0 in tile      3 (pr=   5)
+Tile     6 (pr=   6) sends pts i=  -2:  33, j=   1:   3
+                        to pts i=  -2:  33, j=  21:  23 in tile      3 (pr=   5)
+Tile     6 (pr=   6) sends pts i=  28:  30, j=  -2:  23
+                        to pts i=  -2:   0, j=  -2:  23 in tile      4 (pr=   2)
+Tile     6 (pr=   6) sends pts i=   1:   3, j=  -2:  23
+                        to pts i=  31:  33, j=  -2:  23 in tile      5 (pr=   4)
+Tile     6 (pr=   6) recv pts i=  -2:  33, j=  21:  23 from tile     3 (pr=   5)
+Tile     6 (pr=   6) recv pts i=  -2:  33, j=  -2:   0 from tile     3 (pr=   5)
+Tile     6 (pr=   6) recv pts i=  31:  33, j=  -2:  23 from tile     4 (pr=   2)
+Tile     6 (pr=   6) recv pts i=  -2:   0, j=  -2:  23 from tile     5 (pr=   4)
+(PID.TID 0005.0001) ===  End TOPOLOGY report ===

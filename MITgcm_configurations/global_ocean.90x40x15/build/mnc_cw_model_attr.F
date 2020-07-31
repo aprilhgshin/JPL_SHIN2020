@@ -1,0 +1,1 @@
+/home/mitgcm/Work/MITgcm/pkg/mnc/mnc_cw_model_attr.F

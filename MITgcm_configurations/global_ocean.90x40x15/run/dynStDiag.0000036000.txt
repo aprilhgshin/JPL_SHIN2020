@@ -1,0 +1,9 @@
+# header of file: dynStDiag
+# frequency (s):    2592000.000000
+# phase (s)    :          0.000000
+# Regions      :   0
+# Fields       : ETAN     ETANSQ   DETADT2  UVEL     VVEL     WVEL     THETA    SALT     WVELSQ  
+# Nb of levels :    1   1   1  15  15  15  15  15  15
+# end of header ------------------------------------------------------------
+ 
+# records End here.

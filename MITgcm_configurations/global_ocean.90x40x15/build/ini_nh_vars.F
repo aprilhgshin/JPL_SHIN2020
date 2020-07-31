@@ -1,0 +1,1 @@
+/home/mitgcm/Work/MITgcm/model/src/ini_nh_vars.F

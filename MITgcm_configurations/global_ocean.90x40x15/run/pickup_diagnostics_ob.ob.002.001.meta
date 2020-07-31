@@ -1,0 +1,14 @@
+ simulation = { 'global_ocean.90x40x15' };
+ nDims = [   2 ];
+ dimList = [
+    90,   46,   90,
+    40,    1,   40
+ ];
+ dataprec = [ 'float64' ];
+ nrecords = [         62 ];
+ timeStepNumber = [          0 ];
+ timeInterval = [  3.110436000000E+09 ];
+ nFlds = [    6 ];
+ fldList = {
+ 'diagOBSt' 'diagOBSt' 'diagOBSt' 'diagOBSt' 'diagOBSu' 'diagOBSu'
+ };

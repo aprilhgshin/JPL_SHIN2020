@@ -1,0 +1,10 @@
+ simulation = { 'global_ocean.90x40x15' };
+ nDims = [   3 ];
+ dimList = [
+    90,   41,   50,
+    40,    1,   40,
+    15,    1,   15
+ ];
+ dataprec = [ 'float32' ];
+ nrecords = [          1 ];
+ timeStepNumber = [      36000 ];

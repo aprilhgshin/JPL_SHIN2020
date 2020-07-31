@@ -1,0 +1,1 @@
+/home/mitgcm/Work/MITgcm/pkg/diagnostics_ob/diagnostics_ob_mnc_init.F

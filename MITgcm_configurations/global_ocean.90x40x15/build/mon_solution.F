@@ -1,0 +1,1 @@
+/home/mitgcm/Work/MITgcm/pkg/monitor/mon_solution.F

@@ -1,0 +1,33 @@
+(PID.TID 0008.0001) W2_E2SETUP: number of Active Tiles =       9
+(PID.TID 0008.0001) W2_E2SETUP: number of Blank Tiles  =       0
+(PID.TID 0008.0001) W2_E2SETUP: Total number of Tiles  =       9
+(PID.TID 0008.0001) W2_SET_SINGLE_FACET: preDefTopol=  1 selected
+(PID.TID 0008.0001) W2_E2SETUP: Total number of Facets =       1
+(PID.TID 0008.0001) W2_SET_F2F_INDEX: index matrix for connected Facet-Edges:
+(PID.TID 0008.0001) W2_SET_MAP_TILES: tile mapping within facet and global Map:
+(PID.TID 0008.0001)  Global Map (IO): X-size=      90 , Y-size=      40
+(PID.TID 0008.0001) W2_SET_MAP_TILES: tile offset within facet and global Map:
+- facet  1 : X-size=    90 , Y-size=    40 ;    9 tiles (Tx,Ty=   9,   1)
+(PID.TID 0008.0001) W2_SET_MAP_CUMSUM: setting Facet Matrix for CUMUL-SUM
+(PID.TID 0008.0001) W2_SET_MAP_CUMSUM: done (skip Tile Matrix setting)
+(PID.TID 0008.0001) W2_SET_TILE2TILES: tile neighbours and index connection:
+(PID.TID 0008.0001) current Max.Nb.Neighbours (e.g., on tile    1 ) =  4
+(PID.TID 0008.0001) ===== W2 TILE TOPOLOGY =====
+(PID.TID 0008.0001)  TILE:     9 (bi,bj=   1   1 ), Nb of Neighbours =  4
+(PID.TID 0008.0001)     NEIGHBOUR  1 = TILE    9 (n=  2) Comm = PUT (PROC=    9)
+(PID.TID 0008.0001)     NEIGHBOUR  2 = TILE    9 (n=  1) Comm = PUT (PROC=    9)
+(PID.TID 0008.0001)     NEIGHBOUR  3 = TILE    1 (n=  4) Comm = MSG (PROC=    1)
+(PID.TID 0008.0001)     NEIGHBOUR  4 = TILE    8 (n=  3) Comm = MSG (PROC=    8)
+Tile     9 (pr=   9) sends pts i=  -2:  13, j=  38:  40
+                        to pts i=  -2:  13, j=  -2:   0 in tile      9 (pr=   9)
+Tile     9 (pr=   9) sends pts i=  -2:  13, j=   1:   3
+                        to pts i=  -2:  13, j=  41:  43 in tile      9 (pr=   9)
+Tile     9 (pr=   9) sends pts i=   8:  10, j=  -2:  43
+                        to pts i=  -2:   0, j=  -2:  43 in tile      1 (pr=   1)
+Tile     9 (pr=   9) sends pts i=   1:   3, j=  -2:  43
+                        to pts i=  11:  13, j=  -2:  43 in tile      8 (pr=   8)
+Tile     9 (pr=   9) recv pts i=  -2:  13, j=  41:  43 from tile     9 (pr=   9)
+Tile     9 (pr=   9) recv pts i=  -2:  13, j=  -2:   0 from tile     9 (pr=   9)
+Tile     9 (pr=   9) recv pts i=  11:  13, j=  -2:  43 from tile     1 (pr=   1)
+Tile     9 (pr=   9) recv pts i=  -2:   0, j=  -2:  43 from tile     8 (pr=   8)
+(PID.TID 0008.0001) ===  End TOPOLOGY report ===

@@ -1,0 +1,1 @@
+/home/mitgcm/Work/MITgcm/pkg/mom_common/mom_uv_smag_3d.F
