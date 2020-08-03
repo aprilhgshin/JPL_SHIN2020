@@ -4,6 +4,25 @@ C12345678
 
 
        SUBROUTINE OB_EXTRACT_OUTPUT( myTime, myIter, myThid )
+C-------------------------------------------------------------------------------
+C      OB_EXTRACT_OUTPUT:
+C      Extracts 2D virtual transects, slices of ECCO 3D global model fields
+C      in depth vs. distance. The tiles over which the virtual transects span
+C      contain lateral open boundary conditions of ocean state variables and
+C      fluxes for regional ocean models.
+C      To reduce the runtime and memory usage, we divide each tile (open
+C      boundary mask input and fields) into multiple sub-tiles of equal dimension,
+C      use the Message Passage Interface (MPI) standard to assign each sub-mask
+C      and sub-fields to a unique process. Each process will identify open
+C      boundary points in their assigned sub-mask and sends an array of field
+C      values and indices with respect to the global domain corresponding to
+C      each of the open boundary points back to the parent process. Parent
+C      process combines thessse arrays and writes result to binary files. 
+C
+C      input parameters: myTime, myIter, myThid
+C
+C-------------------------------------------------------------------------------
+
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "EESUPPORT.h"
@@ -18,7 +37,8 @@ C     myThid  ::  my Thread Id number
 
 C     From PARAMS.h:
 C     nIter0              :: Start time-step number of for this run
-C     startTime
+C     startTime/ endTime
+C     deltaTClock
 
 C     From EESUPPORT.h : all initialized by subroutine INI_PROCS:
 C     mpiNprocs - No. of MPI processes.
@@ -119,13 +139,14 @@ C-------------------------------------------------------------------------------
          call INI_OB_FILENAMES()
 C        Reading from binary file to retrieve open boundary sub mask
          DO i=1, nOB_mask
-           print *, "ob_filename:", ob_filenames(i)
            CALL READ_REC_XY_RL( ob_filenames(i),
      &               ob_subMask(i,:,:,:,:),1, 0, myThid )
            _EXCH_XY_RL(ob_subMask(i,:,:,:,:), myThid)
-C              Plotting for debugging
-           CALL PLOT_FIELD_XYRL( ob_subMask(i,:,:,:,:),
+           IF (debug .eq. 1) then
+C            Plotting for debugging
+             CALL PLOT_FIELD_XYRL( ob_subMask(i,:,:,:,:),
      &                        'Open Boundary Submask', -1, myThid )
+           ENDIF
          ENDDO
        ENDIF
 

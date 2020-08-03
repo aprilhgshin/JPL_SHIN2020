@@ -4,6 +4,25 @@ C12345678
 
 
        SUBROUTINE OB_EXTRACT_OUTPUT( myTime, myIter, myThid )
+C-------------------------------------------------------------------------------
+C      OB_EXTRACT_OUTPUT:
+C      Extracts 2D virtual transects, slices of ECCO 3D global model fields
+C      in depth vs. distance. The tiles over which the virtual transects span
+C      contain lateral open boundary conditions of ocean state variables and
+C      fluxes for regional ocean models.
+C      To reduce the runtime and memory usage, we divide each tile (open
+C      boundary mask input and fields) into multiple sub-tiles of equal dimension,
+C      use the Message Passage Interface (MPI) standard to assign each sub-mask
+C      and sub-fields to a unique process. Each process will identify open
+C      boundary points in their assigned sub-mask and sends an array of field
+C      values and indices with respect to the global domain corresponding to
+C      each of the open boundary points back to the parent process. Parent
+C      process combines thessse arrays and writes result to binary files. 
+C
+C      input parameters: myTime, myIter, myThid
+C
+C-------------------------------------------------------------------------------
+
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "EESUPPORT.h"
