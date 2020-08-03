@@ -16,14 +16,44 @@ C     myThid  ::  my Thread Id number
        integer myThid
        integer myIter
 
+C     From PARAMS.h:
+C     nIter0              :: Start time-step number of for this run
+C     startTime
+
+C     From EESUPPORT.h : all initialized by subroutine INI_PROCS:
+C     mpiNprocs - No. of MPI processes.
+C     mpiMyId   - MPI process id of me.
+C     mpiComm   - MPI communicator to use.
+C     mpiPx     - My MPI proc. grid X coord
+C     mpiPy     - My MPI proc. grid Y coord
+C     mpiXGlobalLo - My bottom-left (south-west) x-coordinate in
+C                    global domain.
+C     mpiYGlobalLo - My bottom-left (south-west) y-coordinate in
+C                    global domain.
+C     mpi_myXGlobalLo :: List of all processors bottom-left X-index in global domain
+C     mpi_myYGlobalLo :: List of all processors bottom-left Y-index in global domain
+
+C-------------------------------------------------------------------------------
 C      !LOCAL VARIABLES:
+
 C      global_mask: 4 dimensional _RL array that combines all open boundarys
 C      recv_arr: buffer array to store incoming arrays from MPI_RECV
+C      g_indices: array that holds global indices of sub fields from each child process
+
 C      msgBuf: Used to write statements into the output file
-C      ob_subMask_size: Integer size of ob_subMask (ob_subMask from DIAGNOSTICS.h)
 C      global_ob_index: Integer indicating bottom-left global element number
-C      stop_program: Integer used to hold either 1 or 0, 1 to stop program or 0 to ignore
+C      ob_index: Integer obtained from lookup table in corresponding global index
+C      new_goi: Integer value holding computed global index
+C      ob_subMask_size: Integer size of ob_subMask (ob_subMask from DIAGNOSTICS.h)
+C      ob_id: Integer used for do loop through each ob mask
+C      total_valid: Integer value of total count of valid elements in each open boundary mask/ Count done when looping through arrays sent from processes + local field on mask array
+C      num_valid: Integer value of count of valid elements in each open boundary mask. Count done when looping through mask
+C      tag: integer value for looping through all message tags
+
 C      debug: Integer used to hold either 1 or 0, 1 to print debug statements or 0 to ignore
+C      print_debug: Integer used to hold either 1 or 0, 1 to print debug statements or 0 to ignore
+C-------------------------------------------------------------------------------
+
 
 C      Although we read REAL*4 values, most built in functions have _RS input which by default is _RL.
 C      So global_mask, ob_subMask, and bath_subMask are set as _RL or _RS.
@@ -33,14 +63,14 @@ C      So global_mask, ob_subMask, and bath_subMask are set as _RL or _RS.
 
        CHARACTER*(MAX_LEN_MBUF) msgBuf
        integer i,j, k, fld, iG, jG, bi, bj, step_ob, incr
-       integer ob, global_ob_index, ob_index, new_goi
+       integer global_ob_index, ob_index, new_goi
        integer ob_subMask_size, counter, ob_id
-       integer total_valid, tag, time, num_valid
+       integer total_valid, num_valid, tag
        integer myByLo_myThid,myByHi_myThid,myBxLo_myThid,myBxHi_myThid
-       real avg
-       integer, parameter :: stop_program = 0
+
        integer, parameter :: debug = 1
        integer, parameter :: print_debug = 0
+
        character*10 fldNm
        logical DIFFERENT_MULTIPLE
 
@@ -81,31 +111,9 @@ C       Initialize local arrays:
           ENDDO
         ENDDO
 
-c      ob_subMask initialized in diagnostics_readparms, dimensions match READ_REC_XY_RS field:
-c      field(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-c           iG=bi+(myXGlobalLo-1)/sNx
-c           jG=bj+(myYGlobalLo-1)/sNy
-
-C     From PARAMS.h:
-C     nIter0              :: Start time-step number of for this run
-C     startTime
-
-
-C     From EESUPPORT.h : all initialized by subroutine INI_PROCS:
-C     mpiNprocs - No. of MPI processes.
-C     mpiMyId   - MPI process id of me.
-C     mpiComm   - MPI communicator to use.
-C     mpiPx     - My MPI proc. grid X coord
-C     mpiPy     - My MPI proc. grid Y coord
-C     mpiXGlobalLo - My bottom-left (south-west) x-coordinate in
-C                    global domain.
-C     mpiYGlobalLo - My bottom-left (south-west) y-coordinate in
-C                    global domain.
-C     mpi_myXGlobalLo :: List of all processors bottom-left X-index in global domain
-C     mpi_myYGlobalLo :: List of all processors bottom-left Y-index in global domain
-
-C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
-c      All Processes :
+C-------------------------------------------------------------------------------
+c      All Processes Tasks:
+C-------------------------------------------------------------------------------
 
        IF (myTime .eq. startTime) then
          call INI_OB_FILENAMES()
@@ -119,16 +127,12 @@ C              Plotting for debugging
            CALL PLOT_FIELD_XYRL( ob_subMask(i,:,:,:,:),
      &                        'Open Boundary Submask', -1, myThid )
          ENDDO
-
-         DO i=1, nOB_fld
-           print *, "ob_fldNames", ob_fldNames(i)
-         ENDDO
-
        ENDIF
 
+c      ob_subMask initialized in diagnostics_readparms, dimensions match READ_REC_XY_RS field:
+c      field(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
        ob_subMask_size = (abs(1-OLx)+(sNx+OLx))*
      &                   (abs(1-OLy)+(sNy+OLy))*nSx*nSy
-
 
         CALL SET_SUBFIELDS(myThid)
 
@@ -175,13 +179,13 @@ C       Cumulate Diagnostics_ob fields and number of time steps (for Time Averag
        IF (((myIter.NE.nIter0)
      &       .AND.DIFFERENT_MULTIPLE(avgPeriod_ob,myTime,deltaTClock))
      &       .AND. (time_passed .le. totPhase_ob)) THEN
+
 C          Compute time average of all sub fields
          CALL TIMEAVE_OB_FLD(myThid, myTime)
 
          DO ob_id = 1, nOB_mask
 
 C          Initializing counting integers
-           total_valid = 0
            num_valid = 0
            step_ob = 0
 
@@ -201,12 +205,6 @@ C          Computing global indices, storing values on open boundary points
      &                              j*(iG-1)+i
                   end if
                   if (ob_subMask(ob_id,i,j,bi,bj) .ge. 1.0 ) then
-                    if (print_debug .eq. 1) then
-                     print *,"OB_EXTRACT_OUTPUT: ob_subMask gt 1:",
-     &                    ob_subMask(ob_id,i,j,bi,bj)
-                     print *,"OB_EXTRACT_OUTPUT: i j of ob_subMask",
-     &                    " gt 1", i, j
-                    end if
 
                     DO fld=1, nOB_fld
                      subFieldOnMask(fld,counter) =
@@ -284,6 +282,9 @@ C           Combining all sub masks to create one global mask
             end if
 
 
+C-------------------------------------------------------------------------------
+C           Parent Process Tasks:
+C-------------------------------------------------------------------------------
 #ifdef ALLOW_USE_MPI
             if (usingMPI) then
               if (mpiMyId .eq. 0) then
@@ -395,19 +396,7 @@ C                                   if number of valid elements in arrays > 0:
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
 
-C      SUBROUTINE AVERAGE (avg, arr)
-C      include "USER_INPUT.h"
 
-C      _RL arr(nfld_time)
-C      integer i, sum
-C      real avg
-C      sum = 0
-C      do i=1, nfld_time
-C        sum = sum + arr(i)
-C      end do
-C      avg = real(sum/nfld_time)
-
-C      END
       SUBROUTINE INI_OB_FILENAMES()
 #include "SIZE.h"
 #include "EEPARAMS.h"
@@ -416,12 +405,12 @@ C      END
 #include "DIAGNOSTICS_OB.h"
         INTEGER k
 C       Fill in array with filenames for each ob mask
-
         DO k=1, nOB_mask
           write(ob_filenames(k), "(A17,I1,A4)") "domain_flt32_mask",
      &          k, '.bin'
         ENDDO
       END
+
 
       SUBROUTINE SET_TO_INI_STATE(myThid)
 C     Initializes average fields and number of time steps to zero
