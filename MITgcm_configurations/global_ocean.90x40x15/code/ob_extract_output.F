@@ -160,6 +160,7 @@ C       Cumulate Diagnostics_ob fields and number of time steps (for Time Averag
        if (debug .eq. 1) then
          print *, "OB_EXTRACT_OUTPUT timepassed:", time_passed
          print *, "OB_EXTRACT_OUTPUT deltaTClock:", deltaTClock
+         print *, "OB_EXTRACT_OUTPUT avgPeriod_ob:", avgPeriod_ob
          print *, "OB_EXTRACT_OUTPUT myTime:", myTime
          print *, "OB_EXTRACT_OUTPUT startTime:",startTime
          print *, "OB_EXTRACT_OUTPUT model endTIme", endTime
@@ -328,8 +329,7 @@ C                 First append process 0 local arrays to final global array if n
                       total_valid = total_valid +
      &                                  int(sub_global_indices(1))
                       call APPEND_OB_VALUE(sub_global_indices(:),
-     &                                subFieldOnMask(fld,:), global_ob,
-     &                                lookup_table, ob_id)
+     &                                subFieldOnMask(fld,:), ob_id)
 
                       if (debug .eq. 1) then
                         print *,"APPEND_OB_VALUE: appending local "
@@ -358,7 +358,7 @@ C                                   if number of valid elements in arrays > 0:
                       print *,"OB: recv shape:", shape(recv_arr)
                       call PRINT_FLOAT_ARR(recv_arr,sNx+sNy+1)
                      call APPEND_OB_VALUE(g_indices(pid,:),
-     &                 recv_arr,global_ob, lookup_table, ob_id)
+     &                 recv_arr, ob_id)
 
                      total_valid = total_valid + g_indices(pid,1)
 
@@ -557,14 +557,14 @@ C         Write subField_avg to binary file
 
 
 
-      SUBROUTINE APPEND_OB_VALUE(global_indices,ob_values,global_ob,
-     &                           lookup_table, ob_id)
-         include "SIZE.h"
-         include "USER_INPUT.h"
+      SUBROUTINE APPEND_OB_VALUE(global_indices,ob_values, ob_id)
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "EESUPPORT.h"
+#include "DIAGNOSTICS_OB.h"
+
          _RL global_indices(sNx + sNy + 1)
          _RL ob_values(sNx + sNy + 1)
-         _RL global_ob((sNy+sNx)*(nPx*nPy))
-         INTEGER lookup_table(nOB_mask, Ny*Nx)
          integer num_valid, i, ob_index, ob_id
          integer, parameter :: print_debug = 0
 
@@ -613,7 +613,7 @@ c       Creating filenames for all binary files.
        character*4 fldNm
        character*2 dir
        character*3 str_px, str_py
-       character*10 str_time
+       character*11 str_time
 
        character str_ob
 
@@ -626,17 +626,17 @@ c       T for temp or mask for mask
 c       001 for index 1 in x axis
 c       002 for index 2 in x axis
        write(str_ob, "(I1)") ob_id
-       write(str_time, "(F10.0)") myTime
+       write(str_time, "(F11.0)") myTime
 
        if (is_child .eq. 1) then
          write(str_px, "(I3.3)") mpiPx
          write(str_py, "(I3.3)") mpiPy
          write(filename, "(11A)") dir, fldNm,"_avg.",
-     &                      str_time, ".",str_px, ".", str_py, ".bin"
+     &                      str_time,str_px, ".", str_py, ".bin"
        else
 c         Creating a filename for global arrays
          write(filename, "(7A)") dir, fldNm, "_on_mask", str_ob,
-     &                           "_global.",str_time,".bin"
+     &                           "_global.",str_time,"bin"
        end if
 
        end
