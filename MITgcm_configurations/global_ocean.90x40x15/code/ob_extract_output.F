@@ -11,10 +11,10 @@ C12345678
 #include "DYNVARS.h"
 #include "DIAGNOSTICS_OB.h"
 
-
+       _RL myTime
+C     myThid  ::  my Thread Id number
        integer myThid
        integer myIter
-       _RL myTime
 
 C      !LOCAL VARIABLES:
 C      global_mask: 4 dimensional _RL array that combines all open boundarys
@@ -30,7 +30,6 @@ C      So global_mask, ob_subMask, and bath_subMask are set as _RL or _RS.
        _RL global_mask(Nx,Ny,nSx,nSy)
        _RL recv_arr(sNx + sNy + 1)
        _RL g_indices(nPx*nPy, sNx + sNy + 1)
-C       _RL timeave_cum(Nr, nSx, nSy)
 
        CHARACTER*(MAX_LEN_MBUF) msgBuf
        integer i,j, k, fld, iG, jG, bi, bj, step_ob, incr
@@ -44,15 +43,6 @@ C       _RL timeave_cum(Nr, nSx, nSy)
        integer, parameter :: print_debug = 0
        character*10 fldNm
        logical DIFFERENT_MULTIPLE
-
-C     == Routine arguments Function DIFFERENT_MULTIPLE ==
-C     freq       :: Frequency by which time is divided.
-C     val1       :: time that is checked
-C     step       :: length of time interval (around val1) that is checked
-C      _RL  freq, val1, step
-      _RL freq(1)
-      _RL val1(1)
-      _RL step(1)
 
 
 #ifdef ALLOW_USE_MPI
@@ -91,20 +81,10 @@ C       Initialize local arrays:
           ENDDO
         ENDDO
 
-C        DO i=1,Nr
-C          DO j=1,nSx
-C            DO k=1,nSy
-C              timeave_cum(Nr, nSx, nSy) = deltaT_ob
-C            ENDDO
-C          ENDDO
-C        ENDDO
-
 c      ob_subMask initialized in diagnostics_readparms, dimensions match READ_REC_XY_RS field:
 c      field(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 c           iG=bi+(myXGlobalLo-1)/sNx
 c           jG=bj+(myYGlobalLo-1)/sNy
-
-C       myThid  ::  my Thread Id number
 
 C     From PARAMS.h:
 C     nIter0              :: Start time-step number of for this run
@@ -150,26 +130,19 @@ C              Plotting for debugging
      &                   (abs(1-OLy)+(sNy+OLy))*nSx*nSy
 
 
-C          ob_filenames(1) = 'domain_flt32_mask1.bin'
-C          ob_fildFiles(1) = 'bathymetry.bin'
-C          ob_fildFiles(2) = 'lev_t.bin'
-C          ob_fldNames(1) = 'bath'
-C          ob_fldNames(2) = 'theta'
-
-C            CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, ob_subMask,
-C     &                          "mask", ob_id)
-        print *, "called SET_SUBFIELDS"
         CALL SET_SUBFIELDS(myThid)
+
         IF (print_debug .eq. 1) then
          CALL PRINT_FLOAT_ARR(subField(1,:,:,:,:),ob_subMask_size)
          CALL PRINT_FLOAT_ARR(salt(:,:,1,:,:),ob_subMask_size)
-       ENDIF
-       IF (debug .eq. 1) then
+        ENDIF
+
+        IF (debug .eq. 1) then
          CALL  PLOT_FIELD_XYRL(subField(1,:,:,:,:),
      &       'OB_EXTRACT_OUTPUT: salt copy in subField', -1, myThid )
          CALL  PLOT_FIELD_XYRL(salt(:,:,1,:,:),
      &            'OB_EXTRACT_OUTPUT: originalsalt', -1, myThid )
-      ENDIF
+       ENDIF
 
 C       deltaTClock = 43200.0
 C       endTime = endTime + totPhase_ob
@@ -202,9 +175,7 @@ C       Cumulate Diagnostics_ob fields and number of time steps (for Time Averag
      &       .AND.DIFFERENT_MULTIPLE(avgPeriod_ob,myTime,deltaTClock))
      &       .AND. (time_passed .le. totPhase_ob)) THEN
 C          Compute time average of all sub fields
-         CALL TIMEAVE_OB_FLD(myThid)
-C         print *, "ob_output: different multiple"
-C         CALL PRINT_FLOAT_ARR(subField_avg(1,:,:,:,:),ob_subMask_size)
+         CALL TIMEAVE_OB_FLD(myThid, myTime)
 
          DO ob_id = 1, nOB_mask
 
@@ -288,6 +259,18 @@ C               Process 0 does not need to send arrays to itself.
 
             end if
 #endif
+
+
+C      Using GATHER_2D_R8 to correctly combine ob_subMasks into a single global array
+
+C     !INPUT/OUTPUT PARAMETERS FOR GATHER_2D_R4:
+C gloBuff   ( _R4 ) :: full-domain 2D IO-buffer array             (Output)
+C myField   ( _R4 ) :: tiled, local (i.e. my Proc. tiles) 2D array (Input)
+C xSize    (integer):: global buffer 1rst dim (x)
+C ySize    (integer):: global buffer 2nd  dim (y)
+C useExch2GlobLayOut:: =T: Use Exch2 global-map layout (only with EXCH2)
+C zeroBuff (logical):: =T: initialise the buffer to zero before copy
+C myThid   (integer):: my Thread Id number
 
 C           Combining all sub masks to create one global mask
             call GATHER_2D_R8(global_mask(1:Nx,1:Ny,1,1),
@@ -391,8 +374,8 @@ C                                   if number of valid elements in arrays > 0:
      &     "for tag", fld+1, "with total", total_valid, "valid elements"
                   call PRINT_FLOAT_ARR(global_ob,total_valid)
 
-                  call WRITE_GLOBAL_BIN(global_ob,total_valid,
-     &                          ob_fldNames(fld), ob_id, mpiPx, mpiPy)
+                  call WRITE_GLOBAL_BIN(total_valid, fld,
+     &                           ob_id, myTime)
 
                   call PLOT_TEST_GLOBAL_OB(global_ob, lookup_table,
      &                                myThid, ob_id, ob_fldNames(fld))
@@ -409,25 +392,8 @@ C                                   if number of valid elements in arrays > 0:
       END
 
 
-
-C      Writing ob_subMask, bath_subMask, temp_subMask to bin file
-C         call WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy,ob_subMask,
-C     &                          bath_subMask, temp_subMask)
-
-
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
-
-C      Using GATHER_2D_R8 to correctly combine ob_subMasks into a single global array
-
-C     !INPUT/OUTPUT PARAMETERS FOR GATHER_2D_R4:
-C gloBuff   ( _R4 ) :: full-domain 2D IO-buffer array             (Output)
-C myField   ( _R4 ) :: tiled, local (i.e. my Proc. tiles) 2D array (Input)
-C xSize    (integer):: global buffer 1rst dim (x)
-C ySize    (integer):: global buffer 2nd  dim (y)
-C useExch2GlobLayOut:: =T: Use Exch2 global-map layout (only with EXCH2)
-C zeroBuff (logical):: =T: initialise the buffer to zero before copy
-C myThid   (integer):: my Thread Id number
 
 C      SUBROUTINE AVERAGE (avg, arr)
 C      include "USER_INPUT.h"
@@ -557,7 +523,7 @@ C     Initializes average fields and number of time steps to zero
         ENDDO
       END
 
-      SUBROUTINE TIMEAVE_OB_FLD(myThid)
+      SUBROUTINE TIMEAVE_OB_FLD(myThid, myTime)
 C       Cumulate Diagnostics_ob fields and number of time steps (for Time Average)
 #include "SIZE.h"
 #include "EEPARAMS.h"
@@ -567,6 +533,7 @@ C       Cumulate Diagnostics_ob fields and number of time steps (for Time Averag
 
         INTEGER myThid
         INTEGER j, k, bi, bj, fld
+        _RL myTime
 
         DO fld=1, nOB_fld
           DO bj = myByLo(myThid), myByHi(myThid)
@@ -580,8 +547,8 @@ C       Cumulate Diagnostics_ob fields and number of time steps (for Time Averag
             ENDDO
           ENDDO
 C         Write subField_avg to binary file
-C          CALL WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy,
-C     &           subField_avg(fld,:,:,:,:), ob_fldNames(fld), ob_id)
+         CALL WRITE_SUB_BIN(subField_avg(fld,:,:,:,:), fld,
+     &                      myTime)
         ENDDO
 
 
@@ -633,14 +600,21 @@ C     &           subField_avg(fld,:,:,:,:), ob_fldNames(fld), ob_id)
 
 
        SUBROUTINE CREATE_FILENAME(dir, fldNm, ob_id, filename,
-     &                            is_child, mpiPx, mpiPy)
+     &                            is_child, myTime)
 c       Creating filenames for all binary files.
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "EESUPPORT.h"
+#include "DIAGNOSTICS_OB.h"
 
-       integer is_child, mpiPx, mpiPy, ob_id
-       character*30 filename
+       integer is_child, ob_id
+       _RL myTime
+       character*40 filename
        character*4 fldNm
        character*2 dir
        character*3 str_px, str_py
+       character*10 str_time
+
        character str_ob
 
 c       From EESUPPORT.h
@@ -652,61 +626,66 @@ c       T for temp or mask for mask
 c       001 for index 1 in x axis
 c       002 for index 2 in x axis
        write(str_ob, "(I1)") ob_id
+       write(str_time, "(F10.0)") myTime
+
        if (is_child .eq. 1) then
          write(str_px, "(I3.3)") mpiPx
          write(str_py, "(I3.3)") mpiPy
-         write(filename, "(10A)") dir, "ob",str_ob,".",fldNm,".",
-     &                            str_px, ".", str_py, ".bin"
+         write(filename, "(11A)") dir, fldNm,"_avg.",
+     &                      str_time, ".",str_px, ".", str_py, ".bin"
        else
 c         Creating a filename for global arrays
-         write(filename, "(5A)") dir, fldNm, "_on_mask", str_ob,
-     &                           "_global.bin"
+         write(filename, "(7A)") dir, fldNm, "_on_mask", str_ob,
+     &                           "_global.",str_time,".bin"
        end if
 
        end
 
 
-       SUBROUTINE WRITE_SUB_BIN(mpiMyId, mpiPx, mpiPy, subMask,
-     &                          fldNm, ob_id)
+       SUBROUTINE WRITE_SUB_BIN(subMask, fld, myTime)
 C      Writing all sub arrays read from binary fie containing global array
-       include "SIZE.h"
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "EESUPPORT.h"
+#include "DIAGNOSTICS_OB.h"
 
-       integer mpiMyId, mpiPx, mpiPy, ob_id
-       character*4 fldNm
+       integer fld
+       _RL myTime
        character*2 dir
-       character*30 filename
+       character*40 filename
        _RL subMask(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
        integer, parameter :: print_write = 1
 
        dir = "./"
-       call CREATE_FILENAME(dir, fldNm, ob_id, filename, 1,
-     &                      mpiPx, mpiPy)
+       call CREATE_FILENAME(dir, ob_fldNames(fld), 0, filename, 1,
+     &                      myTime)
        open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
        write(1) subMask
        close(1)
        if (print_write .eq. 1) then
-         print *, fldNm, " for ob",ob_id,"process", mpiMyId,
-     &            "is written to ",filename
+         print *, "WRITE_SUB_BIN: ",ob_fldNames(fld),"process",
+     &             mpiMyId, "is written to ",filename
        end if
 
        end
 
 
-       SUBROUTINE WRITE_GLOBAL_BIN(global_ob,total_valid,fldNm,ob_id,
-     &                             mpiPx, mpiPy)
-       include "SIZE.h"
+       SUBROUTINE WRITE_GLOBAL_BIN(total_valid,fld,ob_id,myTime)
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "EESUPPORT.h"
+#include "DIAGNOSTICS_OB.h"
 
-       _RL global_ob((sNy+sNx)*(nPx*nPy))
-       integer total_valid, ob_id, mpiPx, mpiPy
+       integer total_valid, ob_id, fld
 
        character*2 dir
-       character*4 fldNm
-       character*30 filename
+       character*40 filename
+       _RL myTime
 
 c      Writing global array to binary file
        dir = "./"
-       call CREATE_FILENAME(dir, fldNm, ob_id, filename, 0,
-     &                      mpiPx, mpiPy)
+       call CREATE_FILENAME(dir, ob_fldNames(fld), ob_id, filename, 0,
+     &                      myTime)
        open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
        write(1) global_ob(1:total_valid)
        close(1)
