@@ -18,7 +18,8 @@ C     myThid  ::  my Thread Id number
 
 C     From PARAMS.h:
 C     nIter0              :: Start time-step number of for this run
-C     startTime
+C     startTime/ endTime
+C     deltaTClock
 
 C     From EESUPPORT.h : all initialized by subroutine INI_PROCS:
 C     mpiNprocs - No. of MPI processes.
@@ -119,13 +120,14 @@ C-------------------------------------------------------------------------------
          call INI_OB_FILENAMES()
 C        Reading from binary file to retrieve open boundary sub mask
          DO i=1, nOB_mask
-           print *, "ob_filename:", ob_filenames(i)
            CALL READ_REC_XY_RL( ob_filenames(i),
      &               ob_subMask(i,:,:,:,:),1, 0, myThid )
            _EXCH_XY_RL(ob_subMask(i,:,:,:,:), myThid)
-C              Plotting for debugging
-           CALL PLOT_FIELD_XYRL( ob_subMask(i,:,:,:,:),
+           IF (debug .eq. 1) then
+C            Plotting for debugging
+             CALL PLOT_FIELD_XYRL( ob_subMask(i,:,:,:,:),
      &                        'Open Boundary Submask', -1, myThid )
+           ENDIF
          ENDDO
        ENDIF
 
