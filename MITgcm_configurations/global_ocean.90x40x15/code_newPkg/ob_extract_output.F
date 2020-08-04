@@ -82,11 +82,10 @@ C      So global_mask, ob_subMask, and bath_subMask are set as _RL or _RS.
        _RL g_indices(nPx*nPy, sNx + sNy + 1)
 
        CHARACTER*(MAX_LEN_MBUF) msgBuf
-       integer i,j, k, fld, iG, jG, bi, bj, step_ob, incr
+       integer i,j, k, fld, iG, jG, bi, bj
        integer global_ob_index, ob_index, new_goi
        integer ob_subMask_size, counter, ob_id
        integer total_valid, num_valid, tag
-       integer myByLo_myThid,myByHi_myThid,myBxLo_myThid,myBxHi_myThid
 
        integer, parameter :: debug = 1
        integer, parameter :: print_debug = 0
@@ -94,19 +93,11 @@ C      So global_mask, ob_subMask, and bath_subMask are set as _RL or _RS.
        character*10 fldNm
        logical DIFFERENT_MULTIPLE
 
-
 #ifdef ALLOW_USE_MPI
        integer pid, ierror, status(MPI_STATUS_SIZE)
 #endif
 
        common / local_var / global_mask, total_valid
-       common / myBxy_LoHi / myByLo_myThid, myByHi_myThid,
-     &                       myBxLo_myThid, myBxHi_myThid
-
-       myByLo_myThid = myByLo(myThid)
-       myByHi_myThid = myByHi(myThid)
-       myBxLo_myThid = myBxLo(myThid)
-       myBxHi_myThid = myBxHi(myThid)
 
 
 C       Initialize local arrays:
@@ -155,14 +146,14 @@ c      field(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
        ob_subMask_size = (abs(1-OLx)+(sNx+OLx))*
      &                   (abs(1-OLy)+(sNy+OLy))*nSx*nSy
 
-        CALL SET_SUBFIELDS(myThid)
+       CALL SET_SUBFIELDS(myThid)
 
-        IF (print_debug .eq. 1) then
+       IF (print_debug .eq. 1) then
          CALL PRINT_FLOAT_ARR(subField(1,:,:,:,:),ob_subMask_size)
          CALL PRINT_FLOAT_ARR(salt(:,:,1,:,:),ob_subMask_size)
-        ENDIF
+       ENDIF
 
-        IF (debug .eq. 1) then
+       IF (debug .eq. 1) then
          CALL  PLOT_FIELD_XYRL(subField(1,:,:,:,:),
      &       'OB_EXTRACT_OUTPUT: salt copy in subField', -1, myThid )
          CALL  PLOT_FIELD_XYRL(salt(:,:,1,:,:),
@@ -208,7 +199,6 @@ C          Compute time average of all sub fields
 
 C          Initializing counting integers
            num_valid = 0
-           step_ob = 0
 
            iG = mpi_myXGlobalLo(mpiMyId+1)
            jG = mpi_myYGlobalLo(mpiMyId+1)
@@ -244,10 +234,6 @@ C          Computing global indices, storing values on open boundary points
             ENDDO
            ENDDO
 
-           if (print_debug .eq. 1) then
-             print *, "OB_EXTRACT_OUTPUT: num_valid:",num_valid
-           end if
-
 C          Inserting number of valid elements as first element of each array
            DO fld=1,nOB_fld
              subFieldOnMask(fld,1) = num_valid
@@ -282,7 +268,7 @@ C               Process 0 does not need to send arrays to itself.
 
 
 C-------------------------------------------------------------------------------
-C           Parent Process Tasks:
+C           Master Process Tasks:
 C-------------------------------------------------------------------------------
 
 C           Using GATHER_2D_R8 to correctly combine sub masks into a single global mask
@@ -366,29 +352,32 @@ C                   Receive all sub arrays from processes with pid > 0.
 C                   Appending all other processes' local arrays to final array
 C                                   if number of valid elements in arrays > 0:
                     if (int(g_indices(pid, 1)) .ge. 1) then
-                      print *,"OB: recv fields:"
-                      print *,"OB: recv shape:", shape(recv_arr)
-                      call PRINT_FLOAT_ARR(recv_arr,sNx+sNy+1)
+                      if (debug .eq. 1) then
+                        print *,"OB: recv fields:"
+                        print *,"OB: recv shape:", shape(recv_arr)
+                        call PRINT_FLOAT_ARR(recv_arr,sNx+sNy+1)
+                      endif
                       call APPEND_OB_VALUE(g_indices(pid,:),
      &                 recv_arr, ob_id)
                       total_valid = total_valid + g_indices(pid,1)
                     end if
-
-                    print *,"OB_EXTRACT_LOOKUP: updated global ob by "
-     &                  ,"process",pid,"with",int(g_indices(pid,1)),
+                    if (debug .eq. 1) then
+                     print *,"OB_EXTRACT_LOOKUP: updated global ob by"
+     &                  ," process",pid,"with",int(g_indices(pid,1)),
      &                   "valid elements"
+                    end if
                     call PRINT_FLOAT_ARR(global_ob,total_valid)
                   ENDDO
 
-                  print *, "OB_EXTRACT_LOOKUP: final global ob by ",
+                  if (debug .eq. 1) then
+                   print *, "OB_EXTRACT_LOOKUP: final global ob by ",
      &     "for tag", fld+1, "with total", total_valid, "valid elements"
-                  call PRINT_FLOAT_ARR(global_ob,total_valid)
-
+                   call PRINT_FLOAT_ARR(global_ob,total_valid)
+                  end if
                   call WRITE_GLOBAL_BIN(total_valid, fld,
      &                           ob_id, myTime)
 
-                  call PLOT_TEST_GLOBAL_OB(global_ob, lookup_table,
-     &                                myThid, ob_id, ob_fldNames(fld))
+                  call PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld)
 
                 ENDDO
               end if
@@ -407,13 +396,12 @@ C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
 
       SUBROUTINE INI_OB_FILENAMES()
+C       Fill in array with filenames for each ob mask
 #include "SIZE.h"
 #include "EEPARAMS.h"
-#include "EESUPPORT.h"
 #include "PARAMS.h"
 #include "DIAGNOSTICS_OB.h"
         INTEGER k
-C       Fill in array with filenames for each ob mask
         DO k=1, nOB_mask
           write(ob_filenames(k), "(A17,I1,A4)") "domain_flt32_mask",
      &          k, '.bin'
@@ -694,27 +682,29 @@ c      Writing global array to binary file
        end
 
 
-       SUBROUTINE PLOT_TEST_GLOBAL_OB(global_ob, lookup_table, myThid,
-     &                                ob_id, fldNm)
+       SUBROUTINE PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld)
 c      Unravels global_ob and plots onto an array with dimensions Nx by Ny
-       include "SIZE.h"
-       include "USER_INPUT.h"
-       _RL global_ob((sNy+sNx)*(nPx*nPy))
+C       include "SIZE.h"
+C       include "USER_INPUT.h"
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "EESUPPORT.h"
+#include "PARAMS.h"
+#include "DIAGNOSTICS_OB.h"
        _RL global_mask(Nx,Ny,nSx,nSy)
-       INTEGER lookup_table(nOB_mask, Ny*Nx)
        _RL global_correct((sNy+sNx)*(nPx*nPy))
        _RL global_NxNy(Nx,Ny,nSx,nSy)
 
-       integer i,j, bi, bj, counter, ob_counter, correct, myThid
-       integer myByLo_myThid, myByHi_myThid, total_valid, ob_id
-       integer myBxLo_myThid, myBxHi_myThid
+       integer i,j, bi, bj, counter, ob_counter, correct
+       integer fld, total_valid, ob_id, myThid
        integer, parameter :: plot_on_NxNy = 1
+       integer, parameter :: print_correctness = 1
        character*4 fldNm
        character*30 plotTitle
 
        common / local_var / global_mask, total_valid
-       common / myBxy_LoHi / myByLo_myThid, myByHi_myThid,
-     &                       myBxLo_myThid, myBxHi_myThid
+
+       fldNm = ob_fldNames(fld)
 
 C      Initializing global_correct, used to indicate if elements of global_ob is correct or not
        DO i=1,(sNy+sNx)*(nPx*nPy)
@@ -723,8 +713,8 @@ C      Initializing global_correct, used to indicate if elements of global_ob is
 
 C       Initialize NxNy array:
 
-        DO bj = myByLo_myThid, myByHi_myThid
-          DO bi = myBxLo_myThid, myBxHi_myThid
+        DO bj = myByLo(myThid), myByHi(myThid)
+          DO bi = myBxLo(myThid), myBxHi(myThid)
             DO j=1, Ny
               DO i=1, Nx
                 global_NxNy(i,j,bi,bj) = 0.0
@@ -737,8 +727,8 @@ C      If lookup table contains ob mask point location (1-90) then extract corre
        correct = 1
        counter = 1
        ob_counter = 1
-       DO bj = myByLo_myThid, myByHi_myThid
-         DO bi = myBxLo_myThid, myBxHi_myThid
+       DO bj = myByLo(myThid), myByHi(myThid)
+         DO bi = myBxLo(myThid), myBxHi(myThid)
            DO j=1, Ny
              DO i=1, Nx
                if (ob_counter .le. total_valid) then
@@ -759,12 +749,16 @@ C                Inserting field points into NxNy array
        ENDDO
 
        if (correct .eq. 0) then
-         print *, "PLOT_TEST_GLOBAL_OB: global_ob final array is ",
+         if (print_correctness .eq. 1) then
+           print *, "PLOT_TEST_GLOBAL_OB: global_ob final array is ",
      &            "incorrect for ", fldNm, "for ob", ob_id
-         call PRINT_FLOAT_ARR(global_correct, (sNy+sNx)*(nPx*nPy))
+           call PRINT_FLOAT_ARR(global_correct, (sNy+sNx)*(nPx*nPy))
+         end if
        else
-         print *, "PLOT_TEST_GLOBAL_OB: global_ob final array is ",
+         if (print_correctness .eq. 1) then
+           print *, "PLOT_TEST_GLOBAL_OB: global_ob final array is ",
      &         "correct for the ", fldNm, " field for ob", ob_id
+         end if
          if (plot_on_NxNy .eq. 1) then
            print *, "PLOT_TEST_GLOBAL_OB: plotting global_ob ",
      &              "on NxNy dimension array:"
