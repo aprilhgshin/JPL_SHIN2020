@@ -17,8 +17,9 @@ C      and sub-fields to a unique process. Each process will identify open
 C      boundary points in their assigned sub-mask and sends an array of field
 C      values and indices with respect to the global domain corresponding to
 C      each of the open boundary points back to the parent process. Parent
-C      process combines thessse arrays and writes result to binary files. 
+C      process combines these arrays and writes result to binary files
 C
+C      Program outputs at the end of each averaginng period.
 C      input parameters: myTime, myIter, myThid
 C
 C-------------------------------------------------------------------------------
@@ -31,7 +32,6 @@ C-------------------------------------------------------------------------------
 #include "DIAGNOSTICS_OB.h"
 
        _RL myTime
-C     myThid  ::  my Thread Id number
        integer myThid
        integer myIter
 
@@ -281,18 +281,11 @@ C               Process 0 does not need to send arrays to itself.
 #endif
 
 
-C      Using GATHER_2D_R8 to correctly combine ob_subMasks into a single global array
+C-------------------------------------------------------------------------------
+C           Parent Process Tasks:
+C-------------------------------------------------------------------------------
 
-C     !INPUT/OUTPUT PARAMETERS FOR GATHER_2D_R4:
-C gloBuff   ( _R4 ) :: full-domain 2D IO-buffer array             (Output)
-C myField   ( _R4 ) :: tiled, local (i.e. my Proc. tiles) 2D array (Input)
-C xSize    (integer):: global buffer 1rst dim (x)
-C ySize    (integer):: global buffer 2nd  dim (y)
-C useExch2GlobLayOut:: =T: Use Exch2 global-map layout (only with EXCH2)
-C zeroBuff (logical):: =T: initialise the buffer to zero before copy
-C myThid   (integer):: my Thread Id number
-
-C           Combining all sub masks to create one global mask
+C           Using GATHER_2D_R8 to correctly combine sub masks into a single global mask
             call GATHER_2D_R8(global_mask(1:Nx,1:Ny,1,1),
      &                     ob_subMask(ob_id,1:sNx,1:sNy,1,1),
      &                     Nx, Ny, .true., .true., myThid)
@@ -303,9 +296,6 @@ C           Combining all sub masks to create one global mask
             end if
 
 
-C-------------------------------------------------------------------------------
-C           Parent Process Tasks:
-C-------------------------------------------------------------------------------
 #ifdef ALLOW_USE_MPI
             if (usingMPI) then
               if (mpiMyId .eq. 0) then
@@ -379,11 +369,9 @@ C                                   if number of valid elements in arrays > 0:
                       print *,"OB: recv fields:"
                       print *,"OB: recv shape:", shape(recv_arr)
                       call PRINT_FLOAT_ARR(recv_arr,sNx+sNy+1)
-                     call APPEND_OB_VALUE(g_indices(pid,:),
+                      call APPEND_OB_VALUE(g_indices(pid,:),
      &                 recv_arr, ob_id)
-
-                     total_valid = total_valid + g_indices(pid,1)
-
+                      total_valid = total_valid + g_indices(pid,1)
                     end if
 
                     print *,"OB_EXTRACT_LOOKUP: updated global ob by "
@@ -459,6 +447,7 @@ C     Initializes average fields and number of time steps to zero
       END
 
       SUBROUTINE SET_SUBFIELDS(myThid)
+C       Stores desired fields chosen by user into array subFields
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "PARAMS.h"
@@ -510,6 +499,7 @@ C     Initializes average fields and number of time steps to zero
       END
 
       SUBROUTINE CUMULATE_FLD_TIME(myThid)
+C       Cumulate Diagnostics_ob fields and number of time steps (for Time Average)
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "PARAMS.h"
@@ -534,7 +524,8 @@ C     Initializes average fields and number of time steps to zero
       END
 
       SUBROUTINE TIMEAVE_OB_FLD(myThid, myTime)
-C       Cumulate Diagnostics_ob fields and number of time steps (for Time Average)
+C       Computes average of Diagnostics_ob fields using the number of time steps taken in current period
+C       Write averaged fields to binary file
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "EESUPPORT.h"
@@ -568,6 +559,10 @@ C         Write subField_avg to binary file
 
 
       SUBROUTINE APPEND_OB_VALUE(global_indices,ob_values, ob_id)
+C       Appends field value corresponding to open boundary points to final global array global_ob.
+C       Use values of global_indices to extract value in lookup_table at position of value of global_indices.
+C       Value in lookup_table used to identify position of current point on open boundary.
+C       Store field value at position in final global array global_ob.
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "EESUPPORT.h"
@@ -626,10 +621,6 @@ c       Creating filenames for all binary files.
        character*11 str_time
 
        character str_ob
-
-c       From EESUPPORT.h
-C       mpiPx     - My MPI proc. grid X coord
-C       mpiPy     - My MPI proc. grid Y coord
 
 c       If creating a filename for a child process, create a name in the format: T.001.002.bin
 c       T for temp or mask for mask
