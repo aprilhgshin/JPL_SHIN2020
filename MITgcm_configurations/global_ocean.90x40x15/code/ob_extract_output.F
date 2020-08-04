@@ -56,23 +56,26 @@ C     mpi_myYGlobalLo :: List of all processors bottom-left Y-index in global do
 C-------------------------------------------------------------------------------
 C      !LOCAL VARIABLES:
 
-C      global_mask: 4 dimensional _RL array that combines all open boundarys
-C      recv_arr: buffer array to store incoming arrays from MPI_RECV
-C      g_indices: array that holds global indices of sub fields from each child process
+C      global_mask      - 4 dimensional _RL array that combines all open boundarys
+C      recv_arr         - buffer array to store incoming arrays from MPI_RECV
+C      g_indices        - array that holds global indices of sub fields from each child process
 
-C      msgBuf: Used to write statements into the output file
-C      global_ob_index: Integer indicating bottom-left global element number
-C      ob_index: Integer obtained from lookup table in corresponding global index
-C      new_goi: Integer value holding computed global index
-C      ob_subMask_size: Integer size of ob_subMask (ob_subMask from DIAGNOSTICS.h)
-C      ob_id: Integer used for do loop through each ob mask
-C      total_valid: Integer value of total count of valid elements in each open boundary mask/ Count done when looping through arrays sent from processes + local field on mask array
-C      num_valid: Integer value of count of valid elements in each open boundary mask. Count done when looping through mask
-C      tag: integer value for looping through all message tags
+C      msgBuf           - Used to write statements into the output file
+C      global_ob_index  - Integer indicating bottom-left global element number
+C      ob_index         - Integer obtained from lookup table in corresponding global index
+C      new_goi          - Integer value holding computed global index
+C      ob_subMask_size  - Integer size of ob_subMask (ob_subMask from DIAGNOSTICS.h)
+C      ob_id            - Integer used for do loop through each ob mask
+C      total_valid      - Integer value of total count of valid elements in each open boundary mask/ Count done when looping through arrays sent from processes + local field on mask array
+C      num_valid        - Integer value of count of valid elements in each open boundary mask. Count done when looping through mask
+C      tag              - integer value for looping through all message tags
 
-C      debug: Integer used to hold either 1 or 0, 1 to print debug statements or 0 to ignore
-C      print_debug: Integer used to hold either 1 or 0, 1 to print debug statements or 0 to ignore
-C-------------------------------------------------------------------------------
+C      pid              - Integer value for process ID
+C      ierror           - Error code for MPI functions
+C      status           - Integer array with values characterizing MPI function i.e. message tag, recipient, sender, etc.
+
+C      debug            - Integer used to hold either 1 or 0, 1 to print debug statements or 0 to ignore
+C      print_debug      - Integer used to hold either 1 or 0, 1 to print debug statements or 0 to ignore
 
 
 C      Although we read REAL*4 values, most built in functions have _RS input which by default is _RL.
@@ -90,7 +93,6 @@ C      So global_mask, ob_subMask, and bath_subMask are set as _RL or _RS.
        integer, parameter :: debug = 1
        integer, parameter :: print_debug = 0
 
-       character*10 fldNm
        logical DIFFERENT_MULTIPLE
 
 #ifdef ALLOW_USE_MPI
@@ -98,6 +100,7 @@ C      So global_mask, ob_subMask, and bath_subMask are set as _RL or _RS.
 #endif
 
        common / local_var / global_mask, total_valid
+C-------------------------------------------------------------------------------
 
 
 C       Initialize local arrays:
@@ -121,6 +124,7 @@ C       Initialize local arrays:
             g_indices(pid, i)=0.0
           ENDDO
         ENDDO
+
 
 C-------------------------------------------------------------------------------
 c      All Processes Tasks:
@@ -166,10 +170,10 @@ C        startTime = 0.0
 
 
        IF (myIter .eq. nIter0) then
-C          Initialize averages to zero and number of time steps to one
+C        Initialize averages to zero and number of time steps to one
          CALL SET_TO_INI_STATE(myThid)
        ELSE
-C       Cumulate Diagnostics_ob fields and number of time steps (for Time Average)
+C        Cumulate Diagnostics_ob fields and number of time steps (for Time Average)
          CALL CUMULATE_FLD_TIME(myThid)
        ENDIF
 
@@ -229,9 +233,9 @@ C          Computing global indices, storing values on open boundary points
                     end if
                   end if
 
-                ENDDO
-              ENDDO
-            ENDDO
+                 ENDDO
+               ENDDO
+             ENDDO
            ENDDO
 
 C          Inserting number of valid elements as first element of each array
@@ -242,28 +246,28 @@ C          Inserting number of valid elements as first element of each array
 
 
 #ifdef ALLOW_USE_MPI
-            if (usingMPI) then
-              if (mpiMyId .gt. 0) then
+           if (usingMPI) then
+             if (mpiMyId .gt. 0) then
 
-C               Processes 1 and onward send sub arrays to Parent process
-                call MPI_SEND(sub_global_indices,(sNx+sNy+1),
+C              Processes 1 and onward send sub arrays to Parent process
+               call MPI_SEND(sub_global_indices,(sNx+sNy+1),
      &               MPI_REAL, 0, 1, MPI_COMM_MODEL, ierror)
-                do fld=1, nOB_fld
-                  call MPI_SEND(subFieldOnMask(fld,:), sNx+sNy+1,
+               do fld=1, nOB_fld
+                 call MPI_SEND(subFieldOnMask(fld,:), sNx+sNy+1,
      &               MPI_REAL,0, fld+1, MPI_COMM_MODEL, ierror)
-                end do
+               end do
 
-              else if (mpiMYId .eq. 0) then
-C               Process 0 does not need to send arrays to itself.
-                if (debug .eq. 1) then
-                  print *,"OB_EXTRACT_LOOKUP: l sub_global_indices ",
+             else if (mpiMYId .eq. 0) then
+C              Process 0 does not need to send arrays to itself.
+               if (debug .eq. 1) then
+                 print *,"OB_EXTRACT_LOOKUP: l sub_global_indices ",
      &                    "count:", int(sub_global_indices(1))
-                  print *,"OB_EXTRACT_LOOKUP: local sub_global_indices"
-                  call PRINT_FLOAT_ARR( sub_global_indices,num_valid)
-                end if
-              end if
+                 print *,"OB_EXTRACT_LOOKUP: local sub_global_indices"
+                 call PRINT_FLOAT_ARR( sub_global_indices,num_valid)
+               end if
+             end if
 
-            end if
+           end if
 #endif
 
 
