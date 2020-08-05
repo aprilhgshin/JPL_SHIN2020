@@ -171,38 +171,34 @@ C       endTime = endTime + totPhase_ob
 C        startTime = 0.0
 
 
-       IF (nTimeSteps_ob .eq. 0) then
-C        Initialize averages to zero
-         CALL SET_TO_INI_STATE(myThid)
-       ELSE
-C        Cumulate Diagnostics_ob fields and number of time steps (for Time Average)
-         CALL CUMULATE_FLD_TIME(myThid)
-       ENDIF
-
-       if (debug .eq. 1) then
-         print *, "OB_EXTRACT_OUTPUT timepassed:", time_passed
-         print *, "OB_EXTRACT_OUTPUT nTimeSteps_ob:",nTimeSteps_ob
-         print *, "OB_EXTRACT_OUTPUT deltaTClock:", deltaTClock
-         print *, "OB_EXTRACT_OUTPUT avgPeriod_ob:", avgPeriod_ob
-         print *, "OB_EXTRACT_OUTPUT myTime:", myTime
-         print *, "OB_EXTRACT_OUTPUT startTime:",startTime
-         print *, "OB_EXTRACT_OUTPUT model endTIme", endTime
-         print *, "OB_EXTRACT_OUTPUT user end time:",
+      if (debug .eq. 1) then
+        print *, "OB_EXTRACT_OUTPUT timepassed:", time_passed
+        print *, "OB_EXTRACT_OUTPUT nTimeSteps_ob:",nTimeSteps_ob
+        print *, "OB_EXTRACT_OUTPUT deltaTClock:", deltaTClock
+        print *, "OB_EXTRACT_OUTPUT avgPeriod_ob:", avgPeriod_ob
+        print *, "OB_EXTRACT_OUTPUT myTime:", myTime
+        print *, "OB_EXTRACT_OUTPUT startTime:",startTime
+        print *, "OB_EXTRACT_OUTPUT model endTIme", endTime
+        print *, "OB_EXTRACT_OUTPUT user end time:",
      & startTime + totPhase_ob
-         print *, "OB_EXTRACT_OUTPUT DIFFERENT_MULTIPLE",
+        print *, "OB_EXTRACT_OUTPUT DIFFERENT_MULTIPLE",
      &          DIFFERENT_MULTIPLE(avgPeriod_ob,myTime,deltaTClock)
       end if
 
 
+       IF (nTimeSteps_ob .eq. 0) then
+C        Initialize averages to zero
+         CALL SET_TO_INI_STATE(myThid)
 
-C       IF (((myIter.NE.nIter0)
-       IF (((nTimeSteps_ob .NE. 0)
+C      IF (((myIter.NE.nIter0)
+       ELSEIF (((nTimeSteps_ob .NE. 0)
      &       .AND.DIFFERENT_MULTIPLE(avgPeriod_ob,myTime,deltaTClock))
      &       .AND. (time_passed .le. totPhase_ob)) THEN
 
 C          Compute time average of all sub fields
          CALL TIMEAVE_OB_FLD(myThid, myTime)
-
+         CALL  PLOT_FIELD_XYRL(subField_avg(1,:,:,:,:),
+     &            'OB_EXTRACT_OUTPUT: avg salt', -1, myThid )
          DO ob_id = 1, nOB_mask
 
 C          Initializing counting integers
@@ -392,12 +388,15 @@ C                                   if number of valid elements in arrays > 0:
               end if
             end if
 #endif
-        ENDDO
+         ENDDO
        ENDIF
-C      Move on to next time step
-       nTimeSteps_ob = nTimeSteps_ob + 1
-       time_passed = time_passed + deltaTClock
-
+       IF (myTime .le. endTime) then
+C        Cumulate Diagnostics_ob fields and number of time steps (for Time Average)
+         CALL CUMULATE_FLD_TIME(myThid)
+C        Move on to next time step
+         nTimeSteps_ob = nTimeSteps_ob + 1
+         time_passed = time_passed + deltaTClock
+        ENDIF
       END
 
 
@@ -531,7 +530,6 @@ C       Write averaged fields to binary file
         INTEGER myThid
         INTEGER j, k, bi, bj, fld
         _RL myTime
-
         DO fld=1, nOB_fld
           DO bj = myByLo(myThid), myByHi(myThid)
             DO bi = myBxLo(myThid), myBxHi(myThid)
@@ -547,6 +545,7 @@ C         Write subField_avg to binary file
          CALL WRITE_SUB_BIN(subField_avg(fld,:,:,:,:), fld,
      &                      myTime)
 C        Set number of time steps wihtin averaging period back to zero
+         print *, "setting back to zero at avg"
          nTimeSteps_ob = 0
 
         ENDDO
