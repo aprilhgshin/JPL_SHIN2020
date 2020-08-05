@@ -189,9 +189,13 @@ C        startTime = 0.0
        IF (nTimeSteps_ob .eq. 0) then
 C        Initialize averages to zero
          CALL SET_TO_INI_STATE(myThid)
+       ELSE
+C        Cumulate Diagnostics_ob fields and number of time steps (for Time Average)
+        CALL CUMULATE_FLD_TIME(myThid)
+       ENDIF
 
 C      IF (((myIter.NE.nIter0)
-       ELSEIF (((nTimeSteps_ob .NE. 0)
+       IF (((nTimeSteps_ob .NE. 0)
      &       .AND.DIFFERENT_MULTIPLE(avgPeriod_ob,myTime,deltaTClock))
      &       .AND. (time_passed .le. totPhase_ob)) THEN
 
@@ -390,13 +394,9 @@ C                                   if number of valid elements in arrays > 0:
 #endif
          ENDDO
        ENDIF
-       IF (myTime .le. endTime) then
-C        Cumulate Diagnostics_ob fields and number of time steps (for Time Average)
-         CALL CUMULATE_FLD_TIME(myThid)
 C        Move on to next time step
          nTimeSteps_ob = nTimeSteps_ob + 1
          time_passed = time_passed + deltaTClock
-        ENDIF
       END
 
 
