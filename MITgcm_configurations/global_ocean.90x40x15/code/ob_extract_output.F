@@ -143,6 +143,8 @@ C            Plotting for debugging
      &                        'Open Boundary Submask', -1, myThid )
            ENDIF
          ENDDO
+
+         nTimeSteps_ob = 0
        ENDIF
 
 c      ob_subMask initialized in diagnostics_readparms, dimensions match READ_REC_XY_RS field:
@@ -169,8 +171,8 @@ C       endTime = endTime + totPhase_ob
 C        startTime = 0.0
 
 
-       IF (myIter .eq. nIter0) then
-C        Initialize averages to zero and number of time steps to one
+       IF (nTimeSteps_ob .eq. 0) then
+C        Initialize averages to zero
          CALL SET_TO_INI_STATE(myThid)
        ELSE
 C        Cumulate Diagnostics_ob fields and number of time steps (for Time Average)
@@ -179,6 +181,7 @@ C        Cumulate Diagnostics_ob fields and number of time steps (for Time Avera
 
        if (debug .eq. 1) then
          print *, "OB_EXTRACT_OUTPUT timepassed:", time_passed
+         print *, "OB_EXTRACT_OUTPUT nTimeSteps_ob:",nTimeSteps_ob
          print *, "OB_EXTRACT_OUTPUT deltaTClock:", deltaTClock
          print *, "OB_EXTRACT_OUTPUT avgPeriod_ob:", avgPeriod_ob
          print *, "OB_EXTRACT_OUTPUT myTime:", myTime
@@ -192,7 +195,8 @@ C        Cumulate Diagnostics_ob fields and number of time steps (for Time Avera
 
 
 
-       IF (((myIter.NE.nIter0)
+C       IF (((myIter.NE.nIter0)
+       IF (((nTimeSteps_ob .NE. 0)
      &       .AND.DIFFERENT_MULTIPLE(avgPeriod_ob,myTime,deltaTClock))
      &       .AND. (time_passed .le. totPhase_ob)) THEN
 
@@ -260,9 +264,9 @@ C              Processes 1 and onward send sub arrays to Parent process
              else if (mpiMYId .eq. 0) then
 C              Process 0 does not need to send arrays to itself.
                if (debug .eq. 1) then
-                 print *,"OB_EXTRACT_LOOKUP: l sub_global_indices ",
+                 print *,"OB_EXTRACT_OUTPUT: l sub_global_indices ",
      &                    "count:", int(sub_global_indices(1))
-                 print *,"OB_EXTRACT_LOOKUP: local sub_global_indices"
+                 print *,"OB_EXTRACT_OUTPUT: local sub_global_indices"
                  call PRINT_FLOAT_ARR( sub_global_indices,num_valid)
                end if
              end if
@@ -280,13 +284,14 @@ C           Using GATHER_2D_R8 to correctly combine sub masks into a single glob
      &                     ob_subMask(ob_id,1:sNx,1:sNy,1,1),
      &                     Nx, Ny, .true., .true., myThid)
 
+#ifdef ALLOW_USE_MPI
+
             if (mpiMYId .eq. 0) then
               call PLOT_GLO_FIELD_XYRL(global_mask(1:,1:,1,1),
-     &                    "OB_EXTRACT_LOOKUP: global mask", myThid)
+     &                    "OB_EXTRACT_OUTPUT: global mask", myThid)
             end if
 
 
-#ifdef ALLOW_USE_MPI
             if (usingMPI) then
               if (mpiMyId .eq. 0) then
 
@@ -324,7 +329,7 @@ C                 First append process 0 local arrays to final global array if n
                     if (int(sub_global_indices(1)) .ge. 1) then
 
                       if (print_debug .eq. 1) then
-                       print *,"OB_EXTRACT_LOOKUP: Appending local"
+                       print *,"OB_EXTRACT_OUTPUT: Appending local"
                        call PRINT_FLOAT_ARR(subFieldOnMask(1,:),
      &                                 int(sub_global_indices(1) + 1))
                       end if
@@ -366,7 +371,7 @@ C                                   if number of valid elements in arrays > 0:
                       total_valid = total_valid + g_indices(pid,1)
                     end if
                     if (debug .eq. 1) then
-                     print *,"OB_EXTRACT_LOOKUP: updated global ob by"
+                     print *,"OB_EXTRACT_OUTPUT: updated global ob by"
      &                  ," process",pid,"with",int(g_indices(pid,1)),
      &                   "valid elements"
                     end if
@@ -374,7 +379,7 @@ C                                   if number of valid elements in arrays > 0:
                   ENDDO
 
                   if (debug .eq. 1) then
-                   print *, "OB_EXTRACT_LOOKUP: final global ob by ",
+                   print *, "OB_EXTRACT_OUTPUT: final global ob by ",
      &     "for tag", fld+1, "with total", total_valid, "valid elements"
                    call PRINT_FLOAT_ARR(global_ob,total_valid)
                   end if
@@ -389,7 +394,8 @@ C                                   if number of valid elements in arrays > 0:
 #endif
         ENDDO
        ENDIF
-
+C      Move on to next time step
+       nTimeSteps_ob = nTimeSteps_ob + 1
        time_passed = time_passed + deltaTClock
 
       END
@@ -414,7 +420,7 @@ C       Fill in array with filenames for each ob mask
 
 
       SUBROUTINE SET_TO_INI_STATE(myThid)
-C     Initializes average fields and number of time steps to zero
+C     Initializes average fields to zero
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "PARAMS.h"
@@ -423,7 +429,6 @@ C     Initializes average fields and number of time steps to zero
         INTEGER myThid
         INTEGER j, k, bi, bj, fld
 
-        nTimeSteps_ob = 0
         DO fld=1, nOB_fld
           DO bj = myByLo(myThid), myByHi(myThid)
             DO bi = myBxLo(myThid), myBxHi(myThid)
@@ -491,7 +496,7 @@ C       Stores desired fields chosen by user into array subFields
       END
 
       SUBROUTINE CUMULATE_FLD_TIME(myThid)
-C       Cumulate Diagnostics_ob fields and number of time steps (for Time Average)
+C       Cumulate Diagnostics_ob fields
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "PARAMS.h"
@@ -500,7 +505,6 @@ C       Cumulate Diagnostics_ob fields and number of time steps (for Time Averag
         INTEGER myThid
         INTEGER j, k, bi, bj, fld
 
-        nTimeSteps_ob = nTimeSteps_ob + 1
         DO fld=1, nOB_fld
           DO bj = myByLo(myThid), myByHi(myThid)
             DO bi = myBxLo(myThid), myBxHi(myThid)
@@ -542,6 +546,9 @@ C       Write averaged fields to binary file
 C         Write subField_avg to binary file
          CALL WRITE_SUB_BIN(subField_avg(fld,:,:,:,:), fld,
      &                      myTime)
+C        Set number of time steps wihtin averaging period back to zero
+         nTimeSteps_ob = 0
+
         ENDDO
 
 
