@@ -470,7 +470,6 @@ C--   Initialise the 2-Way Nesting packages variables
         CALL CPL_INI_VARS( myThid )
       ENDIF
 #endif /* COMPONENT_MODULE */
-      print *, "PACKAGES_INIT_VAR: DIAGNOSTICS_OB"
 
 #ifdef ALLOW_MYPACKAGE
       IF ( useMYPACKAGE ) THEN

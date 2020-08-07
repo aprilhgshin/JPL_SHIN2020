@@ -49,34 +49,60 @@ C     ================== Global Variables for open boundary ====================
 C     These common block variables are initialized in diagnostics_ob_init_varia.F
 
       CHARACTER*10 ob_fldNames(nOB_fld)
-      CHARACTER*40 ob_filenames(nOB_mask)
+C      CHARACTER*98 ob_filenames(nOB_mask)
+      CHARACTER*16 ob_filenames(nOB_mask)
+
       LOGICAL fld_choice(nFldOpt)
 
 
       _RL ob_subMask(nOB_mask,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      _RL subField_avg(nOB_fld,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-      _RL subField(nOB_fld,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+C      _RL subField_avg(nOB_fld,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+C      _RL subField(nOB_fld,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
+C     First row contains local i's. Second row contains local j's.
+      INTEGER sub_local_ij_ob(nOB_mask, 2, sNx + sNy)
 
-      _RL subFieldOnMask(nOB_fld, sNx + sNy + 1)
-      _RL sub_global_indices(sNx + sNy + 1)
+      INTEGER sub_glo_indices_allproc(nOB_mask, nPx*nPy, sNx + sNy)
+      INTEGER numOBPnts_allproc(nOB_mask, nPx*nPy)
+
+      _RL subFieldOnMask(nOB_mask,nOB_fld, sNx + sNy)
+      _RL subFieldOnMask_avg(nOB_mask,nOB_fld, sNx + sNy)
+
       INTEGER lookup_table(nOB_mask, Ny*Nx)
       _RL global_ob((sNy+sNx)*(nPx*nPy))
 
+      _RL global_ob_mask(nOB_mask,Nx, Ny,nSx,nSy)
+
+      INTEGER num_ob_points(nOB_mask)
+
       _RL avgPeriod_ob
-      INTEGER deltaT_ob
-      INTEGER totPhase_ob
+      _RL deltaT_ob
+      _RL startTime_ob
+      _RL endTime_ob
       _RL nTimeSteps_ob
       _RL time_passed
 C     ==========================================================================
 
+C      COMMON / DIAG_OB_EXTRACT_R /
+C     &     ob_subMask, subField_avg, subField,
+C     &     global_ob, subFieldOnMask_avg, global_ob_mask
+C     &     subFieldOnMask, nTimeSteps_ob, time_passed
+C      COMMON / DIAG_OB_EXTRACT_I /
+C     &     lookup_table, num_ob_points
+C     &     avgPeriod_ob, deltaT_ob
+C      COMMON / DIAG_OB_EXTRACT_C /
+C     &     ob_fldNames, ob_filenames
+C      COMMON / DIAG_OB_EXTRACT_L /
+C     &     fld_choice
+
       COMMON / DIAG_OB_EXTRACT_R /
-     &     ob_subMask, subField_avg, subField,
-     &     global_ob, sub_global_indices,
-     &     subFieldOnMask, nTimeSteps_ob, time_passed
+     &     ob_subMask, global_ob,
+     &     global_ob_mask, subFieldOnMask_avg,
+     &     subFieldOnMask, nTimeSteps_ob, time_passed,
+     &     startTime_ob, endTime_ob, avgPeriod_ob, deltaT_ob
       COMMON / DIAG_OB_EXTRACT_I /
-     &     lookup_table,
-     &     avgPeriod_ob, deltaT_ob, totPhase_ob
+     &     lookup_table, sub_local_ij_ob, sub_glo_indices_allproc,
+     &     numOBPnts_allproc, num_ob_points
       COMMON / DIAG_OB_EXTRACT_C /
      &     ob_fldNames, ob_filenames
       COMMON / DIAG_OB_EXTRACT_L /

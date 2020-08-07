@@ -15,7 +15,11 @@
       sz = (abs(1-OLx)+(sNx+OLx))*
      &                   (abs(1-OLy)+(sNy+OLy))*nSx*nSy
 
-      print *, "OB_DEMO: Printing subField"
-      CALL PRINT_FLOAT_ARR(subField(1,:,:,:,:),sz)
+C      print *, "OB_DEMO: Printing subField"
+C      CALL PRINT_FLOAT_ARR(subField(1,:,:,:,:),sz)
+
+      CALL PLOT_FIELD_XYRL( ob_subMask(1,:,:,:,:),
+     &                'OB_DEMO:Open Boundary Submask', -1, myThid )
+
 
       END

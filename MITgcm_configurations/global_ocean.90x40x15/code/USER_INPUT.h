@@ -27,6 +27,7 @@ C---------------------------------------
       INTEGER, PARAMETER :: nOB_mask =  1
       INTEGER, PARAMETER :: nOB_fld = 1
 
+
       LOGICAL etaN_ob
       LOGICAL uVel_ob
       LOGICAL vVel_ob

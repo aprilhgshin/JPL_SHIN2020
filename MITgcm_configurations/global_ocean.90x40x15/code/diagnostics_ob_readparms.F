@@ -49,15 +49,15 @@ C     nFldOpt  :  Number of possible fields
 C     nml_fldNames : field names for ocean state and flux variables
 C     avgPeriod_nml : averaging period
 C     deltaT_nml : size of time step
-C     totPhase_nml : total time phase
 C -----------------------------
       CHARACTER*10 nml_fldNames(nFldOpt)
       _RL avgPeriod_nml
-      _RL totPhase_nml
+      _RL startTime_nml
+      _RL endTime_nml
 
       NAMELIST / DIAG_OB_EXTRACT /
      &     nml_fldNames,
-     &     avgPeriod_nml, totPhase_nml
+     &     avgPeriod_nml, startTime_nml, endTime_nml
 
       IF ( .NOT.useDIAGNOSTICS_OB ) THEN
 C-    pkg DIAGNOSTICS_OB is not used
@@ -103,7 +103,9 @@ C     Initializing local array:
 
 C     Initializing averaging period (avgPeriod_ob) and time counter (deltaT_ob)
       avgPeriod_nml = 0.0
-      totPhase_nml = 0.0
+      startTime_nml = 0.0
+      endTime_nml = 0.0
+C     CHANGE THESE VALUES TO THE UNDEFINED CONSTANT
 
 
 C----------------------------------------------------------------------
@@ -122,20 +124,8 @@ C     Initializing open boundary sub mask and sub fields/avg
               DO ob=1, nOB_mask
                 ob_subMask(ob,i,j,bi,bj)   = 0.0
               ENDDO
-              DO fld=1, nOB_fld
-                subField(fld,i,j,bi,bj) = 0.0
-                subField_avg(fld,i,j,bi,bj) = 0.0
-              ENDDO
             ENDDO
           ENDDO
-        ENDDO
-      ENDDO
-
-
-      DO l = 1, sNy+sNx+1
-        sub_global_indices(l) = 0
-        DO k=1, nOB_fld
-          subFieldOnMask(k,l) = 0.0
         ENDDO
       ENDDO
 
@@ -154,10 +144,14 @@ C     Initializing to empty string
         ob_fldNames(k) = ' '
       ENDDO
 
-      DO k=1, nOB_mask
-        ob_filenames(k) = ' '
-      ENDDO
 
+      DO ob=1, nOB_mask
+        print*, "ob",ob
+C        print *, "size", shape("domain_mask1.bin")
+
+C       write(ob_filenames(ob),"(A17,I1,A4)") "domain_mask",
+C     &          ob, '.bin'
+      ENDDO
 
       WRITE(msgBuf,'(A)')
      &      'DIAGNOSTICS_OB_READPARMS: opening data.diagnostics_ob'
@@ -216,7 +210,8 @@ C     Fill DIAGNOSTICS_OB.h Common Block with Namelist Info
       ENDDO
 
       avgPeriod_ob = avgPeriod_nml
-      totPhase_ob = totPhase_nml
+      startTime_ob = startTime_nml
+      endTime_ob = endTime_nml
 
       _END_MASTER(myThid)
 

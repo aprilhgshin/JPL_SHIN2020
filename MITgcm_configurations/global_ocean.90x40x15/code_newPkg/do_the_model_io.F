@@ -272,6 +272,7 @@ C-- added by RPA
 
 #ifdef ALLOW_DIAGNOSTICS_OB
       IF (useDiagnostics_ob)
+C     &     CALL OB_DEMO( myThid )
      &     CALL OB_EXTRACT_OUTPUT( myTime, myIter, myThid )
 C     &     CALL DIAGNOSTICS_OB_OUTPUT(myTime, myIter, myThid)
 #endif
