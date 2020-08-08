@@ -76,6 +76,13 @@ C-------------------------------------------------------------------------------
 #include "EESUPPORT.h"
 #include "PARAMS.h"
 #include "DYNVARS.h"
+#ifdef ALLOW_OBCS
+#include "OBCS_FIELDS.h"
+#endif
+#ifdef ALLOW_SEAICE
+#include "SEAICE_SIZE.h"
+#include "SEAICE.h"
+#endif
 #include "DIAGNOSTICS_OB.h"
 
        _RL myTime

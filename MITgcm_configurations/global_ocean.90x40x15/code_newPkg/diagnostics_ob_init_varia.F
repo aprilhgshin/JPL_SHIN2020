@@ -134,12 +134,37 @@ C--   end start-from-iter-zero if/else block
 C---------------------------------------------------------
 C     Initialize diagnostics_ob COMMON block variables:
 C---------------------------------------------------------
+
+      DO bj = myByLo(myThid), myByHi(myThid)
+        DO bi = myBxLo(myThid), myBxHi(myThid)
+          DO j=1-OLy,sNy+OLy
+            DO i=1-OLx,sNx+OLx
+              DO ob_id=1, nOB_mask
+                ob_subMask(ob_id,i,j,bi,bj)   = 0.0
+              ENDDO
+            ENDDO
+          ENDDO
+        ENDDO
+      ENDDO
+
+      DO j = 1, nOB_mask
+        DO l = 1, Ny*Nx
+        lookup_table(j,l) = 0
+        ENDDO
+      ENDDO
+
+      DO j=1, (sNy+sNx)*(nPx*nPy)
+        global_ob(j) = 0.0
+      ENDDO
+
+
       DO ob_id=1, nOB_mask
         num_ob_points(ob_id) = 0
         DO pid=1, nPx*nPy
           numOBPnts_allproc(ob_id,pid) = 0
         ENDDO
       ENDDO
+
 
       call INI_OB_FILENAMES2()
 
@@ -328,9 +353,9 @@ C             !MPI_RECV params: received_data, receive_count, receive_type, send
               call MPI_RECV(num_pts, 1, MPI_INT,
      &                   pid, ob_id*100 ,MPI_COMM_MODEL, status, ierror)
               DO i=1, sNx+sNy
-               sub_glo_indices_allproc(ob_id,pid+1,i)=int(g_indices(i))
+               sub_glo_indices_allproc(ob_id,pid+1,i) = g_indices(i)
               ENDDO
-              numOBPnts_allproc(ob_id,pid+1) = int(num_pts)
+              numOBPnts_allproc(ob_id,pid+1) = num_pts
             ENDDO
           ENDDO
          ENDIF

@@ -116,42 +116,11 @@ C----------------------------------------------------------------------
         fld_choice(j) = .FALSE.
       ENDDO
 
-C     Initializing open boundary sub mask and sub fields/avg
-      DO bj = myByLo(myThid), myByHi(myThid)
-        DO bi = myBxLo(myThid), myBxHi(myThid)
-          DO j=1-OLy,sNy+OLy
-            DO i=1-OLx,sNx+OLx
-              DO ob=1, nOB_mask
-                ob_subMask(ob,i,j,bi,bj)   = 0.0
-              ENDDO
-            ENDDO
-          ENDDO
-        ENDDO
-      ENDDO
-
-      DO j = 1, nOB_mask
-        DO l = 1, Ny*Nx
-        lookup_table(j,l) = 0
-        ENDDO
-      ENDDO
-
-      DO j=1, (sNy+sNx)*(nPx*nPy)
-        global_ob(j) = 0.0
-      ENDDO
-
 C     Initializing to empty string
       DO k=1, nOB_fld
         ob_fldNames(k) = ' '
       ENDDO
 
-
-      DO ob=1, nOB_mask
-        print*, "ob",ob
-C        print *, "size", shape("domain_mask1.bin")
-
-C       write(ob_filenames(ob),"(A17,I1,A4)") "domain_mask",
-C     &          ob, '.bin'
-      ENDDO
 
       WRITE(msgBuf,'(A)')
      &      'DIAGNOSTICS_OB_READPARMS: opening data.diagnostics_ob'
