@@ -107,7 +107,10 @@ C     ==========================================================================
      &     global_ob_mask, subFieldOnMask_avg,
      &     subFieldOnMask, nTimeSteps_ob, time_passed,
      &     startTime_ob, endTime_ob, avgPeriod_ob, deltaT_ob,
-     &     global_ob2D, global_ob3D
+     &     global_ob2D, global_ob3D,
+     &     subFieldOnMask_2D, subFieldOnMask_2Davg,
+     &     subFieldOnMask_3D, subFieldOnMask_3Davg
+
       COMMON / DIAG_OB_EXTRACT_I /
      &     lookup_table, sub_local_ij_ob, sub_glo_indices_allproc,
      &     numOBPnts_allproc, num_ob_points,

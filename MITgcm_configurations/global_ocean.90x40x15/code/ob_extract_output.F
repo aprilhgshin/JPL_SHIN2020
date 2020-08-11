@@ -193,7 +193,7 @@ c      field(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
        print *,"OB_EXTRACT_OUTPUT: fld_nDim",fld_nDim
        print *,"OB_EXTRACT_OUTPUT: fld_to_output",fld_to_output
-       fld_to_output(1) = fld_to_output(1) - 90
+       fld_to_output(1) = 7
 
 
 
@@ -284,7 +284,7 @@ c1234567
         DO ob_id=1, nOB_mask
          DO pid=1,nPx*nPy
           print *, "numOBPnts_allproc process", pid-1
-          print *,"numOBPnts_allproc:",numOBPnts_allproc(ob_id,pid)
+          print *,"numOBPnts_allproc:",numOBPnts_allproc(ob_id,pid+1)
          ENDDO
         ENDDO
 
@@ -363,17 +363,19 @@ C             Append receive sub arrays to final array.
 C              Indices referring to process 0 begin with 1
 C              If number of valid elements is greater than or equal to 1
             IF (numOBPnts_allproc(ob_id,pid+1) .ge. 1) then
+             print *,"OB_EXTRACT_OUTPUT: time to receive",
+     &          numOBPnts_allproc(ob_id,pid+1), "elements"
              if (fld .le. nOB_fld2D) then
               call MPI_RECV(recv_arr2D, sNx+sNy, MPI_REAL,
      &                   pid, fld ,MPI_COMM_MODEL, status, ierror)
-C                 if (debug .eq. 1) then
-C                   print *, "Received from process", pid
-C                   print *, "Received recv_arr for fields"
-C                   print *, "shape:", shape(recv_arr)
-C                   print *, "Displaying FULL array, beyond number of "
-C     &                       ,"valid elements"
-C                   call PRINT_FLOAT_ARR(recv_arr, sNx+sNy)
-C                 end if
+                 if (debug .eq. 1) then
+                   print *, "Received from process", pid
+                   print *, "Received recv_arr2D for fields"
+                   print *, "shape:", shape(recv_arr2D)
+                   print *, "Displaying FULL array, beyond number of "
+     &                       ,"valid elements"
+                   call PRINT_FLOAT_ARR(recv_arr2D, sNx+sNy)
+                 end if
 
               call APPEND_OB_VALUE2D(ob_id,pid, recv_arr2D)
              else
@@ -381,8 +383,7 @@ C                 end if
      &         MPI_REAL, pid, fld*10 ,MPI_COMM_MODEL, status, ierror)
 C             !append_ob_values3D params: ob_id, pid, fld, ob_values
               call APPEND_OB_VALUE3D(ob_id,pid, fld, recv_arr3D)
-              total_valid = total_valid +
-     &                       numOBPnts_allproc(ob_id, pid+1)
+
 C                 if (debug .eq. 1) then
 C                   print *,"APPEND_OB_VALUE: appending recv_arr "
 C     &                    ,"field to global_ob with ",
@@ -392,10 +393,14 @@ C                 end if
 
 
              endif
+             total_valid = total_valid +
+     &                       numOBPnts_allproc(ob_id, pid+1)
 C              !ENDIF for number of valid elements
             ENDIF
+            print *,"OB_EXTRACT_OUTPUT: total_valid", total_valid
 C             !ENDDO for pid
            ENDDO
+           call PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld)
 C           !ENDDO for fld
           ENDDO
 C         !ENDIF for mpiMyId .eq. 0
@@ -496,11 +501,7 @@ C             IF (fld_nDim(fld) .eq. 2) then
               ELSE IF (fld_out .eq. 6) then
                subFieldOnMask_2D(ob_id,fld,counter) = VICE(i,j,bi,bj)
               ELSE IF (fld_out .eq. 7) then
-                print *, "TEST ij:",i,j
-                print *, "TEST etaN before: ",etaN(i,j,bi,bj)
                subFieldOnMask_2D(ob_id,fld,counter) = etaN(i,j,bi,bj)
-               print*, "TEST sfon2D after:",
-     &                    subFieldOnMask_2D(ob_id,fld,counter)
               ELSE IF (fld_out .eq. 8) then
                subFieldOnMask_2D(ob_id,fld,counter) = etaH(i,j,bi,bj)
 C              ELSE IF (fld_out .eq. 9) then
@@ -519,16 +520,8 @@ C               subFieldOnMask_2D(ob_id,fld,counter) = obnw(i,j,bi,bj)
                 subFieldOnMask_3D(ob_id,fld-nOB_fld2D,k,counter) =
      &                                        theta(i,j,k,bi,bj)
                ELSE IF (fld_out .eq. 13) then
-C                print *, "TEST ij:",i,j
-C                print *, "TEST salt before: ",salt(i,j,k,bi,bj)
-C                print *, "TEST sFOM before: ",
-C     &                     subFieldOnMask_3D(ob_id,fld,k,counter)
-                subFieldOnMask_3D(ob_id,fld-nOB_fld2D,k,counter)=5.0
-C     &                                       salt(i,j,k,bi,bj)
-C                print *, "TEST salt after: ",salt(i,j,k,bi,bj)
-C                print *, "TEST sFOM after: ",
-C     &                     subFieldOnMask_3D(ob_id,fld,k,counter)
-
+                subFieldOnMask_3D(ob_id,fld-nOB_fld2D,k,counter)=
+     &                                       salt(i,j,k,bi,bj)
                ELSE IF (fld_out .eq. 14) then
                 subFieldOnMask_3D(ob_id,fld-nOB_fld2D,k,counter) =
      &                                        gU(i,j,k,bi,bj)
@@ -545,50 +538,11 @@ C     &                     subFieldOnMask_3D(ob_id,fld,k,counter)
          ENDDO
         ENDDO
 
-C        print *, "FINAL sFOM:", subFieldOnMask_3D'
         print *, "FINAL set 2D:"
         call PRINT_FLOAT_ARR(subFieldOnMask_2D(1,1,:), sNx+sNy)
         print *,"FINAL set 3D:"
         call PRINT_FLOAT_ARR(subFieldOnMask_3D(1,1,:,:), 2*(sNx+sNy))
 
-
-C      DO ob_id=1, nOB_mask
-C          numValid = numOBPnts_allproc(ob_id,mpiMyId+1)
-C         DO fld=1, nOB_fld
-C          DO opt=1, nFldOpt
-C           IF (fld_choice(opt)) then
-C            counter = 1
-C            DO bj = myByLo(myThid), myByHi(myThid)
-C             DO bi = myBxLo(myThid), myBxHi(myThid)
-C              DO loc_count=1, numValid
-C                j = sub_local_ij_ob(ob_id,2,loc_count)
-C                i = sub_local_ij_ob(ob_id,1,loc_count)
-
-C                IF (opt .eq. 1) then
-C                 subFieldOnMask(ob_id,fld,counter) = etaN(i,j,bi,bj)
-C                ELSE IF (opt .eq. 2) then
-C                 subFieldOnMask(ob_id,fld,counter) = uVel(i,j,1,bi,bj)
-C                ELSE IF (opt .eq. 3) then
-C                 subFieldOnMask(ob_id,fld,counter) = vVel(i,j,1,bi,bj)
-C                ELSE IF (opt .eq. 4) then
-C                 subFieldOnMask(ob_id,fld,counter) = theta(i,j,1,bi,bj)
-C                ELSE IF (opt .eq. 5) then
-C                 subFieldOnMask(ob_id,fld,counter) = salt(i,j,1,bi,bj)
-C                ELSE IF (opt .eq. 6) then
-C                 subFieldOnMask(ob_id,fld,counter) = gU(i,j,1,bi,bj)
-C                ELSE IF (opt .eq. 7) then
-C                 subFieldOnMask(ob_id,fld,counter) = gV(i,j,1,bi,bj)
-C                ELSE IF (opt .eq. 8) then
-C                 subFieldOnMask(ob_id,fld,counter) = etaH(i,j,bi,bj)
-C                ENDIF
-C                counter = counter + 1
-C              ENDDO
-C            ENDDO
-C           ENDDO
-C          ENDIF
-C         ENDDO
-C        ENDDO
-C       ENDDO
       END
 
       SUBROUTINE CUMULATE_FLD_TIME(myThid)
@@ -692,7 +646,7 @@ C               print *, "APPEND_OB_VALUE: ob_index", ob_index
 C             print *, "APPEND_OB_VALUE: counter i",i
 C               print *, "APPEND_OB_VALUE: ob_value", ob_values(i)
 C             end if
-             global_ob2D(int(ob_index)) = ob_values(i)
+             global_ob2D(ob_index) = ob_values(i)
 C           end if
        end do
          if (print_debug .eq. 1) then
@@ -721,6 +675,13 @@ C           end if
           global_ob3D(k,int(ob_index)) = ob_values(k,i)
          enddo
        enddo
+
+       if (print_debug .eq. 1) then
+         print *, "APPEND_OB_VALUE: global_ob3D:"
+         call PRINT_FLOAT_ARR(global_ob3D,
+     &                       fld_depth(fld)*(sNy+sNx)*(nPx*nPy))
+       end if
+
       end
 
 
@@ -828,7 +789,7 @@ C       _RL global_mask(Nx,Ny,nSx,nSy)
        _RL global_NxNy(Nx,Ny,nSx,nSy)
 
        integer i,j, bi, bj, counter, ob_counter, correct
-       integer fld, total_valid, ob_id, myThid
+       integer fld, total_valid, ob_id, myThid, nDim
        integer, parameter :: plot_on_NxNy = 1
        integer, parameter :: print_correctness = 1
        character*4 fldNm
@@ -856,6 +817,9 @@ C       Initialize NxNy array:
           ENDDO
         ENDDO
 
+        print *, "PLOT_TEST_GLOBAL_OB: total_valid", total_valid
+        nDim = fld_nDim(fld)
+
 C      If lookup table contains ob mask point location (1-90) then extract corresponding point in global_ob at location
        correct = 1
        counter = 1
@@ -866,14 +830,18 @@ C      If lookup table contains ob mask point location (1-90) then extract corre
              DO i=1, Nx
                if (ob_counter .le. total_valid) then
                  if (lookup_table(ob_id,counter).eq.ob_counter) then
-C                Inserting field points into NxNy array
-                   global_NxNy(i,j,bi,bj) = global_ob(ob_counter)
-C                   if (global_mask(i,j,bi,bj) .eq. 0) then
-                   if (global_ob_mask(ob_id,i,j,bi,bj) .eq. 0) then
-                     correct = 0
-                     global_correct(ob_counter) = 0.0
-                   end if
-                   ob_counter = ob_counter + 1
+C                 !Inserting field points into NxNy array
+                  if (nDim .eq. 2) then
+                   global_NxNy(i,j,bi,bj) = global_ob2D(ob_counter)
+                  else if  (nDim .eq. 3) then
+                   global_NxNy(i,j,bi,bj) =
+     &                   global_ob3D((fld_depth(fld)/2)+1,ob_counter)
+                  endif
+                  if (global_ob_mask(ob_id,i,j,bi,bj) .eq. 0) then
+                    correct = 0
+                    global_correct(ob_counter) = 0.0
+                  end if
+                  ob_counter = ob_counter + 1
                  end if
                end if
                counter = counter + 1

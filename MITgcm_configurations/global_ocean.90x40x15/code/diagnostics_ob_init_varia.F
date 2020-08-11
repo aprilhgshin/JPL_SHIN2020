@@ -174,7 +174,7 @@ C---------------------------------------------------------
           ENDDO
           DO fld=1, nOB_fld3D
             DO k=1, Nr
-              subFieldOnMask_3D(ob_id, fld, k, i) = 40.0
+              subFieldOnMask_3D(ob_id, fld, k, i) = 0.0
               subFieldOnMask_3Davg(ob_id, fld, k, i) = 0.0
             ENDDO
           ENDDO
@@ -341,9 +341,7 @@ C              Indices referring to process IDs begin with 1
         ENDDO
       ENDDO
       print *,"INIT_VARIA: num_valid:", num_valid
-      print *,"INIT_VARIA: for process", mpiMyId, "stored at",mpiMyId+1
       numOBPnts_allproc(ob_id,mpiMyId+1) = num_valid
-
       END
 
 
@@ -361,6 +359,8 @@ C     Sending global indices and number of open boundary points from processes >
 
         IF (mpiMyId .gt. 0) then
           DO ob_id=1, nOB_mask
+            print *,"init_varia: numOBPnts_allproc from proc",
+     &              mpiMyId,":", numOBPnts_allproc
 C           !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
             call MPI_SEND(sub_glo_indices_allproc(ob_id,mpiMyId+1,:),
      &             sNx+sNy, MPI_INT,0, ob_id, MPI_COMM_MODEL, ierror)
@@ -377,6 +377,7 @@ C             !MPI_RECV params: received_data, receive_count, receive_type, send
      &                   pid, ob_id ,MPI_COMM_MODEL, status, ierror)
               call MPI_RECV(num_pts, 1, MPI_INT,
      &                   pid, ob_id*100 ,MPI_COMM_MODEL, status, ierror)
+
               DO i=1, sNx+sNy
                sub_glo_indices_allproc(ob_id,pid+1,i) = g_indices(i)
               ENDDO
@@ -384,4 +385,6 @@ C             !MPI_RECV params: received_data, receive_count, receive_type, send
             ENDDO
           ENDDO
          ENDIF
+
+
        END
