@@ -224,6 +224,8 @@ C     Fill DIAGNOSTICS_OB.h Common Block with Namelist Info
       print *,"OB readparms: fld_nDim",fld_nDim
       print *,"OB readparms: fld_depth",fld_depth
 
+      print *,"OB readparms: calling CREATE_MASK_DICT"
+      call CREATE_MASK_DICT()
 
 
       avgPeriod_ob = avgPeriod_nml
@@ -240,4 +242,69 @@ C--   Everyone else must wait for the parameters to be loaded
 #endif /* ALLOW_DIAGNOSTICS_OB */
 
       RETURN
+      END
+
+
+      SUBROUTINE CREATE_MASK_DICT()
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "DIAGNOSTICS_OB.h"
+
+        INTEGER i, j, mask_id
+        INTEGER mask_count(nMaskTypes)
+        INTEGER mask_flds(nMaskTypes,nOB_fld)
+C       Initializing arrays
+        DO i=1, nMaskTypes
+          mask_count(i) = 0
+          DO j=1, nOB_fld
+            mask_flds(i,j) = 0
+          ENDDO
+        ENDDO
+
+        DO i=1, nMask_perOB
+          maskId_used(i) = 0
+        ENDDO
+
+        print *,"CREATE_MASK_DICT: Num of fields to output:", nOB_fld
+        print *,"CREATE_MASK_DICT: Mask IDs for each field:",
+     &           fld_maskType
+
+        DO i=1, nOB_fld
+          if (fld_maskType(i) .eq. 1) then
+            mask_count(1) = mask_count(1) + 1
+            mask_flds(1, mask_count(1)) = i
+          else if (fld_maskType(i) .eq. 2) then
+            mask_count(2) = mask_count(2) + 1
+            mask_flds(2, mask_count(2)) = i
+          else if (fld_maskType(i) .eq. 3) then
+            mask_count(3) = mask_count(3) + 1
+            mask_flds(3, mask_count(3)) = i
+          end if
+        ENDDO
+
+        print *,"CREATE_MASK_DICT: fld count for each mask",mask_count
+        print *,"CREATE_MASK_DICT: fields for mask 1:",mask_flds(1,:)
+        print *,"CREATE_MASK_DICT: fields for mask 2:",mask_flds(2,:)
+        print *,"CREATE_MASK_DICT: fields for mask 3:",mask_flds(3,:)
+
+
+        mask_id = 1
+        DO i=1, nMaskTypes
+          if (mask_count(i) .gt. 0) then
+             maskId_used(mask_id) = i
+             mask_id = mask_id + 1
+             DO j=1, mask_count(i)
+               mask_fields(mask_id, j) = mask_flds(i,j)
+             ENDDO
+             mask_id = mask_id + 1
+           endif
+        ENDDO
+
+        DO i=1, nMask_perOB
+          print *,"CREATE_MASK_DICT: fields for mask",i,":"
+          print *, mask_fields(i,:)
+        ENDDO
+
+        print *,"CREATE_MASK_DICT: maskId_used",maskId_used
+
       END

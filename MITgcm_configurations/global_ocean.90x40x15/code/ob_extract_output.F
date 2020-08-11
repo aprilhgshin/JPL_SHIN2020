@@ -41,13 +41,24 @@ C DONE change data.diagnostics to output fields 2D and 3D
 C DONE Change frequency for both to be 1day  i.e. 86400 seconds
 
 C TODO:
-C Incorporating x-z or y-z fields (or check if this already works with what I have now)
+C 1. Incorporating x-z or y-z fields (or check if this already works with what I have now)
+C 2. Account for having max 3 masks per open boundary - will need to change whole program
+C 3. Write to binary files using MITGCM's existing subroutine
+C 4. apply program sturcutre on diagnostics output and compare with my outputs
+C 5. Very last addition: passive tracers
 
-C apply program sturcutre on diagnostics output and compare with my outputs
 
-C Account for having max 3 masks per open boundary - will need to change whole program
+C-------------------------------------------------------------------------------
+C Approach to multiple masks per open boundary:
+C Arrays dependent on mask number:
+C 1. global indices - may differ for each mask (modify sub_glo_indices_allproc)
+C 2. local sub ij's
+C 3. ob_subMask
 
-C Very last addition: passive tracers
+C Once we extract the open boundary points, we don't care for the open boundary mask.
+
+C-------------------------------------------------------------------------------
+
 
 
 
@@ -509,10 +520,10 @@ C               subFieldOnMask_2D(ob_id,fld,counter) = obnw(i,j,bi,bj)
          ENDDO
         ENDDO
 
-        print *, "FINAL set 2D:"
-        call PRINT_FLOAT_ARR(subFieldOnMask_2D(1,1,:), sNx+sNy)
-        print *,"FINAL set 3D:"
-        call PRINT_FLOAT_ARR(subFieldOnMask_3D(1,1,:,:), 2*(sNx+sNy))
+C        print *, "FINAL set 2D:"
+C        call PRINT_FLOAT_ARR(subFieldOnMask_2D(1,1,:), sNx+sNy)
+C        print *,"FINAL set 3D:"
+C        call PRINT_FLOAT_ARR(subFieldOnMask_3D(1,1,:,:), 2*(sNx+sNy))
 
       END
 

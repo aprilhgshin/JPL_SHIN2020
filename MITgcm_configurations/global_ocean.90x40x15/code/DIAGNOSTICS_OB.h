@@ -54,7 +54,7 @@ C     These common block variables are initialized in diagnostics_ob_init_varia.
 C     Hard coding dimensions: First dimension refers to number of different dimensions
 C                             Second dimension refers to number of fields with one of different dimensions.
       LOGICAL fld_choice(2,10)
-
+      INTEGER, PARAMETER :: nMaskTypes = 3
 
       _RL ob_subMask(nOB_mask,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
@@ -73,6 +73,9 @@ C     fld_depth :: int array of depth of only 3D fields
       INTEGER fld_maskType(nOB_fld)
       INTEGER fld_nDim(nOB_fld)
       INTEGER fld_depth(nOB_fld)
+
+      INTEGER maskId_used(nMaskTypes)
+      INTEGER mask_fields(nMask_perOB, nOB_fld)
 
       _RL subFieldOnMask_2D(nOB_mask,nOB_fld2D, sNx + sNy)
       _RL subFieldOnMask_3D(nOB_mask,nOB_fld3D, Nr, sNx + sNy)
