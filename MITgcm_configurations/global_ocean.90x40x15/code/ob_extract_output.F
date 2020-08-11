@@ -40,7 +40,14 @@ C DONE Make do loop only go through 1 through sNx etc. not -OLx
 C DONE change data.diagnostics to output fields 2D and 3D
 C Change frequency for both to be 1day  i.e. 86400 seconds
 
+C TODO:
+C changing declarations in diagnostics_ob.h
+
+C Change frequency for both to be 1day  i.e. 86400 seconds
+
 C apply program sturcutre on diagnostics output and compare with my outputs
+
+C Account for having max 3 masks per open boundary - will need to change whole program
 
 C Very last addition: passive tracers
 
@@ -193,7 +200,11 @@ c      field(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
        print *,"OB_EXTRACT_OUTPUT: fld_nDim",fld_nDim
        print *,"OB_EXTRACT_OUTPUT: fld_to_output",fld_to_output
-       fld_to_output(1) = 7
+
+       if ((mpiMyId .eq. 0) .AND. (fld_to_output(1) .ge. 90)) then
+         fld_to_output(1) = fld_to_output(1) - 90
+         print *,"OB_EXTRACT_OUTPUT: fld_to_output fix",fld_to_output
+       endif
 
 
 
