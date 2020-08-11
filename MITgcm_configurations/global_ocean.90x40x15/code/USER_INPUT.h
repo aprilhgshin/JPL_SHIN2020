@@ -34,8 +34,8 @@ C     Please do not change unless adding on additional fields
 C---------------------------------------
 
       INTEGER, PARAMETER :: nOB_mask =  1
-      INTEGER, PARAMETER :: nOB_fld2D = 2
-      INTEGER, PARAMETER :: nOB_fld3D = 1
+      INTEGER, PARAMETER :: nOB_fld2D = 0
+      INTEGER, PARAMETER :: nOB_fld3D = 2
       INTEGER, PARAMETER :: nOB_fld = nOB_fld2D + nOB_fld3D
 
 C ----2D Fields (x,y):
@@ -66,13 +66,13 @@ C ----3D Fields (x,y,z):
      &           hsalt_ob = .FALSE.,
      &            uice_ob = .FALSE.,
      &            vice_ob = .FALSE.,
-     &            etaN_ob = .TRUE.,
+     &            etaN_ob = .FALSE.,
      &            etaH_ob = .FALSE.,
      &            obnw_ob = .FALSE.,
 
      &            uVel_ob = .FALSE.,
      &            vVel_ob = .FALSE.,
-     &           theta_ob = .FALSE.,
+     &           theta_ob = .TRUE.,
      &            salt_ob = .TRUE.,
      &              gU_ob = .FALSE.,
      &              gV_ob = .FALSE.)

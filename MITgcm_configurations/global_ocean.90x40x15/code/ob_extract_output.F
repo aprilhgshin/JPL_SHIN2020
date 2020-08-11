@@ -43,6 +43,8 @@ C Change frequency for both to be 1day  i.e. 86400 seconds
 C TODO:
 C changing declarations in diagnostics_ob.h
 
+C Incorporating x-z or y-z fields (or check if this already works with what I have now)
+
 C Change frequency for both to be 1day  i.e. 86400 seconds
 
 C apply program sturcutre on diagnostics output and compare with my outputs
@@ -803,7 +805,7 @@ C       _RL global_mask(Nx,Ny,nSx,nSy)
        integer fld, total_valid, ob_id, myThid, nDim
        integer, parameter :: plot_on_NxNy = 1
        integer, parameter :: print_correctness = 1
-       character*4 fldNm
+       character*8 fldNm
        character*30 plotTitle
 
 C       common / local_var / global_mask, total_valid
