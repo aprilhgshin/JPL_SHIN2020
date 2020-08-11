@@ -15,7 +15,7 @@ C DONE Don't send global indices
 C DONE So message tag will correspond to fld number
 
 C DONE make this use 3D fields
-C changing declaratoin in diagnostics_ob.h
+C DONE changing declaratoin in diagnostics_ob.h
 C NOT DOING order of fields correspond to depth too. like depth 1 is eta. deptha 2 - 51 contains theta, etc.
 C DONE So subFldsOnMask (nOB_fld, sNx+sNy, nZ )
 
@@ -31,21 +31,17 @@ C DONE In common block of diagnostics_ob.h, create an array of depth dimensions 
 
 C DONE change k to i --- fix all do loops with this done like this
 
-C change data file comment line 42, and change 55 to have 7 days + 10 hours
+C DONEchange data file comment line 42, and change 55 to have 7 days + 10 hours
 
 C DONE change fld names to be lenght 8
 
 C DONE Make do loop only go through 1 through sNx etc. not -OLx
 
 C DONE change data.diagnostics to output fields 2D and 3D
-C Change frequency for both to be 1day  i.e. 86400 seconds
+C DONE Change frequency for both to be 1day  i.e. 86400 seconds
 
 C TODO:
-C changing declarations in diagnostics_ob.h
-
 C Incorporating x-z or y-z fields (or check if this already works with what I have now)
-
-C Change frequency for both to be 1day  i.e. 86400 seconds
 
 C apply program sturcutre on diagnostics output and compare with my outputs
 
@@ -255,45 +251,6 @@ C        Compute time average of all sub fields
 C           call PRINT_FLOAT_ARR(subFieldOnMask_avg(1,1,:), sNx+sNy)
          endif
 
-
-C          DO ob_id = 1, nOB_mask
-
-C          Initializing counting integers
-C           num_valid = 0
-
-C           iG = mpi_myXGlobalLo(mpiMyId+1)
-C           jG = mpi_myYGlobalLo(mpiMyId+1)
-C           global_ob_index = Nx*(jG -1)  + iG
-
-C           counter = 2
-C           new_goi = global_ob_index
-C          Computing global indices, storing values on open boundary points
-C           DO bj = myByLo(myThid), myByHi(myThid)
-C            DO bi = myBxLo(myThid), myBxHi(myThid)
-C              DO j=1,sNy
-C                DO i=1,sNx
-C                  new_goi = (j-1)*sNx+(j-1)*(Nx-(iG+sNx-1))+
-C     &                       j*(iG-1)+i
-C                  if (ob_subMask(ob_id,i,j,bi,bj) .ge. 1.0 ) then
-C                    DO fld=1, nOB_fld
-C                     subFieldOnMask(fld,counter) =
-C     &                                     subField_avg(fld,i,j,bi,bj)
-C                    ENDDO
-C                    sub_global_indices(counter) = new_goi
-C                    counter = counter + 1
-C                    num_valid = num_valid + 1
-C                  end if
-C                 ENDDO
-C               ENDDO
-C             ENDDO
-C           ENDDO
-
-C          Inserting number of valid elements as first element of each array
-C           DO fld=1,nOB_fld
-C             subFieldOnMask(fld,1) = num_valid
-C           ENDDO
-C           sub_global_indices(1) = num_valid
-c1234567
         DO ob_id=1, nOB_mask
          DO pid=1,nPx*nPy
           print *, "numOBPnts_allproc process", pid-1
@@ -413,6 +370,7 @@ C              !ENDIF for number of valid elements
             print *,"OB_EXTRACT_OUTPUT: total_valid", total_valid
 C             !ENDDO for pid
            ENDDO
+           print *,"Plotting final array at time", myTime
            call PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld)
 C           !ENDDO for fld
           ENDDO
@@ -782,7 +740,7 @@ c      Writing global array to binary file
        call CREATE_FILENAME(dir, ob_fldNames(fld), ob_id, filename, 0,
      &                      myTime)
        open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
-       write(1) global_ob(1:total_valid)
+       write(1) global_ob2D(1:total_valid)
        close(1)
 
        end

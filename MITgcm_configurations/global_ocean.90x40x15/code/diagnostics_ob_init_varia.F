@@ -153,10 +153,6 @@ C---------------------------------------------------------
         ENDDO
       ENDDO
 
-      DO j=1, (sNy+sNx)*(nPx*nPy)
-        global_ob(j) = 0.0
-      ENDDO
-
 
       DO ob_id=1, nOB_mask
         num_ob_points(ob_id) = 0

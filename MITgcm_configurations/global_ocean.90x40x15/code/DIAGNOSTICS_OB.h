@@ -57,8 +57,6 @@ C                             Second dimension refers to number of fields with o
 
 
       _RL ob_subMask(nOB_mask,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-C      _RL subField_avg(nOB_fld,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-C      _RL subField(nOB_fld,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
 C     First row contains local i's. Second row contains local j's.
       INTEGER sub_local_ij_ob(nOB_mask, 2, sNx + sNy)
@@ -76,16 +74,12 @@ C     fld_depth :: int array of depth of only 3D fields
       INTEGER fld_nDim(nOB_fld)
       INTEGER fld_depth(nOB_fld)
 
-      _RL subFieldOnMask(nOB_mask,nOB_fld, sNx + sNy)
-      _RL subFieldOnMask_avg(nOB_mask,nOB_fld, sNx + sNy)
-
       _RL subFieldOnMask_2D(nOB_mask,nOB_fld2D, sNx + sNy)
       _RL subFieldOnMask_3D(nOB_mask,nOB_fld3D, Nr, sNx + sNy)
       _RL subFieldOnMask_2Davg(nOB_mask,nOB_fld2D, sNx + sNy)
       _RL subFieldOnMask_3Davg(nOB_mask,nOB_fld3D, Nr, sNx + sNy)
 
       INTEGER lookup_table(nOB_mask, Ny*Nx)
-      _RL global_ob((sNy+sNx)*(nPx*nPy))
       _RL global_ob2D((sNy+sNx)*(nPx*nPy))
       _RL global_ob3D(Nr,(sNy+sNx)*(nPx*nPy))
 
@@ -103,9 +97,9 @@ C     fld_depth :: int array of depth of only 3D fields
 C     ==========================================================================
 
       COMMON / DIAG_OB_EXTRACT_R /
-     &     ob_subMask, global_ob,
-     &     global_ob_mask, subFieldOnMask_avg,
-     &     subFieldOnMask, nTimeSteps_ob, time_passed,
+     &     ob_subMask,
+     &     global_ob_mask,
+     &     nTimeSteps_ob, time_passed,
      &     startTime_ob, endTime_ob, avgPeriod_ob, deltaT_ob,
      &     global_ob2D, global_ob3D,
      &     subFieldOnMask_2D, subFieldOnMask_2Davg,
