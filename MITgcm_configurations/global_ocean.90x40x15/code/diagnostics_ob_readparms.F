@@ -131,7 +131,6 @@ C     Initializing averaging period (avgPeriod_ob) and time counter (deltaT_ob)
 C     CHANGE THESE VALUES TO THE UNDEFINED CONSTANT
 
 
-
       time_passed = 0
 
 
@@ -179,6 +178,7 @@ C     Organize user input booleans into an array:
       fld_choice(1,6) = vice_ob
       fld_choice(1,7) = etaN_ob
       fld_choice(1,8) = etaH_ob
+
       fld_choice(1,9) = obnw_ob
       fld_choice(2,1) = uVel_ob
       fld_choice(2,2) = vVel_ob

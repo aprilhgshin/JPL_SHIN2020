@@ -174,15 +174,20 @@ C---------------------------------------------------------
           ENDDO
           DO fld=1, nOB_fld3D
             DO k=1, Nr
-              subFieldOnMask_3D(ob_id, fld, k, i) = 0.0
+              subFieldOnMask_3D(ob_id, fld, k, i) = 40.0
               subFieldOnMask_3Davg(ob_id, fld, k, i) = 0.0
             ENDDO
           ENDDO
         ENDDO
       ENDDO
 
+      print *,"init_varia:",subFieldOnMask_3D
+
       print *,"init_varia: fld_nDim",fld_nDim
       print *,"init_varia: fld_to_output",fld_to_output
+
+      print *,"TESTTEST init_varia: loc(subFieldOnMask_3D)",
+     &          loc(subFieldOnMask_3D)
 
 
       call INI_OB_FILENAMES2()

@@ -14,32 +14,30 @@ C DONE MPI_send and recv only arrays with valid elements
 C DONE Don't send global indices
 C DONE So message tag will correspond to fld number
 
-C make this use 3D fields
-C y,z
+C DONE make this use 3D fields
 C changing declaratoin in diagnostics_ob.h
-C order of fields correspond to depth too. like depth 1 is eta. deptha 2 - 51 contains theta, etc.
-C So subFldsOnMask (nOB_fld, sNx+sNy+1, nZ )
+C NOT DOING order of fields correspond to depth too. like depth 1 is eta. deptha 2 - 51 contains theta, etc.
+C DONE So subFldsOnMask (nOB_fld, sNx+sNy, nZ )
 
 C fields to input :
-C Everything i have but gu and gv
-C Include HEFF, AREA, HSNON, HSALT, uice, vice from seaice.h
+C DONE Include HEFF, AREA, HSNON, HSALT, uice, vice from seaice.h
 C OBNw from OBCS.h
 
 C DONE dont use the word phase
 C DONE change totPhase to having start time and end time instead
 
-C Have user specify what depth it wants
-C In common block of diagnostics_ob.h, create an array of depth dimensions of each field
+C DONE Have user specify what depth it wants
+C DONE In common block of diagnostics_ob.h, create an array of depth dimensions of each field
 
-C change k to i --- fix all do loops with this done like this
+C DONE change k to i --- fix all do loops with this done like this
 
 C change data file comment line 42, and change 55 to have 7 days + 10 hours
 
-C change fld names to be lenght 8
+C DONE change fld names to be lenght 8
 
 C DONE Make do loop only go through 1 through sNx etc. not -OLx
 
-C change data.diagnostics to output fields 2D and 3D
+C DONE change data.diagnostics to output fields 2D and 3D
 C Change frequency for both to be 1day  i.e. 86400 seconds
 
 C apply program sturcutre on diagnostics output and compare with my outputs
@@ -195,7 +193,9 @@ c      field(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
        print *,"OB_EXTRACT_OUTPUT: fld_nDim",fld_nDim
        print *,"OB_EXTRACT_OUTPUT: fld_to_output",fld_to_output
-       fld_to_output(1) = 1
+       fld_to_output(1) = fld_to_output(1) - 90
+
+
 
        CALL SET_SUBFIELDS(myThid)
        if (debug .eq. 1) then
@@ -205,6 +205,7 @@ c      field(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
          call PRINT_FLOAT_ARR(subFieldOnMask_2D(1,1,:), sNx+sNy)
          call PRINT_FLOAT_ARR(subFieldOnMask_3D(1,1,:,:), 2*(sNx+sNy))
        end if
+
 
 
        IF (nTimeSteps_ob .eq. 0) then
@@ -286,6 +287,7 @@ c1234567
           print *,"numOBPnts_allproc:",numOBPnts_allproc(ob_id,pid)
          ENDDO
         ENDDO
+
         print *, "numOBPnts_allproc at 1st index",
      &    numOBPnts_allproc(1,1)
 
@@ -320,15 +322,13 @@ C123456789
 C-------------------------------------------------------------------------------
 C           Master Process Tasks:
 C-------------------------------------------------------------------------------
-
-#ifdef ALLOW_USE_MPI
 C123456789
          IF (mpiMyId .eq. 0) then
           ob_index = 1
 
 C           Appending subFields to final global_ob array
 C           Field numbers, fld, are used as message tags.
-C           DO tag=2, nOB_fld + 1
+
           DO fld=1, nOB_fld
            total_valid = 0
 C          First append process 0 local arrays to final global array if number of valid elements in those local arrays > 0:
@@ -340,7 +340,7 @@ C          Indices referring to process IDs begin with 1
             else
 C            append_ob_values3D params: ob_id, pid, fld, ob_values
              call APPEND_OB_VALUE3D(ob_id, 0, fld,
-     &                    subFieldOnMask_3Davg(ob_id,fld-nOB_fld2D,:,:))
+     &                  subFieldOnMask_3Davg(ob_id,fld-nOB_fld2D,:,:))
             endif
             total_valid = total_valid +
      &                               numOBPnts_allproc(ob_id, 1)
@@ -354,6 +354,9 @@ C            Indices referring to process IDs begin with 1
             end if
            end if
 
+#ifdef ALLOW_USE_MPI
+
+
 C             Receive all sub arrays from processes with pid > 0 and valid elements > 0.
 C             Append receive sub arrays to final array.
            DO pid=1, mpiNprocs-1
@@ -363,7 +366,6 @@ C              If number of valid elements is greater than or equal to 1
              if (fld .le. nOB_fld2D) then
               call MPI_RECV(recv_arr2D, sNx+sNy, MPI_REAL,
      &                   pid, fld ,MPI_COMM_MODEL, status, ierror)
-
 C                 if (debug .eq. 1) then
 C                   print *, "Received from process", pid
 C                   print *, "Received recv_arr for fields"
@@ -374,10 +376,10 @@ C                   call PRINT_FLOAT_ARR(recv_arr, sNx+sNy)
 C                 end if
 
               call APPEND_OB_VALUE2D(ob_id,pid, recv_arr2D)
-            else
+             else
               call MPI_RECV(recv_arr3D, fld_depth(fld)*(sNx+sNy),
-     &               MPI_REAL, pid, fld ,MPI_COMM_MODEL, status, ierror)
-C             append_ob_values3D params: ob_id, pid, fld, ob_values
+     &         MPI_REAL, pid, fld*10 ,MPI_COMM_MODEL, status, ierror)
+C             !append_ob_values3D params: ob_id, pid, fld, ob_values
               call APPEND_OB_VALUE3D(ob_id,pid, fld, recv_arr3D)
               total_valid = total_valid +
      &                       numOBPnts_allproc(ob_id, pid+1)
@@ -387,15 +389,15 @@ C     &                    ,"field to global_ob with ",
 C     &                numOBPnts_allproc(ob_id, pid+1),"valid elements:"
 C                   call PRINT_FLOAT_ARR(global_ob, total_valid)
 C                 end if
-              endif
 
+
+             endif
 C              !ENDIF for number of valid elements
-              ENDIF
+            ENDIF
 C             !ENDDO for pid
-             ENDDO
-
-C           !ENDDO for fld
            ENDDO
+C           !ENDDO for fld
+          ENDDO
 C         !ENDIF for mpiMyId .eq. 0
          ENDIF
 C       !ENDDO for ob_id
@@ -463,11 +465,18 @@ C        print *,"SET_SUBFIELDS: fld_choice(nFldOpt)",fld_choice(nFldOpt)
          DO fld=1, nOB_fld
           counter = 1
           fld_out = fld_to_output(fld)
+          print *, "SET_SUBFIELDS: fld", fld
+          print *, "SET_SUBFIELDS: fld-nOB_fld2D", fld-nOB_fld2D
+
           print *,"SET_SUBFIELDS: fld_out",fld_out
           print *,"SET_SUBFIELDS: numValid",numValid
-          DO loc_count=1, numValid
-           DO bj = myByLo(myThid), myByHi(myThid)
-            DO bi = myBxLo(myThid), myBxHi(myThid)
+          print *,"SET_SUBFIELDS: before 3D",subFieldOnMask_3D
+          print *,"TESTTEST SET_SUBFIELDS: loc(subFieldOnMask_3D)",
+     &          loc(subFieldOnMask_3D)
+
+          DO bj = myByLo(myThid), myByHi(myThid)
+           DO bi = myBxLo(myThid), myBxHi(myThid)
+            DO loc_count=1, numValid
              j = sub_local_ij_ob(ob_id,2,loc_count)
              i = sub_local_ij_ob(ob_id,1,loc_count)
 C             IF (fld_nDim(fld) .eq. 2) then
@@ -487,9 +496,13 @@ C             IF (fld_nDim(fld) .eq. 2) then
               ELSE IF (fld_out .eq. 6) then
                subFieldOnMask_2D(ob_id,fld,counter) = VICE(i,j,bi,bj)
               ELSE IF (fld_out .eq. 7) then
-               subFieldOnMask_2D(ob_id,fld,counter) = etaH(i,j,bi,bj)
-              ELSE IF (fld_out .eq. 8) then
+                print *, "TEST ij:",i,j
+                print *, "TEST etaN before: ",etaN(i,j,bi,bj)
                subFieldOnMask_2D(ob_id,fld,counter) = etaN(i,j,bi,bj)
+               print*, "TEST sfon2D after:",
+     &                    subFieldOnMask_2D(ob_id,fld,counter)
+              ELSE IF (fld_out .eq. 8) then
+               subFieldOnMask_2D(ob_id,fld,counter) = etaH(i,j,bi,bj)
 C              ELSE IF (fld_out .eq. 9) then
 C               subFieldOnMask_2D(ob_id,fld,counter) = obnw(i,j,bi,bj)
               ENDIF
@@ -497,30 +510,30 @@ C               subFieldOnMask_2D(ob_id,fld,counter) = obnw(i,j,bi,bj)
             ELSE IF (fld_nDim(fld) .eq. 3) then
               DO k=1, fld_depth(fld)
                IF (fld_out .eq. 10) then
-                subFieldOnMask_3D(ob_id,fld,k,counter) =
+                subFieldOnMask_3D(ob_id,fld-nOB_fld2D,k,counter) =
      &                                        uVel(i,j,k,bi,bj)
                ELSE IF (fld_out .eq. 11) then
-                subFieldOnMask_3D(ob_id,fld,k,counter) =
+                subFieldOnMask_3D(ob_id,fld-nOB_fld2D,k,counter) =
      &                                        vVel(i,j,k,bi,bj)
                ELSE IF (fld_out .eq. 12) then
-                subFieldOnMask_3D(ob_id,fld,k,counter) =
+                subFieldOnMask_3D(ob_id,fld-nOB_fld2D,k,counter) =
      &                                        theta(i,j,k,bi,bj)
                ELSE IF (fld_out .eq. 13) then
-                print *, "TEST ij:",i,j
-                print *, "TEST salt before: ",salt(i,j,k,bi,bj)
-                print *, "TEST sFOM before: ",
-     &                     subFieldOnMask_3D(ob_id,fld,k,counter)
-                subFieldOnMask_3D(ob_id,fld,k,counter) =
-     &                                       salt(i,j,k,bi,bj)
-                print *, "TEST salt after: ",salt(i,j,k,bi,bj)
-                print *, "TEST sFOM after: ",
-     &                     subFieldOnMask_3D(ob_id,fld,k,counter)
+C                print *, "TEST ij:",i,j
+C                print *, "TEST salt before: ",salt(i,j,k,bi,bj)
+C                print *, "TEST sFOM before: ",
+C     &                     subFieldOnMask_3D(ob_id,fld,k,counter)
+                subFieldOnMask_3D(ob_id,fld-nOB_fld2D,k,counter)=5.0
+C     &                                       salt(i,j,k,bi,bj)
+C                print *, "TEST salt after: ",salt(i,j,k,bi,bj)
+C                print *, "TEST sFOM after: ",
+C     &                     subFieldOnMask_3D(ob_id,fld,k,counter)
 
                ELSE IF (fld_out .eq. 14) then
-                subFieldOnMask_3D(ob_id,fld,k,counter) =
+                subFieldOnMask_3D(ob_id,fld-nOB_fld2D,k,counter) =
      &                                        gU(i,j,k,bi,bj)
                ELSE IF (fld_out .eq. 15) then
-                subFieldOnMask_3D(ob_id,fld,k,counter) =
+                subFieldOnMask_3D(ob_id,fld-nOB_fld2D,k,counter) =
      &                                        gV(i,j,k,bi,bj)
                ENDIF
               ENDDO
@@ -532,9 +545,11 @@ C               subFieldOnMask_2D(ob_id,fld,counter) = obnw(i,j,bi,bj)
          ENDDO
         ENDDO
 
-C        print *, "FINAL sFOM:", subFieldOnMask_3D
-        print *,"sFOM final:"
-        call PRINT_FLOAT_ARR(subFieldOnMask_3D, 2*(sNx+sNy))
+C        print *, "FINAL sFOM:", subFieldOnMask_3D'
+        print *, "FINAL set 2D:"
+        call PRINT_FLOAT_ARR(subFieldOnMask_2D(1,1,:), sNx+sNy)
+        print *,"FINAL set 3D:"
+        call PRINT_FLOAT_ARR(subFieldOnMask_3D(1,1,:,:), 2*(sNx+sNy))
 
 
 C      DO ob_id=1, nOB_mask
@@ -585,6 +600,8 @@ C       Cumulate Diagnostics_ob fields
 
       INTEGER myThid
       INTEGER i, k, ob_id, fld, fld2D, fld3D
+
+      print *, "CUMULATE: subFieldOnMask_2D",subFieldOnMask_2D
 
       DO ob_id=1, nOB_mask
        DO i=1, sNx+sNy

@@ -60,15 +60,16 @@ C ----3D Fields (x,y,z):
 
 
       PARAMETER (
-     &            area_ob = .TRUE.,
+     &            area_ob = .FALSE.,
      &            heff_ob = .FALSE.,
      &           hsnow_ob = .FALSE.,
      &           hsalt_ob = .FALSE.,
      &            uice_ob = .FALSE.,
      &            vice_ob = .FALSE.,
-     &            etaN_ob = .FALSE.,
+     &            etaN_ob = .TRUE.,
      &            etaH_ob = .FALSE.,
      &            obnw_ob = .FALSE.,
+
      &            uVel_ob = .FALSE.,
      &            vVel_ob = .FALSE.,
      &           theta_ob = .FALSE.,
