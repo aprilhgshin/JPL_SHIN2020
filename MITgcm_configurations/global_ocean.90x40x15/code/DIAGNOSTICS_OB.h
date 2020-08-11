@@ -48,11 +48,12 @@ C-    file names for initial conditions:
 C     ================== Global Variables for open boundary ====================
 C     These common block variables are initialized in diagnostics_ob_init_varia.F
 
-      CHARACTER*10 ob_fldNames(nOB_fld)
-C      CHARACTER*98 ob_filenames(nOB_mask)
+      CHARACTER*8 ob_fldNames(nOB_fld)
       CHARACTER*16 ob_filenames(nOB_mask)
 
-      LOGICAL fld_choice(nFldOpt)
+C     Hard coding dimensions: First dimension refers to number of different dimensions
+C                             Second dimension refers to number of fields with one of different dimensions.
+      LOGICAL fld_choice(2,10)
 
 
       _RL ob_subMask(nOB_mask,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
@@ -65,11 +66,29 @@ C     First row contains local i's. Second row contains local j's.
       INTEGER sub_glo_indices_allproc(nOB_mask, nPx*nPy, sNx + sNy)
       INTEGER numOBPnts_allproc(nOB_mask, nPx*nPy)
 
+C     fld_to_output :: int array containing ids of fields to be outputted
+C     fld_maskType :: int array of mask type for each field (1,2, or 3)
+C     fld_nDim :: int array of number of dimensions for each field (2D or 3D)
+C     fld_depth :: int array of depth of only 3D fields
+
+      INTEGER fld_to_output(nOB_fld)
+      INTEGER fld_maskType(nOB_fld)
+      INTEGER fld_nDim(nOB_fld)
+      INTEGER fld_depth(nOB_fld)
+
       _RL subFieldOnMask(nOB_mask,nOB_fld, sNx + sNy)
       _RL subFieldOnMask_avg(nOB_mask,nOB_fld, sNx + sNy)
 
+      _RL subFieldOnMask_2D(nOB_mask,nOB_fld2D, sNx + sNy)
+      _RL subFieldOnMask_3D(nOB_mask,nOB_fld3D, Nr, sNx + sNy)
+      _RL subFieldOnMask_2Davg(nOB_mask,nOB_fld2D, sNx + sNy)
+      _RL subFieldOnMask_3Davg(nOB_mask,nOB_fld3D, Nr, sNx + sNy)
+
       INTEGER lookup_table(nOB_mask, Ny*Nx)
       _RL global_ob((sNy+sNx)*(nPx*nPy))
+      _RL global_ob2D((sNy+sNx)*(nPx*nPy))
+      _RL global_ob3D(Nr,(sNy+sNx)*(nPx*nPy))
+
 
       _RL global_ob_mask(nOB_mask,Nx, Ny,nSx,nSy)
 
@@ -83,26 +102,16 @@ C     First row contains local i's. Second row contains local j's.
       _RL time_passed
 C     ==========================================================================
 
-C      COMMON / DIAG_OB_EXTRACT_R /
-C     &     ob_subMask, subField_avg, subField,
-C     &     global_ob, subFieldOnMask_avg, global_ob_mask
-C     &     subFieldOnMask, nTimeSteps_ob, time_passed
-C      COMMON / DIAG_OB_EXTRACT_I /
-C     &     lookup_table, num_ob_points
-C     &     avgPeriod_ob, deltaT_ob
-C      COMMON / DIAG_OB_EXTRACT_C /
-C     &     ob_fldNames, ob_filenames
-C      COMMON / DIAG_OB_EXTRACT_L /
-C     &     fld_choice
-
       COMMON / DIAG_OB_EXTRACT_R /
      &     ob_subMask, global_ob,
      &     global_ob_mask, subFieldOnMask_avg,
      &     subFieldOnMask, nTimeSteps_ob, time_passed,
      &     startTime_ob, endTime_ob, avgPeriod_ob, deltaT_ob
+     &     global_ob2D, global_ob3D
       COMMON / DIAG_OB_EXTRACT_I /
      &     lookup_table, sub_local_ij_ob, sub_glo_indices_allproc,
-     &     numOBPnts_allproc, num_ob_points
+     &     numOBPnts_allproc, num_ob_points,
+     &     fld_to_output, fld_maskType, fld_nDim, fld_depth
       COMMON / DIAG_OB_EXTRACT_C /
      &     ob_fldNames, ob_filenames
       COMMON / DIAG_OB_EXTRACT_L /

@@ -28,7 +28,7 @@ C     msgBuf     :: Informational/error message buffer
 C     iUnit      :: Work variable for IO unit number
       CHARACTER*(MAX_LEN_MBUF) msgBuf
       INTEGER iUnit
-      INTEGER bi,bj,i,j,k,l, ob, fld
+      INTEGER bi,bj,i,j,k,l, ob, fld, counter3D
 
       NAMELIST /DIAGNOSTICS_OB_PARM01/
      &       diagOB_MNC,
@@ -45,19 +45,20 @@ C     iUnit      :: Work variable for IO unit number
 
 C ----------------------------
 C     Open Boundary Extraction Namelist:
-C     nFldOpt  :  Number of possible fields
 C     nml_fldNames : field names for ocean state and flux variables
-C     avgPeriod_nml : averaging period
-C     deltaT_nml : size of time step
+
 C -----------------------------
-      CHARACTER*10 nml_fldNames(nFldOpt)
+      CHARACTER*8 nml_fldNames(2,10)
+      INTEGER nml_maskTypes(2,10)
+      INTEGER nml_3Dfld_depths(n3D_fld)
+
       _RL avgPeriod_nml
       _RL startTime_nml
       _RL endTime_nml
 
       NAMELIST / DIAG_OB_EXTRACT /
-     &     nml_fldNames,
-     &     avgPeriod_nml, startTime_nml, endTime_nml
+     &     avgPeriod_nml, startTime_nml, endTime_nml,
+     &     nml_fldNames, nml_maskTypes, nml_3Dfld_depths
 
       IF ( .NOT.useDIAGNOSTICS_OB ) THEN
 C-    pkg DIAGNOSTICS_OB is not used
@@ -96,9 +97,31 @@ C-    file names for initial conditions:
       diagOB_Surf1File   = ' '
       diagOB_Surf2File   = ' '
 
-C     Initializing local array:
-      DO k=1, nFldOpt
-        nml_fldNames(k) = ' '
+C-------------------------------------------------------------------------------
+C       Initializing local variables and variables from DIAG_OB_EXTRACT COMMON block:
+C-------------------------------------------------------------------------------
+
+      DO i=1, 2
+        DO j=1, 10
+          nml_fldNames(i,j) = ' '
+          nml_maskTypes(i,j) = 0
+          fld_choice(i,j) = .FALSE.
+        ENDDO
+      ENDDO
+
+      DO i=1, nOB_fld
+        ob_fldNames(i) = ' '
+      ENDDO
+
+      DO i=1, n3D_fld
+        nml_3Dfld_depths(i) = 0
+      ENDDO
+
+      DO fld=1, nOB_fld
+        fld_to_output(fld) = 0
+        fld_maskType(fld) = 0
+        fld_nDim(fld) = 0
+        fld_depth(fld) = 0
       ENDDO
 
 C     Initializing averaging period (avgPeriod_ob) and time counter (deltaT_ob)
@@ -108,18 +131,8 @@ C     Initializing averaging period (avgPeriod_ob) and time counter (deltaT_ob)
 C     CHANGE THESE VALUES TO THE UNDEFINED CONSTANT
 
 
-C----------------------------------------------------------------------
-C       Initializing variables from DIAG_OB_EXTRACT COMMON block:
-C----------------------------------------------------------------------
-      time_passed = 0
-      DO j=1,nFldOpt
-        fld_choice(j) = .FALSE.
-      ENDDO
 
-C     Initializing to empty string
-      DO k=1, nOB_fld
-        ob_fldNames(k) = ' '
-      ENDDO
+      time_passed = 0
 
 
       WRITE(msgBuf,'(A)')
@@ -158,29 +171,66 @@ C     Fix to avoid running without getting any output:
       diagOB_MDSIO = (.NOT. diagOB_MNC) .OR. outputTypesInclusive
 
 C     Organize user input booleans into an array:
-      fld_choice(1) = etaN_ob
-      fld_choice(2) = uVel_ob
-      fld_choice(3) = vVel_ob
-      fld_choice(4) = theta_ob
-      fld_choice(5) = salt_ob
-      fld_choice(6) = gU_ob
-      fld_choice(7) = gV_ob
-      fld_choice(8) = etaH_ob
+      fld_choice(1,1) = area_ob
+      fld_choice(1,2) = heff_ob
+      fld_choice(1,3) = hsnow_ob
+      fld_choice(1,4) = hsalt_ob
+      fld_choice(1,5) = uice_ob
+      fld_choice(1,6) = vice_ob
+      fld_choice(1,7) = etaN_ob
+      fld_choice(1,8) = etaH_ob
+      fld_choice(1,9) = obnw_ob
+      fld_choice(2,1) = uVel_ob
+      fld_choice(2,2) = vVel_ob
+      fld_choice(2,3) = theta_ob
+      fld_choice(2,4) = salt_ob
+      fld_choice(2,5) = gU_ob
+      fld_choice(2,6) = gV_ob
 
+C      INTEGER fld_to_output(nOB_fld)
+C      INTEGER fld_maskType(nOB_fld)
+C      INTEGER fld_nDim(nOB_fld)
+C      INTEGER fld_depth(nOB_fld)
 
 C     Fill DIAGNOSTICS_OB.h Common Block with Namelist Info
       k = 1
-      DO j=1, nFldOpt
-        if ((fld_choice(j) .eqv. .TRUE.) .AND.
+      counter3D = 1
+
+      DO i=1, nFldOpt
+        if (i .le. n2D_fld) then
+          if ((fld_choice(1,i) .eqv. .TRUE.) .AND.
      &                (k .le. nOB_fld)) then
-          ob_fldNames(k) = nml_fldNames(j)
-          k = k + 1
-        end if
+            ob_fldNames(k) = nml_fldNames(1,i)
+            fld_to_output(k) = i
+            fld_maskType(k) = nml_maskTypes(1,i)
+            fld_nDim(k) = 2
+            fld_depth(k) = 1
+            k = k + 1
+          endif
+        else
+          if ((fld_choice(2,i-n2D_fld) .eqv. .TRUE.) .AND.
+     &                (k .le. nOB_fld)) then
+            ob_fldNames(k) = nml_fldNames(2,i-n2D_fld)
+            fld_to_output(k) = i
+            fld_nDim(k) = 3
+            fld_depth(k) = nml_3Dfld_depths(counter3D)
+            k = k + 1
+            counter3D = counter3D + 1
+          endif
+        endif
       ENDDO
+
+      print *,"OB readparms: fld_to_output",fld_to_output
+      print *,"OB readparms: fld_nDim",fld_nDim
+      print *,"OB readparms: fld_depth",fld_depth
+
+
 
       avgPeriod_ob = avgPeriod_nml
       startTime_ob = startTime_nml
       endTime_ob = endTime_nml
+
+
 
       _END_MASTER(myThid)
 

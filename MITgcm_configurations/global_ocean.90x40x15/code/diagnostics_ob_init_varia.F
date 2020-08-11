@@ -166,6 +166,25 @@ C---------------------------------------------------------
       ENDDO
 
 
+      DO ob_id=1, nOB_mask
+        DO i=1, sNx+sNy
+          DO fld=1, nOB_fld2D
+            subFieldOnMask_2D(ob_id, fld, i) = 0.0
+            subFieldOnMask_2Davg(ob_id, fld, i) = 0.0
+          ENDDO
+          DO fld=1, nOB_fld3D
+            DO k=1, Nr
+              subFieldOnMask_3D(ob_id, fld, k, i) = 0.0
+              subFieldOnMask_3Davg(ob_id, fld, k, i) = 0.0
+            ENDDO
+          ENDDO
+        ENDDO
+      ENDDO
+
+      print *,"init_varia: fld_nDim",fld_nDim
+      print *,"init_varia: fld_to_output",fld_to_output
+
+
       call INI_OB_FILENAMES2()
 
 
@@ -305,6 +324,7 @@ C     &               ob_subMask(ob_id,i,j,bi,bj)
 C     First row contains local i's. Second row contains local j's.
                sub_local_ij_ob(ob_id, 1, counter) = i
                sub_local_ij_ob(ob_id, 2, counter) = j
+               print *,"IDENTIFY_OB_POINTS: ij:",i,j
 C              Indices referring to process IDs begin with 1
                sub_glo_indices_allproc(ob_id,mpiMyId+1,counter) =
      &           global_index

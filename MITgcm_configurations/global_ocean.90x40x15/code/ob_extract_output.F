@@ -77,7 +77,7 @@ C-------------------------------------------------------------------------------
 #include "PARAMS.h"
 #include "DYNVARS.h"
 #ifdef ALLOW_OBCS
-#include "OBCS_FIELDS.h"
+C#include "OBCS_FIELDS.h"
 #endif
 #ifdef ALLOW_SEAICE
 #include "SEAICE_SIZE.h"
@@ -135,7 +135,9 @@ C      print_debug      - Integer used to hold either 1 or 0, 1 to print debug s
 C      Although we read REAL*4 values, most built in functions have _RS input which by default is _RL.
 C      So global_mask, ob_subMask, and bath_subMask are set as _RL or _RS.
 C       _RL global_mask(Nx,Ny,nSx,nSy)
-       _RL recv_arr(sNx + sNy)
+       _RL recv_arr2D(sNx + sNy)
+       _RL recv_arr3D(Nr, sNx + sNy)
+
        _RL g_indices(sNx + sNy)
 
        CHARACTER*(MAX_LEN_MBUF) msgBuf
@@ -159,8 +161,15 @@ C       common / local_var / global_mask, total_valid
 C-------------------------------------------------------------------------------
 
         DO i=1, sNx + sNy
-          recv_arr(i) = 0.0
+          recv_arr2D(i) = 0.0
         ENDDO
+
+        DO k=1, Nr
+         DO i=1, sNx + sNy
+           recv_arr3D(k,i) = 0.0
+         ENDDO
+        ENDDO
+
         if (debug .eq. 1) then
           print *, "OB_EXTRACT_OUTPUT timepassed:", time_passed
           print *, "OB_EXTRACT_OUTPUT nTimeSteps_ob:",nTimeSteps_ob
@@ -184,14 +193,17 @@ c      field(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
        ob_subMask_size = (abs(1-OLx)+(sNx+OLx))*
      &                   (abs(1-OLy)+(sNy+OLy))*nSx*nSy
 
-
+       print *,"OB_EXTRACT_OUTPUT: fld_nDim",fld_nDim
+       print *,"OB_EXTRACT_OUTPUT: fld_to_output",fld_to_output
+       fld_to_output(1) = 1
 
        CALL SET_SUBFIELDS(myThid)
        if (debug .eq. 1) then
          print *,"OB_EXTRACT_OUTPUT: num valid elements:",
      &              numOBPnts_allproc(1,mpiMyId+1)
          print *,"OB_EXTRACT_OUTPUT: subFieldOnMask set"
-         call PRINT_FLOAT_ARR(subFieldOnMask(1,1,:), sNx+sNy)
+         call PRINT_FLOAT_ARR(subFieldOnMask_2D(1,1,:), sNx+sNy)
+         call PRINT_FLOAT_ARR(subFieldOnMask_3D(1,1,:,:), 2*(sNx+sNy))
        end if
 
 
@@ -200,7 +212,7 @@ C        Initialize averages to zero
          CALL SET_TO_INI_STATE(myThid)
          if (debug .eq. 1) then
            print *,"OB_EXTRACT_OUTPUT: subFieldOnMask_avg ini"
-           call PRINT_FLOAT_ARR(subFieldOnMask_avg(1,1,:), sNx+sNy)
+C           call PRINT_FLOAT_ARR(subFieldOnMask_avg(1,1,:), sNx+sNy)
 
          endif
        ELSE
@@ -208,7 +220,7 @@ C          Cumulate Diagnostics_ob fields and number of time steps (for Time Ave
          CALL CUMULATE_FLD_TIME(myThid)
          if (debug .eq. 1) then
            print *,"OB_EXTRACT_OUTPUT: subFieldOnMask_avg cumulate"
-           call PRINT_FLOAT_ARR(subFieldOnMask_avg(1,1,:), sNx+sNy)
+C           call PRINT_FLOAT_ARR(subFieldOnMask_avg(1,1,:), sNx+sNy)
          endif
        ENDIF
 
@@ -226,7 +238,7 @@ C        Compute time average of all sub fields
          CALL TIMEAVE_OB_FLD(myThid, myTime)
          if (debug .eq. 1) then
            print *,"OB_EXTRACT_OUTPUT: subFieldOnMask_avg avg"
-           call PRINT_FLOAT_ARR(subFieldOnMask_avg(1,1,:), sNx+sNy)
+C           call PRINT_FLOAT_ARR(subFieldOnMask_avg(1,1,:), sNx+sNy)
          endif
 
 
@@ -267,12 +279,12 @@ C           DO fld=1,nOB_fld
 C             subFieldOnMask(fld,1) = num_valid
 C           ENDDO
 C           sub_global_indices(1) = num_valid
-
+c1234567
         DO ob_id=1, nOB_mask
-          DO pid=1,nPx*nPy
-            print *, "numOBPnts_allproc process", pid-1
-           print *,"numOBPnts_allproc:",numOBPnts_allproc(ob_id,pid)
-          ENDDO
+         DO pid=1,nPx*nPy
+          print *, "numOBPnts_allproc process", pid-1
+          print *,"numOBPnts_allproc:",numOBPnts_allproc(ob_id,pid)
+         ENDDO
         ENDDO
         print *, "numOBPnts_allproc at 1st index",
      &    numOBPnts_allproc(1,1)
@@ -284,17 +296,24 @@ C           sub_global_indices(1) = num_valid
         DO ob_id=1, nOB_mask
 
 #ifdef ALLOW_USE_MPI
-          if (mpiMyId .gt. 0) then
-C           Processes 1 and onward send sub fields to Parent process
-            do fld=1, nOB_fld
-              print *, "num valid:",numOBPnts_allproc(ob_id,mpiMyId+1)
-              if (numOBPnts_allproc(ob_id,mpiMyId+1) .ge. 1) then
-                print *,"Yes going to send"
-                call MPI_SEND(subFieldOnMask_avg(ob_id,fld,:),sNx+sNy
+         if (mpiMyId .gt. 0) then
+C        Processes 1 and onward send sub fields to Parent process
+          do fld=1, nOB_fld
+           print *, "num valid:",numOBPnts_allproc(ob_id,mpiMyId+1)
+           if (numOBPnts_allproc(ob_id,mpiMyId+1) .ge. 1) then
+            print *,"Yes going to send"
+            if (fld .le. nOB_fld2D) then
+             call MPI_SEND(subFieldOnMask_2Davg(ob_id,fld,:),sNx+sNy
      &              ,MPI_REAL,0, fld, MPI_COMM_MODEL, ierror)
-              end if
-            end do
-          end if
+            else
+              call MPI_SEND(subFieldOnMask_3Davg(ob_id,fld-nOB_fld2D,
+     &                :),fld_depth(fld)*(sNx+sNy),MPI_REAL,0, fld*10,
+     &                MPI_COMM_MODEL, ierror)
+            end if
+           end if
+          end do
+         end if
+C123456789
 #endif
 
 C-------------------------------------------------------------------------------
@@ -303,85 +322,83 @@ C-------------------------------------------------------------------------------
 
 #ifdef ALLOW_USE_MPI
 C123456789
-          IF (mpiMyId .eq. 0) then
-            ob_index = 1
+         IF (mpiMyId .eq. 0) then
+          ob_index = 1
 
 C           Appending subFields to final global_ob array
 C           Field numbers, fld, are used as message tags.
 C           DO tag=2, nOB_fld + 1
-            DO fld=1, nOB_fld
-
-              total_valid = 0
-
-C             First append process 0 local arrays to final global array if number of valid elements in those local arrays > 0:
-C             Indices referring to process IDs begin with 1
-              if (numOBPnts_allproc(ob_id,1).ge.1) then
-                call APPEND_OB_VALUE(ob_id, 0,
-     &                               subFieldOnMask(ob_id,fld,:))
-                total_valid = total_valid +
+          DO fld=1, nOB_fld
+           total_valid = 0
+C          First append process 0 local arrays to final global array if number of valid elements in those local arrays > 0:
+C          Indices referring to process IDs begin with 1
+           if (numOBPnts_allproc(ob_id,1).ge.1) then
+            if (fld .le. nOB_fld2D) then
+             call APPEND_OB_VALUE2D(ob_id, 0,
+     &                              subFieldOnMask_2Davg(ob_id,fld,:))
+            else
+C            append_ob_values3D params: ob_id, pid, fld, ob_values
+             call APPEND_OB_VALUE3D(ob_id, 0, fld,
+     &                    subFieldOnMask_3Davg(ob_id,fld-nOB_fld2D,:))
+            endif
+            total_valid = total_valid +
      &                               numOBPnts_allproc(ob_id, 1)
-                if (debug .eq. 1) then
-                  print *,"APPEND_OB_VALUE: appending local "
+            if (debug .eq. 1) then
+             print *,"APPEND_OB_VALUE: appending local "
      &                    ,"field to global_ob with ",
      &                numOBPnts_allproc(ob_id, 1),"valid elements:"
-C                 Indices referring to process IDs begin with 1
-                  print *,"num_ob_points(ob_id)",num_ob_points(ob_id)
-                  call PRINT_FLOAT_ARR(global_ob, total_valid)
-                end if
-              end if
-
+C            Indices referring to process IDs begin with 1
+             print *,"num_ob_points(ob_id)",num_ob_points(ob_id)
+             call PRINT_FLOAT_ARR(global_ob, total_valid)
+            end if
+           end if
 
 C             Receive all sub arrays from processes with pid > 0 and valid elements > 0.
 C             Append receive sub arrays to final array.
-              DO pid=1, mpiNprocs-1
-
+           DO pid=1, mpiNprocs-1
 C              Indices referring to process 0 begin with 1
 C              If number of valid elements is greater than or equal to 1
-               IF (numOBPnts_allproc(ob_id,pid+1) .ge. 1) then
-                 call MPI_RECV(recv_arr, sNx+sNy, MPI_REAL,
+            IF (numOBPnts_allproc(ob_id,pid+1) .ge. 1) then
+             if (fld .le. nOB_fld2D) then
+              call MPI_RECV(recv_arr2D, sNx+sNy, MPI_REAL,
      &                   pid, fld ,MPI_COMM_MODEL, status, ierror)
 
-                 if (debug .eq. 1) then
-                   print *, "Received from process", pid
-                   print *, "Received recv_arr for fields"
-                   print *, "shape:", shape(recv_arr)
-                   print *, "Displaying FULL array, beyond number of "
-     &                       ,"valid elements"
-                   call PRINT_FLOAT_ARR(recv_arr, sNx+sNy)
-                 end if
+C                 if (debug .eq. 1) then
+C                   print *, "Received from process", pid
+C                   print *, "Received recv_arr for fields"
+C                   print *, "shape:", shape(recv_arr)
+C                   print *, "Displaying FULL array, beyond number of "
+C     &                       ,"valid elements"
+C                   call PRINT_FLOAT_ARR(recv_arr, sNx+sNy)
+C                 end if
 
-                 call APPEND_OB_VALUE(ob_id,pid,recv_arr)
-                 total_valid = total_valid +
+              call APPEND_OB_VALUE2D(ob_id,pid, recv_arr2D)
+            else
+              call MPI_RECV(recv_arr3D, fld_depth(fld)*(sNx+sNy),
+     &               MPI_REAL, pid, fld ,MPI_COMM_MODEL, status, ierror)
+C             append_ob_values3D params: ob_id, pid, fld, ob_values
+              call APPEND_OB_VALUE3D(ob_id,pid, fld, recv_arr3D)
+              total_valid = total_valid +
      &                       numOBPnts_allproc(ob_id, pid+1)
-                 if (debug .eq. 1) then
-                   print *,"APPEND_OB_VALUE: appending recv_arr "
-     &                    ,"field to global_ob with ",
-     &                numOBPnts_allproc(ob_id, pid+1),"valid elements:"
-                   call PRINT_FLOAT_ARR(global_ob, total_valid)
-                 end if
+C                 if (debug .eq. 1) then
+C                   print *,"APPEND_OB_VALUE: appending recv_arr "
+C     &                    ,"field to global_ob with ",
+C     &                numOBPnts_allproc(ob_id, pid+1),"valid elements:"
+C                   call PRINT_FLOAT_ARR(global_ob, total_valid)
+C                 end if
+              endif
 
 C              !ENDIF for number of valid elements
                ENDIF
 C             !ENDDO for pid
               ENDDO
 
-              if (debug .eq. 1) then
-                print *, "OB_EXTRACT_OUTPUT: final global ob by ",
-     &     "for tag", fld, "with total", total_valid, "valid elements"
-                call PRINT_FLOAT_ARR(global_ob,total_valid)
-              end if
-
-              call WRITE_GLOBAL_BIN(total_valid, fld,
-     &                           ob_id, myTime)
-              call PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld)
-
 C           !ENDDO for fld
             ENDDO
 C         !ENDIF for mpiMyId .eq. 0
-          ENDIF
+         ENDIF
 C       !ENDDO for ob_id
         ENDDO
-
 #endif
 
 C        Move on to next time step
@@ -394,21 +411,6 @@ C        Move on to next time step
 
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
-
-
-
-      SUBROUTINE INI_OB_FILENAMES()
-C       Fill in array with filenames for each ob mask
-#include "SIZE.h"
-#include "EEPARAMS.h"
-#include "PARAMS.h"
-#include "DIAGNOSTICS_OB.h"
-        INTEGER k
-        DO k=1, nOB_mask
-          write(ob_filenames(k), "(A17,I1,A4)") "domain_flt32_mask",
-     &          k, '.bin'
-        ENDDO
-      END
 
 
       SUBROUTINE SET_TO_INI_STATE(myThid)
@@ -424,7 +426,7 @@ C     Initializes average fields to zero
         DO ob_id=1, nOB_mask
           DO fld=1, nOB_fld
             DO i=1, sNx+sNy
-              subFieldOnMask_avg(ob_id,fld,i) = 0.0
+              subFieldOnMask_2Davg(ob_id,fld,i) = 0.0
             ENDDO
           ENDDO
         ENDDO
@@ -433,62 +435,144 @@ C     Initializes average fields to zero
 
       SUBROUTINE SET_SUBFIELDS(myThid)
 C       Stores desired fields chosen by user into array subFields
+        IMPLICIT NONE
+
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "EESUPPORT.h"
 #include "PARAMS.h"
 #include "DYNVARS.h"
+#ifdef ALLOW_SEAICE
+#include "SEAICE_SIZE.h"
+#include "SEAICE.h"
+#endif
 #include "DIAGNOSTICS_OB.h"
 
+
         INTEGER ob_id, myThid, counter, loc_count
-        INTEGER i, j, k, bi, bj, fld, opt, numValid
+        INTEGER i, j, k, bi, bj, fld, opt, numValid, fld_out
         print *,"Inside SET_SUBFIELDS"
-        print *,"SET_SUBFIELDS: shape fld_choice",shape(fld_choice)
-        print *,"SET_SUBFIELDS: nFldOpt",nFldOpt
-        print *,"SET_SUBFIELDS: fld_choice(nFldOpt)",fld_choice(nFldOpt)
-
-        DO opt=1, nFldOpt
-          print*, "SET_SUBFIELDS: fld_choice(opt)",fld_choice(opt)
-        ENDDO
-
+C        print *,"SET_SUBFIELDS: shape fld_choice",shape(fld_choice)
+        print *,"SET_SUBFIELDS: fld_nDim",fld_nDim
+        print *,"SET_SUBFIELDS: fld_to_output",fld_to_output
+C        print *,"SET_SUBFIELDS: fld_choice(nFldOpt)",fld_choice(nFldOpt)
 
         DO ob_id=1, nOB_mask
-          numValid = numOBPnts_allproc(ob_id,mpiMyId+1)
+         numValid = numOBPnts_allproc(ob_id,mpiMyId+1)
          DO fld=1, nOB_fld
-          DO opt=1, nFldOpt
-           IF (fld_choice(opt)) then
-            counter = 1
-            DO bj = myByLo(myThid), myByHi(myThid)
-             DO bi = myBxLo(myThid), myBxHi(myThid)
-              DO loc_count=1, numValid
-                j = sub_local_ij_ob(ob_id,2,loc_count)
-                i = sub_local_ij_ob(ob_id,1,loc_count)
+          counter = 1
+          fld_out = fld_to_output(fld)
+          print *,"SET_SUBFIELDS: fld_out",fld_out
+          print *,"SET_SUBFIELDS: numValid",numValid
+          DO loc_count=1, numValid
+           DO bj = myByLo(myThid), myByHi(myThid)
+            DO bi = myBxLo(myThid), myBxHi(myThid)
+             j = sub_local_ij_ob(ob_id,2,loc_count)
+             i = sub_local_ij_ob(ob_id,1,loc_count)
+C             IF (fld_nDim(fld) .eq. 2) then
+             IF (fld_nDim(fld) .eq. 2) then
+              IF (fld_out .eq. 1) then
+               subFieldOnMask_2D(ob_id,fld,counter) = AREA(i,j,bi,bj)
+              ELSE IF (fld_out .eq. 2) then
+               subFieldOnMask_2D(ob_id,fld,counter) = HEFF(i,j,bi,bj)
+              ELSE IF (fld_out .eq. 3) then
+               subFieldOnMask_2D(ob_id,fld,counter) = HSNOW(i,j,bi,bj)
+#ifdef SEAICE_VARIABLE_SALINITY
+              ELSE IF (fld_out .eq. 4) then
+               subFieldOnMask_2D(ob_id,fld,counter) = HSALT(i,j,bi,bj)
+#endif /* SEAICE_VARIABLE_SALINITY */
+              ELSE IF (fld_out .eq. 5) then
+               subFieldOnMask_2D(ob_id,fld,counter) = UICE(i,j,bi,bj)
+              ELSE IF (fld_out .eq. 6) then
+               subFieldOnMask_2D(ob_id,fld,counter) = VICE(i,j,bi,bj)
+              ELSE IF (fld_out .eq. 7) then
+               subFieldOnMask_2D(ob_id,fld,counter) = etaH(i,j,bi,bj)
+              ELSE IF (fld_out .eq. 8) then
+               subFieldOnMask_2D(ob_id,fld,counter) = etaN(i,j,bi,bj)
+C              ELSE IF (fld_out .eq. 9) then
+C               subFieldOnMask_2D(ob_id,fld,counter) = obnw(i,j,bi,bj)
+              ENDIF
 
-                IF (opt .eq. 1) then
-                 subFieldOnMask(ob_id,fld,counter) = etaN(i,j,bi,bj)
-                ELSE IF (opt .eq. 2) then
-                 subFieldOnMask(ob_id,fld,counter) = uVel(i,j,1,bi,bj)
-                ELSE IF (opt .eq. 3) then
-                 subFieldOnMask(ob_id,fld,counter) = vVel(i,j,1,bi,bj)
-                ELSE IF (opt .eq. 4) then
-                 subFieldOnMask(ob_id,fld,counter) = theta(i,j,1,bi,bj)
-                ELSE IF (opt .eq. 5) then
-                 subFieldOnMask(ob_id,fld,counter) = salt(i,j,1,bi,bj)
-                ELSE IF (opt .eq. 6) then
-                 subFieldOnMask(ob_id,fld,counter) = gU(i,j,1,bi,bj)
-                ELSE IF (opt .eq. 7) then
-                 subFieldOnMask(ob_id,fld,counter) = gV(i,j,1,bi,bj)
-                ELSE IF (opt .eq. 8) then
-                 subFieldOnMask(ob_id,fld,counter) = etaH(i,j,bi,bj)
-                ENDIF
-                counter = counter + 1
+            ELSE IF (fld_nDim(fld) .eq. 3) then
+              DO k=1, fld_depth(fld)
+               IF (fld_out .eq. 10) then
+                subFieldOnMask_3D(ob_id,fld,k,counter) =
+     &                                        uVel(i,j,k,bi,bj)
+               ELSE IF (fld_out .eq. 11) then
+                subFieldOnMask_3D(ob_id,fld,k,counter) =
+     &                                        vVel(i,j,k,bi,bj)
+               ELSE IF (fld_out .eq. 12) then
+                subFieldOnMask_3D(ob_id,fld,k,counter) =
+     &                                        theta(i,j,k,bi,bj)
+               ELSE IF (fld_out .eq. 13) then
+                print *, "TEST ij:",i,j
+                print *, "TEST salt before: ",salt(i,j,k,bi,bj)
+                print *, "TEST sFOM before: ",
+     &                     subFieldOnMask_3D(ob_id,fld,k,counter)
+                subFieldOnMask_3D(ob_id,fld,k,counter) =
+     &                                       salt(i,j,k,bi,bj)
+                print *, "TEST salt after: ",salt(i,j,k,bi,bj)
+                print *, "TEST sFOM after: ",
+     &                     subFieldOnMask_3D(ob_id,fld,k,counter)
+
+               ELSE IF (fld_out .eq. 14) then
+                subFieldOnMask_3D(ob_id,fld,k,counter) =
+     &                                        gU(i,j,k,bi,bj)
+               ELSE IF (fld_out .eq. 15) then
+                subFieldOnMask_3D(ob_id,fld,k,counter) =
+     &                                        gV(i,j,k,bi,bj)
+               ENDIF
               ENDDO
+             ENDIF
+             counter = counter + 1
             ENDDO
            ENDDO
-          ENDIF
+          ENDDO
          ENDDO
         ENDDO
-       ENDDO
+
+C        print *, "FINAL sFOM:", subFieldOnMask_3D
+        print *,"sFOM final:"
+        call PRINT_FLOAT_ARR(subFieldOnMask_3D, 2*(sNx+sNy))
+
+
+C      DO ob_id=1, nOB_mask
+C          numValid = numOBPnts_allproc(ob_id,mpiMyId+1)
+C         DO fld=1, nOB_fld
+C          DO opt=1, nFldOpt
+C           IF (fld_choice(opt)) then
+C            counter = 1
+C            DO bj = myByLo(myThid), myByHi(myThid)
+C             DO bi = myBxLo(myThid), myBxHi(myThid)
+C              DO loc_count=1, numValid
+C                j = sub_local_ij_ob(ob_id,2,loc_count)
+C                i = sub_local_ij_ob(ob_id,1,loc_count)
+
+C                IF (opt .eq. 1) then
+C                 subFieldOnMask(ob_id,fld,counter) = etaN(i,j,bi,bj)
+C                ELSE IF (opt .eq. 2) then
+C                 subFieldOnMask(ob_id,fld,counter) = uVel(i,j,1,bi,bj)
+C                ELSE IF (opt .eq. 3) then
+C                 subFieldOnMask(ob_id,fld,counter) = vVel(i,j,1,bi,bj)
+C                ELSE IF (opt .eq. 4) then
+C                 subFieldOnMask(ob_id,fld,counter) = theta(i,j,1,bi,bj)
+C                ELSE IF (opt .eq. 5) then
+C                 subFieldOnMask(ob_id,fld,counter) = salt(i,j,1,bi,bj)
+C                ELSE IF (opt .eq. 6) then
+C                 subFieldOnMask(ob_id,fld,counter) = gU(i,j,1,bi,bj)
+C                ELSE IF (opt .eq. 7) then
+C                 subFieldOnMask(ob_id,fld,counter) = gV(i,j,1,bi,bj)
+C                ELSE IF (opt .eq. 8) then
+C                 subFieldOnMask(ob_id,fld,counter) = etaH(i,j,bi,bj)
+C                ENDIF
+C                counter = counter + 1
+C              ENDDO
+C            ENDDO
+C           ENDDO
+C          ENDIF
+C         ENDDO
+C        ENDDO
+C       ENDDO
       END
 
       SUBROUTINE CUMULATE_FLD_TIME(myThid)
@@ -499,15 +583,23 @@ C       Cumulate Diagnostics_ob fields
 #include "DIAGNOSTICS_OB.h"
 
       INTEGER myThid
-      INTEGER i, ob_id, fld
+      INTEGER i, k, ob_id, fld, fld2D, fld3D
 
       DO ob_id=1, nOB_mask
-        DO fld=1, nOB_fld
-          DO i=1, sNx+sNy
-            subFieldOnMask_avg(ob_id,fld,i) =
-     &    subFieldOnMask_avg(ob_id,fld,i) + subFieldOnMask(ob_id,fld,i)
-          ENDDO
+       DO i=1, sNx+sNy
+        DO fld2D=1, nOB_fld2D
+         subFieldOnMask_2Davg(ob_id,fld2D,i)
+     &                      = subFieldOnMask_2Davg(ob_id,fld2D,i)
+     &                        + subFieldOnMask_2D(ob_id,fld2D,i)
         ENDDO
+        DO fld3D=1, nOB_fld3D
+         DO k=1, fld_depth(nOB_fld2D + fld3D)
+          subFieldOnMask_3Davg(ob_id,fld3D,k,i)
+     &                    = subFieldOnMask_3Davg(ob_id,fld3D,k,i)
+     &                      + subFieldOnMask_3D(ob_id,fld3D,k,i)
+         ENDDO
+        ENDDO
+       ENDDO
       ENDDO
       END
 
@@ -521,32 +613,33 @@ C       Write averaged fields to binary file
 #include "DIAGNOSTICS_OB.h"
 
         INTEGER myThid
-        INTEGER i, fld, ob_id
+        INTEGER i, k,fld, ob_id, fld2D, fld3D
         _RL myTime
         DO ob_id=1, nOB_mask
-         DO fld=1, nOB_fld
-           DO i=1, sNx+sNy
-C              DO j=1-OLy,sNy+OLy
-C                DO i=1-OLx,sNx+OLx
-C                  subField_avg(fld,i,j,bi,bj) =
-C     &           subField_avg(fld,i,j,bi,bj)/nTimeSteps_ob
-              subFieldOnMask_avg(ob_id,fld,i) =
-     &               subFieldOnMask_avg(ob_id,fld,i)/nTimeSteps_ob
+          DO i=1, sNx+sNy
+           DO fld2D=1, nOB_fld2D
+            subFieldOnMask_2Davg(ob_id,fld2D,i) =
+     &              subFieldOnMask_2Davg(ob_id,fld2D,i)/nTimeSteps_ob
+           ENDDO
+           DO fld3D=1, nOB_fld3D
+            DO k=1, fld_depth(nOB_fld2D + fld3D)
+             subFieldOnMask_3Davg(ob_id,fld3D,k,i) =
+     &              subFieldOnMask_3Davg(ob_id,fld3D,k,i)/nTimeSteps_ob
             ENDDO
+           ENDDO
           ENDDO
-
 C         Write subField_avg to binary file
 C         CALL WRITE_SUB_BIN(subFieldOnMask_avg(ob_id,fld,i), fld,
 C     &                      myTime)
 C        Set number of time steps wihtin averaging period back to zero
-         print *, "setting nTimeSteps_ob back to zero at avg"
-         nTimeSteps_ob = 0
+        print *, "setting nTimeSteps_ob back to zero at avg"
+        nTimeSteps_ob = 0
 
        ENDDO
       END
 
 
-      SUBROUTINE APPEND_OB_VALUE(ob_id, pid, ob_values)
+      SUBROUTINE APPEND_OB_VALUE2D(ob_id, pid, ob_values)
 C       Appends field value corresponding to open boundary points to final global array global_ob.
 C       Use values of global_indices to extract value in lookup_table at position of value of global_indices.
 C       Value in lookup_table used to identify position of current point on open boundary.
@@ -575,21 +668,42 @@ C       Store field value at position in final global array global_ob.
          do i=1, num_valid
            ob_index = lookup_table(ob_id,
      &                 sub_glo_indices_allproc(ob_id,pid+1,i))
-           if (ob_index .le. (sNy+sNx)*(nPx*nPy)) then
-             if (print_debug .eq. 1) then
-               print *, "APPEND_OB_VALUE: ob_index", ob_index
-               print *, "APPEND_OB_VALUE: counter i",i
-               print *, "APPEND_OB_VALUE: ob_value", ob_values(i)
-             end if
-             global_ob(ob_index) = ob_values(i)
-           end if
-         end do
+C           if (ob_index .le. (sNy+sNx)*(nPx*nPy)) then
+C             if (print_debug .eq. 1) then
+C               print *, "APPEND_OB_VALUE: ob_index", ob_index
+C             print *, "APPEND_OB_VALUE: counter i",i
+C               print *, "APPEND_OB_VALUE: ob_value", ob_values(i)
+C             end if
+             global_ob2D(int(ob_index)) = ob_values(i)
+C           end if
+       end do
          if (print_debug .eq. 1) then
-           print *, "APPEND_OB_VALUE: global_ob:"
-           call PRINT_FLOAT_ARR(global_ob, (sNy+sNx)*(nPx*nPy))
+           print *, "APPEND_OB_VALUE: global_ob2S:"
+           call PRINT_FLOAT_ARR(global_ob2S, (sNy+sNx)*(nPx*nPy))
          end if
 
        end
+
+       SUBROUTINE APPEND_OB_VALUE3D(ob_id, pid, fld, ob_values)
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "EESUPPORT.h"
+#include "DIAGNOSTICS_OB.h"
+
+        _RL ob_values(Nr, sNx+sNy)
+        integer num_valid, i, k, ob_index, ob_id, pid
+        integer, parameter :: print_debug = 1
+
+        num_valid = numOBPnts_allproc(ob_id,pid+1)
+
+        do k=1, fld_depth(fld)
+         do i=1, num_valid
+          ob_index = lookup_table(ob_id,
+     &                 sub_glo_indices_allproc(ob_id,pid+1,i))
+          global_ob3D(k,int(ob_index)) = ob_values(k,i)
+         enddo
+       enddo
+      end
 
 
        SUBROUTINE CREATE_FILENAME(dir, fldNm, ob_id, filename,
