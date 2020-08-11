@@ -2,12 +2,27 @@
 #--------------------
 #     nml_fldNames : field names for ocean state and flux variables
 #     avgPeriod_nml : averaging period
-#     totPhase_nml : total time phase
 #--------------------
  &DIAG_OB_EXTRACT
  avgPeriod_nml = 86400.0,
- totPhase_nml = 172800.0,
- nml_fldNames(1:8) = 'ETAN ', 'UVEL ', 'VVEL ',
-                     'THETA', 'SALT ', 'GU   ',
-                     'GV', 'ETAH ',
+ startTime_nml = 36000.0,
+ endTime_nml = 640800.0,
+
+ nml_fldNames(1,1:9) = 'AREA    ', 'HEFF    ', 'HSNOW   ',
+                       'HSALT   ', 'UICE    ', 'VICE    ',
+                       'ETAN    ', 'ETAH    ', 'OBNW    ',
+
+ nml_maskTypes(1,1:9) = 1,          1,          1,
+                        1,          2,          3,
+                        1,          1,          1,
+
+ nml_fldNames(2,1:6) = 'UVEL    ', 'VVEL    ','THETA   ',
+                       'SALT    ', 'GU      ','GV      ',
+
+ nml_maskTypes(2,1:6) = 2,          3,          1,
+                        1,          2,          3,
+
+# Depths of the 3D fields to output
+ nml_3Dfld_depths(1:6) =  2,          2,          2,
+                          2,          2,          2,
  &

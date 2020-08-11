@@ -20,30 +20,33 @@
  &DIAGNOSTICS_LIST
 # diag_mnc     = .FALSE.,
 #--
-  fields(1:5,1)  = 'ETAN    ','ETANSQ  ','DETADT2 ',
-                   'PHIBOT  ','PHIBOTSQ',
+#  fields(1:5,1)  = 'ETAN    ','ETANSQ  ','DETADT2 ',
+#                   'PHIBOT  ','PHIBOTSQ',
 #                  'DSLPuFlw','DSLPvFlw',
-   fileName(1) = 'surfDiag',
+#   fileName(1) = 'surfDiag',
 # frequency(1) = 311040000.,
+
+  fields(1:2,1) = 'THETA   ','SALT    ',
+  fileName(1) = 'originalDiag',
   frequency(1) = 864000.,
 
-  fields(1:6,2)  = 'UVELMASS','VVELMASS','WVEL    ',
+#  fields(1:6,2)  = 'UVELMASS','VVELMASS','WVEL    ',
 #                  'UVEL    ','VVEL    ','PHIHYD  ',
-                   'THETA   ','SALT    ','WVELSQ  ',
+#                   'THETA   ','SALT    ','WVELSQ  ',
 # do not specify levels => all levels are selected
-   fileName(2) = 'dynDiag',
+#   fileName(2) = 'dynDiag',
 # frequency(2) = 311040000.,
-  frequency(2) = 864000.,
+#  frequency(2) = 864000.,
 
-  fields(1:6,3)  = 'RHOAnoma','DRHODR  ','CONVADJ ',
+#  fields(1:6,3)  = 'RHOAnoma','DRHODR  ','CONVADJ ',
 #                  'GM_PsiX ','GM_PsiY ',
-                   'GM_Kwx  ','GM_Kwy  ','GM_Kwz  ',
+#                   'GM_Kwx  ','GM_Kwy  ','GM_Kwz  ',
 #                  'GM_Kux  ','GM_Kvy  ',
 #                  'GM_Kuz  ','GM_Kvz  ',
 #                  'DSLP_TH ','DSLP_SLT',
-   fileName(3) = 'oceDiag',
+#   fileName(3) = 'oceDiag',
 # frequency(3) = 311040000.,
-  frequency(3) = 864000.,
+#  frequency(3) = 864000.,
  &
 
 #--------------------
