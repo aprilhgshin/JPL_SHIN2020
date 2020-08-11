@@ -306,8 +306,9 @@ C        Processes 1 and onward send sub fields to Parent process
              call MPI_SEND(subFieldOnMask_2Davg(ob_id,fld,:),sNx+sNy
      &              ,MPI_REAL,0, fld, MPI_COMM_MODEL, ierror)
             else
-              call MPI_SEND(subFieldOnMask_3Davg(ob_id,fld-nOB_fld2D,
-     &                :),fld_depth(fld)*(sNx+sNy),MPI_REAL,0, fld*10,
+              call MPI_SEND(
+     &                subFieldOnMask_3Davg(ob_id,fld-nOB_fld2D,:,:),
+     &                fld_depth(fld)*(sNx+sNy),MPI_REAL,0, fld*10,
      &                MPI_COMM_MODEL, ierror)
             end if
            end if
@@ -339,7 +340,7 @@ C          Indices referring to process IDs begin with 1
             else
 C            append_ob_values3D params: ob_id, pid, fld, ob_values
              call APPEND_OB_VALUE3D(ob_id, 0, fld,
-     &                    subFieldOnMask_3Davg(ob_id,fld-nOB_fld2D,:))
+     &                    subFieldOnMask_3Davg(ob_id,fld-nOB_fld2D,:,:))
             endif
             total_valid = total_valid +
      &                               numOBPnts_allproc(ob_id, 1)
@@ -349,7 +350,7 @@ C            append_ob_values3D params: ob_id, pid, fld, ob_values
      &                numOBPnts_allproc(ob_id, 1),"valid elements:"
 C            Indices referring to process IDs begin with 1
              print *,"num_ob_points(ob_id)",num_ob_points(ob_id)
-             call PRINT_FLOAT_ARR(global_ob, total_valid)
+             call PRINT_FLOAT_ARR(global_ob2D, total_valid)
             end if
            end if
 
@@ -389,12 +390,12 @@ C                 end if
               endif
 
 C              !ENDIF for number of valid elements
-               ENDIF
+              ENDIF
 C             !ENDDO for pid
-              ENDDO
+             ENDDO
 
 C           !ENDDO for fld
-            ENDDO
+           ENDDO
 C         !ENDIF for mpiMyId .eq. 0
          ENDIF
 C       !ENDDO for ob_id
@@ -678,8 +679,8 @@ C             end if
 C           end if
        end do
          if (print_debug .eq. 1) then
-           print *, "APPEND_OB_VALUE: global_ob2S:"
-           call PRINT_FLOAT_ARR(global_ob2S, (sNy+sNx)*(nPx*nPy))
+           print *, "APPEND_OB_VALUE: global_ob2D:"
+           call PRINT_FLOAT_ARR(global_ob2D, (sNy+sNx)*(nPx*nPy))
          end if
 
        end
@@ -691,7 +692,7 @@ C           end if
 #include "DIAGNOSTICS_OB.h"
 
         _RL ob_values(Nr, sNx+sNy)
-        integer num_valid, i, k, ob_index, ob_id, pid
+        integer num_valid, i, k, ob_index, ob_id, pid, fld
         integer, parameter :: print_debug = 1
 
         num_valid = numOBPnts_allproc(ob_id,pid+1)
