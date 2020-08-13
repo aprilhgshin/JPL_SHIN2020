@@ -40,26 +40,25 @@ C DONE Make do loop only go through 1 through sNx etc. not -OLx
 C DONE change data.diagnostics to output fields 2D and 3D
 C DONE Change frequency for both to be 1day  i.e. 86400 seconds
 
+C DONE fields should not be dependent on any order what so ever. When looping for
+C DONE cumulating, compare strings (names of fields) to match.
+
+C DONE A mask is an open boundary
+
+C DONE Try to follow diagnostics package as closely as possible. -- assume biggest size we need for arrays
+
+C DONE in data.diagnostics_ob array of field names chosen by user with one of the
+C DONE dimensions corresponding to the mask number
+
+C DONE dimensions in data.diagnostics
+C DONE delete obnw
+
 C TODO:
-C 1. Incorporating x-z or y-z fields (or check if this already works with what I have now)
-C 2. Account for having max 3 masks per open boundary - will need to change whole program
-C 3. Write to binary files using MITGCM's existing subroutine
-C 4. apply program sturcutre on diagnostics output and compare with my outputs
-C 5. Very last addition: passive tracers
+C 1. Write to binary files using MITGCM's existing subroutine
+C 2. apply program sturcutre on diagnostics output and compare with my outputs
+C 3. Very last addition: passive tracers
+C 4. Delete all diagnostics_ob files and variables not used 
 
-C NEW TODO:
-C fields should not be dependent on any order what so ever. When looping for
-C cumulating, compare strings (names of fields) to match.
-
-C A mask is an open boundary
-
-C Try to follow diagnostics package as closely as possible. -- assume biggest size we need for arrays
-
-C in data.diagnostics_ob array of field names chosen by user with one of the
-C dimensions corresponding to the mask number
-
-C dimensions in data.diagnostics
-C delete obnw
 
 
 
