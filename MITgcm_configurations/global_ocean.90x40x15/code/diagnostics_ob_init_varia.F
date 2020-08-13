@@ -164,11 +164,9 @@ C---------------------------------------------------------
 
       DO ob_id=1, nOB_mask
         DO i=1, sNx+sNy
-          DO fld=1, nOB_fld2D
+          DO fld=1, MAX_NFLDS
             subFieldOnMask_2D(ob_id, fld, i) = 0.0
             subFieldOnMask_2Davg(ob_id, fld, i) = 0.0
-          ENDDO
-          DO fld=1, nOB_fld3D
             DO k=1, Nr
               subFieldOnMask_3D(ob_id, fld, k, i) = 0.0
               subFieldOnMask_3Davg(ob_id, fld, k, i) = 0.0
@@ -177,20 +175,9 @@ C---------------------------------------------------------
         ENDDO
       ENDDO
 
-      print *,"init_varia:",subFieldOnMask_3D
-
-      print *,"init_varia: fld_nDim",fld_nDim
-      print *,"init_varia: fld_to_output",fld_to_output
-
-      print *,"TESTTEST init_varia: loc(subFieldOnMask_3D)",
-     &          loc(subFieldOnMask_3D)
-
-
-      call INI_OB_FILENAMES2()
-
 
       DO ob_id=1, nOB_mask
-        CALL READ_REC_XY_RL( ob_filenames(ob_id),
+        CALL READ_REC_XY_RL( ob_fnames(ob_id),
      &               ob_subMask(1,:,:,:,:),1, 0, myThid )
         _EXCH_XY_RL(ob_subMask(1,:,:,:,:), myThid)
 C       Plotting for debugging
@@ -259,41 +246,11 @@ C     &                 "OB_EXTRACT_OUTPUT: ob_subMask", myThid)
 C      ENDDO
 
 
-
-
-
-
 #endif /* ALLOW_DIAGNOSTICS_OB */
 
       RETURN
       END
 
-
-      SUBROUTINE INI_OB_FILENAMES2()
-C       Fill in array with filenames for each ob mask
-#include "SIZE.h"
-#include "EEPARAMS.h"
-#include "PARAMS.h"
-#include "DIAGNOSTICS_OB.h"
-        INTEGER ob_id
-C        character*13 dir
-C        character*1 ob_num
-C        write(dir, "(A11)") "domain_mask"
-C../../../../
-C        DO ob_id=1, nOB_mask
-C          write(ob_num, "(I1)") ob_id
-C          print *,"ob_num",ob_num
-C          print *, "ob_filenames(ob_id)",ob_filenames(ob_id)
-
-C        write(ob_filenames(ob_id), "(3A)") dir, ob_num,".bin"
-C        print *, "ob_filenames(ob_id)",ob_filenames(ob_id)
-C        ENDDO
-        DO ob_id=1, nOB_mask
-         write(ob_filenames(ob_id),"(A11,I1,A4)") "domain_mask",
-     &          ob_id, '.bin'
-        ENDDO
-C        ob_filenames(1) = "domain_flt32_mask1.bin"
-      END
 
       SUBROUTINE IDENTIFY_OB_POINTS(ob_id, myThid)
 C     Located open boundary points

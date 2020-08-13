@@ -46,15 +46,36 @@ C-    file names for initial conditions:
      &       diagOB_Surf1File, diagOB_Surf2File
 
 C     ================== Global Variables for open boundary ====================
-C     These common block variables are initialized in diagnostics_ob_init_varia.F
 
-      CHARACTER*8 ob_fldNames(nOB_fld)
-      CHARACTER*16 ob_filenames(nOB_mask)
+
+C     MAX_NMASKS :: Int value for assumed maximum number of open boundary masks.
+C     MAX_NFLDS  :: Int value for assumed maximum number of fields per open boundary mask.
+C     ob_allFlds :: Char array of names of all fields.
+
+C     Defined by user input in data.diagnostics_ob:
+C     ob_flds2D    :: Char array of names of 2D fields for each open boundary mask.
+C     ob_flds3D    :: Char array of names of 3D fields for each open boundary mask.
+C     ob_fnames  :: Char array of filenames for open boundary mask files.
+C     ob_levels3D  :: Int array of depths of 3D fields for each open boundary mask.
+C     ob_nFlds2D   :: Int array of number of 2D fields in each open boundary mask
+C     ob_nFlds3D   :: Int array of number of 3D fields in each open boundary mask
+
+
+      INTEGER, PARAMETER :: MAX_NMASKS = 12
+      INTEGER, PARAMETER :: MAX_NFLDS = 20
+
+      CHARACTER*8 ob_flds2D(MAX_NFLDS, nOB_mask)
+      CHARACTER*8 ob_flds3D(MAX_NFLDS, nOB_mask)
+
+      CHARACTER*30 ob_fnames(nOB_mask)
+      INTEGER ob_levels3D(MAX_NFLDS, nOB_mask)
+      INTEGER ob_nFlds2D(nOB_mask)
+      INTEGER ob_nFlds3D(nOB_mask)
+
 
 C     Hard coding dimensions: First dimension refers to number of different dimensions
 C                             Second dimension refers to number of fields with one of different dimensions.
       LOGICAL fld_choice(2,10)
-      INTEGER, PARAMETER :: nMaskTypes = 3
 
       _RL ob_subMask(nOB_mask,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
@@ -64,23 +85,15 @@ C     First row contains local i's. Second row contains local j's.
       INTEGER sub_glo_indices_allproc(nOB_mask, nPx*nPy, sNx + sNy)
       INTEGER numOBPnts_allproc(nOB_mask, nPx*nPy)
 
-C     fld_to_output :: int array containing ids of fields to be outputted
-C     fld_maskType :: int array of mask type for each field (1,2, or 3)
-C     fld_nDim :: int array of number of dimensions for each field (2D or 3D)
-C     fld_depth :: int array of depth of only 3D fields
+C      _RL subFieldOnMask_2D(nOB_mask,nOB_fld2D, sNx + sNy)
+C      _RL subFieldOnMask_3D(nOB_mask,nOB_fld3D, Nr, sNx + sNy)
+C      _RL subFieldOnMask_2Davg(nOB_mask,nOB_fld2D, sNx + sNy)
+C      _RL subFieldOnMask_3Davg(nOB_mask,nOB_fld3D, Nr, sNx + sNy)
 
-      INTEGER fld_to_output(nOB_fld)
-      INTEGER fld_maskType(nOB_fld)
-      INTEGER fld_nDim(nOB_fld)
-      INTEGER fld_depth(nOB_fld)
-
-      INTEGER maskId_used(nMaskTypes)
-      INTEGER mask_fields(nMask_perOB, nOB_fld)
-
-      _RL subFieldOnMask_2D(nOB_mask,nOB_fld2D, sNx + sNy)
-      _RL subFieldOnMask_3D(nOB_mask,nOB_fld3D, Nr, sNx + sNy)
-      _RL subFieldOnMask_2Davg(nOB_mask,nOB_fld2D, sNx + sNy)
-      _RL subFieldOnMask_3Davg(nOB_mask,nOB_fld3D, Nr, sNx + sNy)
+      _RL subFieldOnMask_2D(nOB_mask,MAX_NFLDS, sNx + sNy)
+      _RL subFieldOnMask_3D(nOB_mask,MAX_NFLDS, Nr, sNx + sNy)
+      _RL subFieldOnMask_2Davg(nOB_mask,MAX_NFLDS, sNx + sNy)
+      _RL subFieldOnMask_3Davg(nOB_mask,MAX_NFLDS, Nr, sNx + sNy)
 
       INTEGER lookup_table(nOB_mask, Ny*Nx)
       _RL global_ob2D((sNy+sNx)*(nPx*nPy))
@@ -111,9 +124,9 @@ C     ==========================================================================
       COMMON / DIAG_OB_EXTRACT_I /
      &     lookup_table, sub_local_ij_ob, sub_glo_indices_allproc,
      &     numOBPnts_allproc, num_ob_points,
-     &     fld_to_output, fld_maskType, fld_nDim, fld_depth
+     &     ob_levels3D, ob_nFlds2D, ob_nFlds3D
       COMMON / DIAG_OB_EXTRACT_C /
-     &     ob_fldNames, ob_filenames
+     &     ob_flds2D, ob_flds3D, ob_fnames
       COMMON / DIAG_OB_EXTRACT_L /
      &     fld_choice
 

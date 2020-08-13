@@ -33,12 +33,11 @@ C     Please do not change unless adding on additional fields
 
 C---------------------------------------
 
-      INTEGER, PARAMETER :: nMask_perOB = 1
       INTEGER, PARAMETER :: nOB_mask =  1
-      
-      INTEGER, PARAMETER :: nOB_fld2D = 0
-      INTEGER, PARAMETER :: nOB_fld3D = 2
-      INTEGER, PARAMETER :: nOB_fld = nOB_fld2D + nOB_fld3D
+
+C      INTEGER, PARAMETER :: nOB_fld2D = 0
+C      INTEGER, PARAMETER :: nOB_fld3D = 2
+C      INTEGER, PARAMETER :: nOB_fld = nOB_fld2D + nOB_fld3D
 
 C ----2D Fields (x,y):
       LOGICAL area_ob
@@ -61,20 +60,19 @@ C ----3D Fields (x,y,z):
       LOGICAL gV_ob
 
 
-      PARAMETER (
-     &            area_ob = .FALSE.,
-     &            heff_ob = .FALSE.,
-     &           hsnow_ob = .FALSE.,
-     &           hsalt_ob = .FALSE.,
-     &            uice_ob = .FALSE.,
-     &            vice_ob = .FALSE.,
-     &            etaN_ob = .FALSE.,
-     &            etaH_ob = .FALSE.,
-     &            obnw_ob = .FALSE.,
+C      PARAMETER (
+C     &            area_ob = .FALSE.,
+C     &            heff_ob = .FALSE.,
+C     &           hsnow_ob = .FALSE.,
+C     &           hsalt_ob = .FALSE.,
+C     &            uice_ob = .FALSE.,
+C     &            vice_ob = .FALSE.,
+C     &            etaN_ob = .FALSE.,
+C     &            etaH_ob = .FALSE.,
 
-     &            uVel_ob = .FALSE.,
-     &            vVel_ob = .FALSE.,
-     &           theta_ob = .TRUE.,
-     &            salt_ob = .TRUE.,
-     &              gU_ob = .FALSE.,
-     &              gV_ob = .FALSE.)
+C     &            uVel_ob = .FALSE.,
+C     &            vVel_ob = .FALSE.,
+C     &           theta_ob = .TRUE.,
+C     &            salt_ob = .TRUE.,
+C     &              gU_ob = .FALSE.,
+C     &              gV_ob = .FALSE.)

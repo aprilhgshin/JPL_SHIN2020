@@ -1,28 +1,30 @@
 # Diagnostics_ob Package Choices
 #--------------------
-#     nml_fldNames : field names for ocean state and flux variables
-#     avgPeriod_nml : averaging period
+#     avgPeriod_nml : averaging period duration
+#     startTime_nml : start time of output
+#     endTime_nml : end time of output
+#     nml_fields : field names for ocean state and flux variables for each open boundary
+#     nml_levels3D : depths of 3D fields for each open boundary (starting from surface)
+#     nml_nFields : number of fields for each open boundary mask
+#     nml_fileNames : filenames of open boundary mask
 #--------------------
+
  &DIAG_OB_EXTRACT
+
  avgPeriod_nml = 86400.0,
  startTime_nml = 36000.0,
- endTime_nml = 640800.0,
+ endTime_nml = 122400.0,
+# endTime_nml = 640800.0,
 
- nml_fldNames(1,1:9) = 'AREA    ', 'HEFF    ', 'HSNOW   ',
-                       'HSALT   ', 'UICE    ', 'VICE    ',
-                       'ETAN    ', 'ETAH    ', 'OBNW    ',
+ nml_fields2D(1:1,1) = 'ETAN    ',
 
- nml_maskTypes(1,1:9) = 1,          1,          1,
-                        1,          2,          3,
-                        1,          1,          1,
+ nml_fields3D(1:1,1) = 'THETA   ',
 
- nml_fldNames(2,1:6) = 'UVEL    ', 'VVEL    ','THETA   ',
-                       'SALT    ', 'GU      ','GV      ',
+ nml_levels3D(1:1,1) =  1,
 
- nml_maskTypes(2,1:6) = 2,          3,          1,
-                        1,          2,          3,
+ nml_nFields2D(1) = 1,
+ nml_nFields3D(1) = 1,
 
-# Depths of the 3D fields to output
- nml_3Dfld_depths(1:6) =  2,          2,          2,
-                          2,          2,          2,
+ nml_fileNames(1) = 'domain_flt32_mask1.bin',
+
  &
