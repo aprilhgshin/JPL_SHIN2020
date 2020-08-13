@@ -143,16 +143,13 @@ C      !LOCAL VARIABLES:
 
 C      global_mask      - 4 dimensional _RL array that combines all open boundarys
 C      recv_arr         - buffer array to store incoming arrays from MPI_RECV
-
 C      msgBuf           - Used to write statements into the output file
 C      ob_subMask_size  - Integer size of ob_subMask (ob_subMask from DIAGNOSTICS.h)
 C      ob_id            - Integer used for do loop through each ob mask
 C      total_valid      - Integer value of total count of valid elements in each open boundary mask/ Count done when looping through arrays sent from processes + local field on mask array
-
 C      pid              - Integer value for process ID
 C      ierror           - Error code for MPI functions
 C      status           - Integer array with values characterizing MPI function i.e. message tag, recipient, sender, etc.
-
 C      debug            - Integer used to hold either 1 or 0, 1 to print debug statements or 0 to ignore
 C      print_debug      - Integer used to hold either 1 or 0, 1 to print debug statements or 0 to ignore
 
@@ -354,9 +351,12 @@ C     myTime :: current time in model
       _RL myTime
       _RL recv_arr2D(sNx + sNy)
       _RL recv_arr3D(Nr, sNx + sNy)
+      _RL dummyRL(1)
       INTEGER pid, status(MPI_STATUS_SIZE), ierror
       INTEGER total_valid, i, k
       INTEGER, PARAMETER :: debug = 1
+      integer, parameter :: write_to_binary = 1
+
 
       common / local_var / total_valid
       common / mpi_var / status, ierror
@@ -454,9 +454,35 @@ C      !ENDDO for pid
 C------End of receiving arrays through MPI and appending------------------------
 
        print *,"Plotting final array at time", myTime
-       call PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld, nDim)
-       call WRITE_GLOBAL_BIN(total_valid,fld,ob_id,myTime,nDim)
+       call PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld, nDim, myIter)
+C       call WRITE_GLOBAL_BIN(total_valid,fld,ob_id,myTime,nDim)
 C       call SET_WRITE_GLOBAL_REC ( .TRUE. )
+       IF (write_to_binary .eq. 1) then
+        IF (nDim .eq. 2) then
+         call MDS_WRITE_FIELD(ob_flds2D(fld,ob_id), 32, .TRUE., .TRUE.,
+     &    'RL',1, 1, 1,
+     &    global_ob2D(1:total_valid), dummyRL,
+     &    1, myIter, myThid)
+
+        ELSE IF (nDim .eq. 3) then
+         call MDS_WRITE_FIELD(ob_flds3D(fld,ob_id), 32, .TRUE., .TRUE.,
+     &    'RL',ob_levels3D(fld,ob_id), 1, ob_levels3D(fld,ob_id),
+     &    global_ob3D(1:ob_levels3D(fld,ob_id),1:total_valid), dummyRL,
+     &    1, myIter, myThid)
+        ENDIF
+       ENDIF
+
+
+C     I   fName,
+C     I   filePrec,
+C     I   globalFile,
+C     I   useCurrentDir,
+C     I   arrType,
+C     I   kSize,kLo,kHi,
+C     I   fldRL, fldRS,
+C     I   jrecord,
+C     I   myIter,
+C     I   myThid )
 C       WRITE_REC_XY_RL( fName,field,iRec,myIter,myThid )
 C       WRITE_REC_XYZ_RL( fName,field,iRec,myIter,myThid )
 
@@ -779,7 +805,7 @@ c       002 for index 2 in x axis
        else
 c         Creating a filename for global arrays
          write(filename, "(7A)") dir, fldNm, "_on_mask", str_ob,
-     &                           "_global.",str_time,"bin"
+     &                           "_global.",str_time,"meta"
        end if
 
        end
@@ -823,7 +849,7 @@ c      Writing global array to binary file
        end
 
 
-       SUBROUTINE PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld, nDim)
+       SUBROUTINE PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld, nDim, myIter)
 c      Unravels global_ob and plots onto an array with dimensions Nx by Ny
 
 #include "SIZE.h"
@@ -834,11 +860,14 @@ c      Unravels global_ob and plots onto an array with dimensions Nx by Ny
 
        _RL global_correct((sNy+sNx)*(nPx*nPy))
        _RL global_NxNy(Nx,Ny,nSx,nSy)
+       _RL dummyRL(1)
 
        integer i,j, bi, bj, counter, ob_counter, correct
-       integer fld, total_valid, ob_id, myThid, nDim
+       integer fld, total_valid, ob_id, myThid, nDim, myIter
        integer, parameter :: plot_on_NxNy = 1
        integer, parameter :: print_correctness = 1
+       integer, parameter :: write_to_binary = 0
+
        character*8 fldNm
        character*30 plotTitle
 
@@ -920,7 +949,30 @@ C                 !Inserting field points into NxNy array
            call PLOT_GLO_FIELD_XYRL(global_NxNy,plotTitle,myThid)
          end if
        end if
-       end
+
+
+       IF (write_to_binary .eq. 1) then
+        IF (nDim .eq. 2) then
+
+         print *,"PLOT_TEST: shape2D:",shape(global_NxNy(:,:,1,1))
+         call MDS_WRITE_FIELD(ob_flds2D(fld,ob_id), 32, .TRUE., .TRUE.,
+     &    'RL',1, 1, 1,
+     &    global_NxNy(:,:,1,1), dummyRL,
+     &    1, myIter, myThid)
+
+        ELSE IF (nDim .eq. 3) then
+         print *,"PLOT_TEST: shape3D L1:",shape(global_NxNy(:,:,1,1))
+         call MDS_WRITE_FIELD(ob_flds3D(fld,ob_id), 32, .TRUE., .TRUE.,
+     &    'RL',1, 1, 1,
+     &    global_NxNy(:,:,1,1), dummyRL,
+     &    1, myIter, myThid)
+C        call MDS_WRITE_FIELD(ob_flds3D(fld,ob_id), 32, .TRUE., .TRUE.,
+C     &    'RL',1, 1, ob_levels3D(fld,ob_id),
+C     &    global_ob3D(1:ob_levels3D(fld,ob_id),1:total_valid), dummyRL,
+C     &    1, myIter, myThid)
+        ENDIF
+       ENDIF
+       END
 
 
        SUBROUTINE PRINT_INT_ARR(array, arr_length)
