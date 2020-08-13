@@ -72,11 +72,6 @@ C     ob_nFlds3D   :: Int array of number of 3D fields in each open boundary mas
       INTEGER ob_nFlds2D(nOB_mask)
       INTEGER ob_nFlds3D(nOB_mask)
 
-
-C     Hard coding dimensions: First dimension refers to number of different dimensions
-C                             Second dimension refers to number of fields with one of different dimensions.
-      LOGICAL fld_choice(2,10)
-
       _RL ob_subMask(nOB_mask,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
 C     First row contains local i's. Second row contains local j's.
@@ -84,11 +79,6 @@ C     First row contains local i's. Second row contains local j's.
 
       INTEGER sub_glo_indices_allproc(nOB_mask, nPx*nPy, sNx + sNy)
       INTEGER numOBPnts_allproc(nOB_mask, nPx*nPy)
-
-C      _RL subFieldOnMask_2D(nOB_mask,nOB_fld2D, sNx + sNy)
-C      _RL subFieldOnMask_3D(nOB_mask,nOB_fld3D, Nr, sNx + sNy)
-C      _RL subFieldOnMask_2Davg(nOB_mask,nOB_fld2D, sNx + sNy)
-C      _RL subFieldOnMask_3Davg(nOB_mask,nOB_fld3D, Nr, sNx + sNy)
 
       _RL subFieldOnMask_2D(nOB_mask,MAX_NFLDS, sNx + sNy)
       _RL subFieldOnMask_3D(nOB_mask,MAX_NFLDS, Nr, sNx + sNy)
@@ -127,8 +117,7 @@ C     ==========================================================================
      &     ob_levels3D, ob_nFlds2D, ob_nFlds3D
       COMMON / DIAG_OB_EXTRACT_C /
      &     ob_flds2D, ob_flds3D, ob_fnames
-      COMMON / DIAG_OB_EXTRACT_L /
-     &     fld_choice
+
 
 #ifdef DIAGNOSTICS_OB_3D_STATE
 C     DIAGOB 3-dim. fields
