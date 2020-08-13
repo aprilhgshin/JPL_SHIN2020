@@ -57,25 +57,7 @@ C TODO:
 C 1. Write to binary files using MITGCM's existing subroutine
 C 2. apply program sturcutre on diagnostics output and compare with my outputs
 C 3. Very last addition: passive tracers
-C 4. Delete all diagnostics_ob files and variables not used 
-
-
-
-
-
-
-C-------------------------------------------------------------------------------
-C Approach to multiple masks per open boundary:
-C Arrays dependent on mask number:
-C 1. global indices - may differ for each mask (modify sub_glo_indices_allproc)
-C 2. local sub ij's
-C 3. ob_subMask
-
-C Once we extract the open boundary points, we don't care for the open boundary mask.
-
-C-------------------------------------------------------------------------------
-
-
+C 4. Delete all diagnostics_ob files and variables not used
 
 
 
