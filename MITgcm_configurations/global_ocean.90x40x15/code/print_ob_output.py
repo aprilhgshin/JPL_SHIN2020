@@ -14,7 +14,7 @@ if __name__ == "__main__":
     output_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run/')
     field = []
 
-    field, its = mitgcm.rdmds(str(output_dir / 'THETA'), itrs=-1,rec=1)
+#    field, its = mitgcm.rdmds(str(output_dir / 'THETA'), itrs=-1,rec=1)
 
     print(np.fromfile(str(output_dir / 'THETA.data'), dtype='>f4').shape)
 #    lines = open(str(output_dir / 'THETA   _on_mask1_global.    122400.meta'))

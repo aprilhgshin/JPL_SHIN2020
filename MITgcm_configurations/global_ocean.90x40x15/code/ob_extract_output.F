@@ -174,8 +174,9 @@ C      Although we read REAL*4 values, most built in functions have _RS input wh
 
        common / local_var / total_valid
 
-C-------------------------------------------------------------------------------
 
+
+       IF (myTime .le. endTime_ob) then
 
         if (debug .eq. 1) then
           print *, "OB_EXTRACT_OUTPUT timepassed:", time_passed
@@ -194,81 +195,81 @@ C-------------------------------------------------------------------------------
 C-------------------------------------------------------------------------------
 c      All Processes Tasks:
 C-------------------------------------------------------------------------------
-       print *,"OB_EXTRACT_OUTPUT: ob_nFlds2D",ob_nFlds2D
-       print *,"OB_EXTRACT_OUTPUT: ob_nFlds3D",ob_nFlds3D
-       print *,"OB_EXTRACT_OUTPUT: ob_levels3D",ob_levels3D
+        print *,"OB_EXTRACT_OUTPUT: ob_nFlds2D",ob_nFlds2D
+        print *,"OB_EXTRACT_OUTPUT: ob_nFlds3D",ob_nFlds3D
+        print *,"OB_EXTRACT_OUTPUT: ob_levels3D",ob_levels3D
 
 
-       DO ob_id=1, nOB_mask
-        DO i=1, ob_nFlds3D(ob_id)
-         IF (ob_levels3D(i,ob_id) .gt. 90) then
-          ob_levels3D(i,ob_id) = ob_levels3D(i,ob_id) - 90
-         ENDIF
+        DO ob_id=1, nOB_mask
+         DO i=1, ob_nFlds3D(ob_id)
+          IF (ob_levels3D(i,ob_id) .gt. 90) then
+           ob_levels3D(i,ob_id) = ob_levels3D(i,ob_id) - 90
+          ENDIF
+         ENDDO
         ENDDO
-       ENDDO
-c      ob_subMask initialized in diagnostics_readparms, dimensions match READ_REC_XY_RS field:
-c      field(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
-       ob_subMask_size = (abs(1-OLx)+(sNx+OLx))*
+c       ob_subMask initialized in diagnostics_readparms, dimensions match READ_REC_XY_RS field:
+c       field(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
+        ob_subMask_size = (abs(1-OLx)+(sNx+OLx))*
      &                   (abs(1-OLy)+(sNy+OLy))*nSx*nSy
 
 
-       CALL SET_SUBFIELDS(myThid)
-       if (debug .eq. 1) then
+        CALL SET_SUBFIELDS(myThid)
+        if (debug .eq. 1) then
          print *,"OB_EXTRACT_OUTPUT: num valid elements:",
      &              numOBPnts_allproc(1,mpiMyId+1)
          print *,"OB_EXTRACT_OUTPUT: subFieldOnMask set"
          call PRINT_FLOAT_ARR(subFieldOnMask_2D(1,1,:), sNx+sNy)
          call PRINT_FLOAT_ARR(subFieldOnMask_3D(1,1,:,:), 2*(sNx+sNy))
-       end if
+        end if
 
 
 
-       IF (nTimeSteps_ob .eq. 0) then
+        IF (nTimeSteps_ob .eq. 0) then
 C        Initialize averages to zero
          CALL SET_TO_INI_STATE(myThid)
          if (debug .eq. 1) then
            print *,"OB_EXTRACT_OUTPUT: subFieldOnMask_avg ini"
 C           call PRINT_FLOAT_ARR(subFieldOnMask_avg(1,1,:), sNx+sNy)
-
          endif
-       ELSE
+        ELSE
 C          Cumulate Diagnostics_ob fields and number of time steps (for Time Average)
          CALL CUMULATE_FLD_TIME(myThid)
          if (debug .eq. 1) then
            print *,"OB_EXTRACT_OUTPUT: subFieldOnMask_avg cumulate"
 C           call PRINT_FLOAT_ARR(subFieldOnMask_avg(1,1,:), sNx+sNy)
          endif
+        ENDIF
+
+        print *, "nTimeSteps_ob",nTimeSteps_ob
+        print*, "D",DIFFERENT_MULTIPLE(avgPeriod_ob,myTime,deltaTClock)
+        print*, "time_passed",time_passed
+
+C      !ENDIF for IF myTime .le. endTIme_ob
        ENDIF
 
-       print *, "nTimeSteps_ob",nTimeSteps_ob
-       print*, "D",DIFFERENT_MULTIPLE(avgPeriod_ob,myTime,deltaTClock)
-       print*, "time_passed",time_passed
-C      IF (((myIter.NE.nIter0)
 
+C------If at end of averaging period:
 
        IF (((nTimeSteps_ob .NE. 0)
      &       .AND.DIFFERENT_MULTIPLE(avgPeriod_ob,myTime,deltaTClock))
      &       .AND. (myTime .le. endTime_ob)) THEN
-         print *, "HERE "
-C        Compute time average of all sub fields
-         CALL TIMEAVE_OB_FLD(myThid, myTime)
-         if (debug .eq. 1) then
-           print *,"OB_EXTRACT_OUTPUT: subFieldOnMask_avg avg"
-C           call PRINT_FLOAT_ARR(subFieldOnMask_avg(1,1,:), sNx+sNy)
-         endif
 
-        DO ob_id=1, nOB_mask
-         DO pid=1,nPx*nPy
-          print *, "numOBPnts_allproc process", pid-1
-          print *,"numOBPnts_allproc:",numOBPnts_allproc(ob_id,pid+1)
+C       Compute time average of all sub fields
+        CALL TIMEAVE_OB_FLD(myThid, myTime)
+
+
+        IF (print_debug .eq. 1) then
+         DO ob_id=1, nOB_mask
+           DO pid=1,nPx*nPy
+            print *, "numOBPnts_allproc process", pid-1
+            print *,"numOBPnts_allproc:",numOBPnts_allproc(ob_id,pid+1)
+           ENDDO
          ENDDO
-        ENDDO
-
-        print *, "numOBPnts_allproc at 1st index",
+         print *, "numOBPnts_allproc at 1st index",
      &    numOBPnts_allproc(1,1)
-
-        print *, "numOBPnts_allproc at 2nd index",
+         print *, "numOBPnts_allproc at 2nd index",
      &    numOBPnts_allproc(1,2)
+        ENDIF
 
 
 C       Now looping through each mask and communicating fields between master process and child processes
@@ -295,13 +296,14 @@ C        Field numbers, fld2D and fld3D, are used as message tags.
            end do
           end if
          end if
-C123456789
+
 #endif
 
 C-------------------------------------------------------------------------------
 C           Master Process Tasks:
 C-------------------------------------------------------------------------------
          IF (mpiMyId .eq. 0) then
+           print *,"For open boundary mask :", ob_id
 
           DO fld2D=1, ob_nFlds2D(ob_id)
             call MASTER_PROC_TASKS(fld2D, ob_id, 2, myThid, myTime,
@@ -311,18 +313,17 @@ C-------------------------------------------------------------------------------
           DO fld3D=1, ob_nFlds3D(ob_id)
             call MASTER_PROC_TASKS(fld3D, ob_id, 3, myThid, myTime,
      &                             myIter)
-
           ENDDO
 
 C         !ENDIF for mpiMyId .eq. 0
          ENDIF
 C       !ENDDO for ob_id
         ENDDO
-
-C        Move on to next time step
+C     !ENDIF for end of averaging period
       ENDIF
-         nTimeSteps_ob = nTimeSteps_ob + 1
-         time_passed = time_passed + deltaTClock
+C      Move on to next time step
+       nTimeSteps_ob = nTimeSteps_ob + 1
+       time_passed = time_passed + deltaTClock
 
       RETURN
       END
@@ -455,8 +456,9 @@ C------End of receiving arrays through MPI and appending------------------------
 
        print *,"Plotting final array at time", myTime
        call PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld, nDim, myIter)
+
 C       call WRITE_GLOBAL_BIN(total_valid,fld,ob_id,myTime,nDim)
-C       call SET_WRITE_GLOBAL_REC ( .TRUE. )
+
        IF (write_to_binary .eq. 1) then
         IF (nDim .eq. 2) then
          call MDS_WRITE_FIELD(ob_flds2D(fld,ob_id), 32, .TRUE., .TRUE.,
@@ -465,6 +467,10 @@ C       call SET_WRITE_GLOBAL_REC ( .TRUE. )
      &    1, myIter, myThid)
 
         ELSE IF (nDim .eq. 3) then
+         print *, "MASTER_PROC_TASKS: total_valid",total_valid
+         print *,"MASTER ob_levels3D",ob_levels3D(fld,ob_id)
+         print*,"MASTER shape",
+     &   shape(global_ob3D(1:ob_levels3D(fld,ob_id),1:total_valid))
          call MDS_WRITE_FIELD(ob_flds3D(fld,ob_id), 32, .TRUE., .TRUE.,
      &    'RL',ob_levels3D(fld,ob_id), 1, ob_levels3D(fld,ob_id),
      &    global_ob3D(1:ob_levels3D(fld,ob_id),1:total_valid), dummyRL,
