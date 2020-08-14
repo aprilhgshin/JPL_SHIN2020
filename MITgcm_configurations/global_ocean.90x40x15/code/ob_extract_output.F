@@ -140,7 +140,7 @@ C      Although we read REAL*4 values, most built in functions have _RS input wh
 
        CHARACTER*(MAX_LEN_MBUF) msgBuf
        integer i,j, k, iG, jG, bi, bj, fld2D, fld3D
-       integer ob_subMask_size, ob_id
+       integer ob_subMask_size, ob_id, tag
        integer total_valid
 
        integer, parameter :: debug = 1
@@ -255,25 +255,32 @@ C       Compute time average of all sub fields
 
 C       Now looping through each mask and communicating fields between master process and child processes
         DO ob_id=1, nOB_mask
+          print *,"For open boundary mask :", ob_id
+          print *,"time steps taken:",nTimeSteps_ob
 
 #ifdef ALLOW_USE_MPI
          if (mpiMyId .gt. 0) then
+          print *,"Process",mpiMyId, "at mask", ob_id
+          print *,"numOBPnts_allproc(ob_id,mpiMyId+1)",
+     &             numOBPnts_allproc(ob_id,mpiMyId+1)
 C        Processes 1 and onward send sub fields to Parent process
 C        Field numbers, fld2D and fld3D, are used as message tags.
 
           if (numOBPnts_allproc(ob_id,mpiMyId+1) .ge. 1) then
            print *, "num valid:",numOBPnts_allproc(ob_id,mpiMyId+1)
-           print *,"Yes going to send"
+           print *,"Yes going to send for mask", ob_id
            do fld2D=1, ob_nFlds2D(ob_id)
+            tag = ob_tags(ob_id, 1, fld2D)
             call MPI_SEND(subFieldOnMask_2Davg(ob_id,fld2D,:),sNx+sNy
-     &              ,MPI_REAL,0, fld2D, MPI_COMM_MODEL, ierror)
+     &      ,MPI_REAL,0, tag, MPI_COMM_MODEL, ierror)
            end do
 
            do fld3D=1, ob_nFlds3D(ob_id)
+            tag = ob_tags(ob_id, 2, fld3D)
             call MPI_SEND(
      &              subFieldOnMask_3Davg(ob_id,fld3D,:,:),
      &              ob_levels3D(fld3D,ob_id)*(sNx+sNy), MPI_REAL,0,
-     &              fld3D*(100), MPI_COMM_MODEL, ierror)
+     &              tag, MPI_COMM_MODEL, ierror)
            end do
           end if
          end if
@@ -284,8 +291,11 @@ C-------------------------------------------------------------------------------
 C           Master Process Tasks:
 C-------------------------------------------------------------------------------
          IF (mpiMyId .eq. 0) then
-           print *,"For open boundary mask :", ob_id
 
+          print *,"OB_EXTRACT_OUTPUT: MASK", ob_id,
+     &              "Before calling on master tasks"
+          print *,"numOBPnts_allproc(ob_id,mpiMyId+1)",
+     &             numOBPnts_allproc(ob_id,mpiMyId+1)
           DO fld2D=1, ob_nFlds2D(ob_id)
             call MASTER_PROC_TASKS(fld2D, ob_id, 2, myThid, myTime,
      &                             myIter)
@@ -314,6 +324,7 @@ C      Move on to next time step
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
+
       SUBROUTINE MASTER_PROC_TASKS(fld, ob_id, nDim, myThid, myTime,
      &                             myIter)
 C     Appending subFields to final global_ob array
@@ -334,10 +345,10 @@ C     myTime :: current time in model
       _RL recv_arr2D(sNx + sNy)
       _RL recv_arr3D(Nr, sNx + sNy)
       _RL dummyRL(1)
-      INTEGER pid, status(MPI_STATUS_SIZE), ierror
+      INTEGER pid, status(MPI_STATUS_SIZE), ierror, tag
       INTEGER total_valid, i, k
       INTEGER, PARAMETER :: debug = 1
-      integer, parameter :: write_to_binary = 1
+      integer, parameter :: write_to_binary = 0
 
 
       common / local_var / total_valid
@@ -362,6 +373,7 @@ C     - Indices referring to process IDs begin with 1 in numOBPnts_allproc and
 C          subFieldOnMask_2Davg
 C-------------------------------------------------------------------------------
 
+
       IF (numOBPnts_allproc(ob_id,1).ge.1) then
        if (nDim .eq. 2) then
         call APPEND_OB_VALUE2D(ob_id, 0,
@@ -372,7 +384,8 @@ C-------------------------------------------------------------------------------
        endif
        total_valid = total_valid + numOBPnts_allproc(ob_id, 1)
        if (debug .eq. 1) then
-        print *,"APPEND_OB_VALUE: appending local field to global array"
+        print *,"MASTER: mask number:", ob_id
+        print *,"MASTER: appending local field to global array"
      &           ," with ",numOBPnts_allproc(ob_id, 1),"valid elements:"
         print *,"num_ob_points(ob_id)",num_ob_points(ob_id)
         call PRINT_FLOAT_ARR(global_ob2D, total_valid)
@@ -391,11 +404,14 @@ C-------------------------------------------------------------------------------
        DO pid=1, mpiNprocs-1
 C       If number of valid elements is greater than or equal to 1
         IF (numOBPnts_allproc(ob_id,pid+1) .ge. 1) then
-         print *,"OB_EXTRACT_OUTPUT: time to receive",
+         print*,"MASTER: ",numOBPnts_allproc(ob_id,pid+1),
+     &           "elements for mask", ob_id
+         print *,"MASTER: time to receive",
      &                    numOBPnts_allproc(ob_id,pid+1), "elements"
          IF (nDim .eq. 2) then
+          tag = ob_tags(ob_id, 1, fld)
           call MPI_RECV(recv_arr2D, sNx+sNy, MPI_REAL,
-     &                   pid, fld ,MPI_COMM_MODEL, status, ierror)
+     &                   pid, tag ,MPI_COMM_MODEL, status, ierror)
 
           if (debug .eq. 1) then
            print *, "Received from process", pid
@@ -409,8 +425,9 @@ C       If number of valid elements is greater than or equal to 1
           call APPEND_OB_VALUE2D(ob_id, pid, recv_arr2D)
 
          ELSE IF (nDim .eq. 3) then
+          tag = ob_tags(ob_id, 2, fld)
           call MPI_RECV(recv_arr3D, ob_levels3D(fld,ob_id)*(sNx+sNy),
-     &         MPI_REAL, pid, fld*(100) ,MPI_COMM_MODEL, status, ierror)
+     &         MPI_REAL, pid, tag ,MPI_COMM_MODEL, status, ierror)
 C         !append_ob_values3D params: ob_id, pid, fld, ob_values
           call APPEND_OB_VALUE3D(ob_id,pid, fld, recv_arr3D)
 
@@ -427,7 +444,7 @@ C       !ENDIF for number of valid elements
         ENDIF
 
         if (debug .eq. 1) then
-         print *,"OB_EXTRACT_OUTPUT: total_valid", total_valid
+         print *,"MASTER: total_valid", total_valid
         end if
 
 C      !ENDDO for pid
@@ -435,6 +452,7 @@ C      !ENDDO for pid
 #endif
 C------End of receiving arrays through MPI and appending------------------------
 
+       print *,"MASTER: For mask", ob_id
        print *,"Plotting final array at time", myTime
        call PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld, nDim, myIter)
 
@@ -442,8 +460,8 @@ C       call WRITE_GLOBAL_BIN(total_valid,fld,ob_id,myTime,nDim)
 
        IF (write_to_binary .eq. 1) then
         IF (nDim .eq. 2) then
-         call MDS_WRITE_FIELD(ob_flds2D(fld,ob_id), 32, .TRUE., .TRUE.,
-     &    'RL',1, 1, 1,
+         call MDS_WRITE_FIELD(ob_flds2D(fld,ob_id), 32, .FALSE.,
+     &    .TRUE., 'RL',1, 1, 1,
      &    global_ob2D(1:total_valid), dummyRL,
      &    1, myIter, myThid)
 
@@ -452,7 +470,7 @@ C       call WRITE_GLOBAL_BIN(total_valid,fld,ob_id,myTime,nDim)
          print *,"MASTER ob_levels3D",ob_levels3D(fld,ob_id)
          print*,"MASTER shape",
      &   shape(global_ob3D(1:ob_levels3D(fld,ob_id),1:total_valid))
-         call MDS_WRITE_FIELD(ob_flds3D(fld,ob_id), 32, .TRUE., .TRUE.,
+         call MDS_WRITE_FIELD(ob_flds3D(fld,ob_id), 32, .FALSE.,.TRUE.,
      &    'RL',ob_levels3D(fld,ob_id), 1, ob_levels3D(fld,ob_id),
      &    global_ob3D(1:ob_levels3D(fld,ob_id),1:total_valid), dummyRL,
      &    1, myIter, myThid)
@@ -510,6 +528,7 @@ C     Initializes average fields to zero
       SUBROUTINE SET_SUBFIELDS(myThid)
 
 C     Stores desired fields chosen by user into array subFields
+C     Assign unique tags to all 2D and 3D fields for MPI_SEND
       IMPLICIT NONE
 
 #include "SIZE.h"
@@ -525,18 +544,22 @@ C     Stores desired fields chosen by user into array subFields
 
 
       INTEGER ob_id, myThid, loc_count
-      INTEGER i, j, k, bi, bj, numValid
+      INTEGER i, j, k, bi, bj, numValid, tag
       INTEGER nFlds2D, nFlds3D, fld2D, fld3D
       print *,"Inside SET_SUBFIELDS"
 
       print*,"SET_SUBFIELDS: ob_levels3D ",ob_levels3D
 
+      tag = 1
       DO ob_id=1, nOB_mask
         numValid = numOBPnts_allproc(ob_id,mpiMyId+1)
 
 C      Looping through 2D fields first, if any.
        nFlds2D = ob_nFlds2D(ob_id)
        DO fld2D=1, nFlds2D
+        ob_tags(ob_id, 1, fld2D) =  tag
+        print *,"SET_SUBFIELDS: tag",tag
+        tag = tag + 1
         DO bj = myByLo(myThid), myByHi(myThid)
          DO bi = myBxLo(myThid), myBxHi(myThid)
           DO loc_count=1, numValid
@@ -572,6 +595,9 @@ C     &                subFieldOnMask_2D(ob_id,fld2D,loc_count)
 C      Looping through 3D fields, if any.
        nFlds3D = ob_nFlds3D(ob_id)
        DO fld3D=1, nFlds3D
+        ob_tags(ob_id, 2, fld3D) = tag
+        print *,"SET_SUBFIELDS: tag",tag
+        tag = tag + 1
         DO bj = myByLo(myThid), myByHi(myThid)
          DO bi = myBxLo(myThid), myBxHi(myThid)
           DO loc_count=1, numValid
@@ -853,7 +879,7 @@ c      Unravels global_ob and plots onto an array with dimensions Nx by Ny
        integer fld, total_valid, ob_id, myThid, nDim, myIter
        integer, parameter :: plot_on_NxNy = 1
        integer, parameter :: print_correctness = 1
-       integer, parameter :: write_to_binary = 0
+       integer, parameter :: write_to_binary = 1
 
        character*8 fldNm
        character*30 plotTitle
@@ -957,6 +983,18 @@ C        call MDS_WRITE_FIELD(ob_flds3D(fld,ob_id), 32, .TRUE., .TRUE.,
 C     &    'RL',1, 1, ob_levels3D(fld,ob_id),
 C     &    global_ob3D(1:ob_levels3D(fld,ob_id),1:total_valid), dummyRL,
 C     &    1, myIter, myThid)
+
+C     I   fName,
+C     I   filePrec,
+C     I   globalFile,
+C     I   useCurrentDir,
+C     I   arrType,
+C     I   kSize,kLo,kHi,
+C     I   fldRL, fldRS,
+C     I   jrecord,
+C     I   myIter,
+C     I   myThid )
+
         ENDIF
        ENDIF
        END

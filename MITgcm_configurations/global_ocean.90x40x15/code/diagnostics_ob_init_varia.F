@@ -178,10 +178,11 @@ C---------------------------------------------------------
 
       DO ob_id=1, nOB_mask
         CALL READ_REC_XY_RL( ob_fnames(ob_id),
-     &               ob_subMask(1,:,:,:,:),1, 0, myThid )
-        _EXCH_XY_RL(ob_subMask(1,:,:,:,:), myThid)
+     &               ob_subMask(ob_id,:,:,:,:),1, 0, myThid )
+        _EXCH_XY_RL(ob_subMask(ob_id,:,:,:,:), myThid)
 C       Plotting for debugging
-        CALL PLOT_FIELD_XYRL( ob_subMask(1,:,:,:,:),
+        print *,"INIT_VARIA: ob_id", ob_id
+        CALL PLOT_FIELD_XYRL( ob_subMask(ob_id,:,:,:,:),
      &                'init_varia:Open Boundary Submask', -1, myThid )
 #ifdef ALLOW_USE_MPI
         CALL IDENTIFY_OB_POINTS(ob_id, myThid)
@@ -276,13 +277,18 @@ C     Saved count of open boundary points in process' piece of global mask
            DO i=1,sNx
              global_index = int((j-1)*sNx+(j-1)*(Nx-(iG+sNx-1))+
      &                       j*(iG-1)+i)
+C             IF (ob_id .eq. 2) then
+C              print *,"INIT_VARIA: ob_subMask:",
+C     &                (ob_subMask(ob_id,i,j,bi,bj)),
+C     &              "num_valid:",num_valid
+C             ENDIF
              if (ob_subMask(ob_id,i,j,bi,bj) .ge. 1.0 ) then
 C               print *,"IDENTIFY_OB_POINTS:",
 C     &               ob_subMask(ob_id,i,j,bi,bj)
 C     First row contains local i's. Second row contains local j's.
                sub_local_ij_ob(ob_id, 1, counter) = i
                sub_local_ij_ob(ob_id, 2, counter) = j
-               print *,"IDENTIFY_OB_POINTS: ij:",i,j
+C               print *,"IDENTIFY_OB_POINTS: ij:",i,j
 C              Indices referring to process IDs begin with 1
                sub_glo_indices_allproc(ob_id,mpiMyId+1,counter) =
      &           global_index
@@ -293,7 +299,7 @@ C              Indices referring to process IDs begin with 1
           ENDDO
         ENDDO
       ENDDO
-      print *,"INIT_VARIA: num_valid:", num_valid
+      print *,"INIT_VARIA: num_valid for mask",ob_id,":", num_valid
       numOBPnts_allproc(ob_id,mpiMyId+1) = num_valid
       END
 

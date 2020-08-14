@@ -55,10 +55,11 @@ C     ob_allFlds :: Char array of names of all fields.
 C     Defined by user input in data.diagnostics_ob:
 C     ob_flds2D    :: Char array of names of 2D fields for each open boundary mask.
 C     ob_flds3D    :: Char array of names of 3D fields for each open boundary mask.
-C     ob_fnames  :: Char array of filenames for open boundary mask files.
+C     ob_fnames    :: Char array of filenames for open boundary mask files.
 C     ob_levels3D  :: Int array of depths of 3D fields for each open boundary mask.
 C     ob_nFlds2D   :: Int array of number of 2D fields in each open boundary mask
 C     ob_nFlds3D   :: Int array of number of 3D fields in each open boundary mask
+C     ob_tags      :: Int array of unique tags assigned to every field in every mask
 
 
       INTEGER, PARAMETER :: MAX_NMASKS = 12
@@ -71,6 +72,8 @@ C     ob_nFlds3D   :: Int array of number of 3D fields in each open boundary mas
       INTEGER ob_levels3D(MAX_NFLDS, nOB_mask)
       INTEGER ob_nFlds2D(nOB_mask)
       INTEGER ob_nFlds3D(nOB_mask)
+
+      INTEGER ob_tags(nOB_mask, 2, MAX_NFLDS)
 
       _RL ob_subMask(nOB_mask,1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
 
@@ -114,7 +117,7 @@ C     ==========================================================================
       COMMON / DIAG_OB_EXTRACT_I /
      &     lookup_table, sub_local_ij_ob, sub_glo_indices_allproc,
      &     numOBPnts_allproc, num_ob_points,
-     &     ob_levels3D, ob_nFlds2D, ob_nFlds3D
+     &     ob_levels3D, ob_nFlds2D, ob_nFlds3D, ob_tags
       COMMON / DIAG_OB_EXTRACT_C /
      &     ob_flds2D, ob_flds3D, ob_fnames
 

@@ -7,4 +7,4 @@ C     nOB_mask  :: Number of open boundaries.
 
 C---------------------------------------
 
-      INTEGER, PARAMETER :: nOB_mask =  2
+      INTEGER, PARAMETER :: nOB_mask =  1
