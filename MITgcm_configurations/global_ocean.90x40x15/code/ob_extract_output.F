@@ -246,17 +246,12 @@ C       Compute time average of all sub fields
             print *,"numOBPnts_allproc:",numOBPnts_allproc(ob_id,pid+1)
            ENDDO
          ENDDO
-         print *, "numOBPnts_allproc at 1st index",
-     &    numOBPnts_allproc(1,1)
-         print *, "numOBPnts_allproc at 2nd index",
-     &    numOBPnts_allproc(1,2)
         ENDIF
 
 
 C       Now looping through each mask and communicating fields between master process and child processes
         DO ob_id=1, nOB_mask
-          print *,"For open boundary mask :", ob_id
-          print *,"time steps taken:",nTimeSteps_ob
+
 
 #ifdef ALLOW_USE_MPI
          if (mpiMyId .gt. 0) then
@@ -344,7 +339,7 @@ C     myTime :: current time in model
       _RL myTime
       _RL recv_arr2D(sNx + sNy)
       _RL recv_arr3D(Nr, sNx + sNy)
-      _RL dummyRL(1)
+      _RS dummyRS(1)
       INTEGER pid, status(MPI_STATUS_SIZE), ierror, tag
       INTEGER total_valid, i, k
       INTEGER, PARAMETER :: debug = 1
@@ -462,7 +457,7 @@ C       call WRITE_GLOBAL_BIN(total_valid,fld,ob_id,myTime,nDim)
         IF (nDim .eq. 2) then
          call MDS_WRITE_FIELD(ob_flds2D(fld,ob_id), 32, .FALSE.,
      &    .TRUE., 'RL',1, 1, 1,
-     &    global_ob2D(1:total_valid), dummyRL,
+     &    global_ob2D(1:total_valid), dummyRS,
      &    1, myIter, myThid)
 
         ELSE IF (nDim .eq. 3) then
@@ -470,9 +465,10 @@ C       call WRITE_GLOBAL_BIN(total_valid,fld,ob_id,myTime,nDim)
          print *,"MASTER ob_levels3D",ob_levels3D(fld,ob_id)
          print*,"MASTER shape",
      &   shape(global_ob3D(1:ob_levels3D(fld,ob_id),1:total_valid))
+
          call MDS_WRITE_FIELD(ob_flds3D(fld,ob_id), 32, .FALSE.,.TRUE.,
      &    'RL',ob_levels3D(fld,ob_id), 1, ob_levels3D(fld,ob_id),
-     &    global_ob3D(1:ob_levels3D(fld,ob_id),1:total_valid), dummyRL,
+     &    global_ob3D(1:ob_levels3D(fld,ob_id),1:total_valid), dummyRS,
      &    1, myIter, myThid)
         ENDIF
        ENDIF
@@ -873,7 +869,7 @@ c      Unravels global_ob and plots onto an array with dimensions Nx by Ny
 
        _RL global_correct((sNy+sNx)*(nPx*nPy))
        _RL global_NxNy(Nx,Ny,nSx,nSy)
-       _RL dummyRL(1)
+       _RS dummyRS(1)
 
        integer i,j, bi, bj, counter, ob_counter, correct
        integer fld, total_valid, ob_id, myThid, nDim, myIter
@@ -967,21 +963,28 @@ C                 !Inserting field points into NxNy array
        IF (write_to_binary .eq. 1) then
         IF (nDim .eq. 2) then
 
-         print *,"PLOT_TEST: shape2D:",shape(global_NxNy(:,:,1,1))
+         print *,"PLOT_TEST: shape2D:",shape(global_NxNy)
          call MDS_WRITE_FIELD(ob_flds2D(fld,ob_id), 32, .TRUE., .TRUE.,
      &    'RL',1, 1, 1,
-     &    global_NxNy(:,:,1,1), dummyRL,
+     &    global_NxNy(:,:,1,1), dummyRS,
      &    1, myIter, myThid)
 
+C        print *,"PLOT_TEST: reading back from file "
+C        call MDS_READ_FIELD(ob_flds2D(fld,ob_id), 32, .TRUE.,
+C     &    'RL',1, 1, 1,
+C     &    global_NxNy(:,:,1,1), dummyRS,
+C     &    1, myIter, myThid)
+
+
         ELSE IF (nDim .eq. 3) then
-         print *,"PLOT_TEST: shape3D L1:",shape(global_NxNy(:,:,1,1))
+         print *,"PLOT_TEST: shape3D L1:",shape(global_NxNy)
          call MDS_WRITE_FIELD(ob_flds3D(fld,ob_id), 32, .TRUE., .TRUE.,
      &    'RL',1, 1, 1,
-     &    global_NxNy(:,:,1,1), dummyRL,
+     &    global_NxNy(:,:,1,1), dummyRS,
      &    1, myIter, myThid)
 C        call MDS_WRITE_FIELD(ob_flds3D(fld,ob_id), 32, .TRUE., .TRUE.,
 C     &    'RL',1, 1, ob_levels3D(fld,ob_id),
-C     &    global_ob3D(1:ob_levels3D(fld,ob_id),1:total_valid), dummyRL,
+C     &    global_ob3D(1:ob_levels3D(fld,ob_id),1:total_valid), dummyRS,
 C     &    1, myIter, myThid)
 
 C     I   fName,
@@ -991,7 +994,7 @@ C     I   useCurrentDir,
 C     I   arrType,
 C     I   kSize,kLo,kHi,
 C     I   fldRL, fldRS,
-C     I   jrecord,
+C     I   jrecord -- starting record within the output file that will contain the array
 C     I   myIter,
 C     I   myThid )
 
