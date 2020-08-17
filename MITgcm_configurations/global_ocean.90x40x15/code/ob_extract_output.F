@@ -451,7 +451,8 @@ C------End of receiving arrays through MPI and appending------------------------
        print *,"Plotting final array at time", myTime
        call PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld, nDim, myIter)
 
-C       call WRITE_GLOBAL_BIN(total_valid,fld,ob_id,myTime,nDim)
+       print*,"MASTER: myIter:",myIter
+       call WRITE_GLOBAL_BIN(total_valid,fld,ob_id,myIter,nDim)
 
        IF (write_to_binary .eq. 1) then
         IF (nDim .eq. 2) then
@@ -782,14 +783,14 @@ C           end if
 
 
        SUBROUTINE CREATE_FILENAME(dir, fldNm, ob_id, filename,
-     &                            is_child, myTime)
+     &                            is_child, myIter)
 c       Creating filenames for all binary files.
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "EESUPPORT.h"
 #include "DIAGNOSTICS_OB.h"
 
-       integer is_child, ob_id
+       integer is_child, ob_id, myIter
        _RL myTime
        character*50 filename
        character*8 fldNm
@@ -797,13 +798,15 @@ c       Creating filenames for all binary files.
        character*3 str_px, str_py
        character*11 str_time
 
-       character str_ob
+       character*2 str_ob
+       character*8 str_iter
 
 c       If creating a filename for a child process, create a name in the format: T.001.002.bin
 c       T for temp or mask for mask
 c       001 for index 1 in x axis
 c       002 for index 2 in x axis
-       write(str_ob, "(I1)") ob_id
+       write(str_ob, "(I2.2)") ob_id
+       write(str_iter, "(I8.8)") myIter
        write(str_time, "(F11.0)") myTime
 
        if (is_child .eq. 1) then
@@ -813,31 +816,37 @@ c       002 for index 2 in x axis
      &                      str_time,str_px, ".", str_py, ".bin"
        else
 c         Creating a filename for global arrays
-         write(filename, "(7A)") dir, fldNm, "_on_mask", str_ob,
-     &                           "_global.",str_time,"meta"
+C         write(filename, "(7A)") dir, fldNm, "_on_mask", str_ob,
+C     &                           "_global.",str_time,".bin"
+
+         write(filename, "(7A)") "MASK_", str_ob, "_", fldNm,
+     &          "_", str_iter, ".bin"
        end if
 
        end
 
 
-       SUBROUTINE WRITE_GLOBAL_BIN(total_valid,fld,ob_id,myTime,nDim)
+       SUBROUTINE WRITE_GLOBAL_BIN(total_valid,fld,ob_id,myIter,nDim)
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "EESUPPORT.h"
+#include "DIAGNOSTICS_SIZE.h"
+#include "DIAGNOSTICS.h"
 #include "DIAGNOSTICS_OB.h"
 
-       integer total_valid, ob_id, fld, nDim
+       integer total_valid, ob_id, fld, nDim, myIter
 
        character*2 dir
        character*50 filename
-       _RL myTime
 
 c      Writing global array to binary file
        dir = "./"
 
+       print *,"WRITE_GLO:cdiag", cdiag
+
        IF (nDim .eq. 2) then
         call CREATE_FILENAME(dir, ob_flds2D(fld,ob_id), ob_id, filename
-     &                      ,0, myTime)
+     &                      ,0, myIter)
         open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
         write(1) global_ob2D(1:total_valid)
         print *,"WRITE_GLOBAL_BIN: 2D field",ob_flds2D(fld,ob_id),
@@ -845,7 +854,7 @@ c      Writing global array to binary file
 
        ELSE IF (nDim .eq. 3) then
          call CREATE_FILENAME(dir, ob_flds3D(fld,ob_id), ob_id, filename
-     &                      ,0, myTime)
+     &                      ,0, myIter)
          open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
          write(1) global_ob3D(1:ob_levels3D(fld,ob_id),1:total_valid)
          print *,"WRITE_GLOBAL_BIN: 3D field ",ob_flds3D(fld,ob_id),
@@ -875,7 +884,7 @@ c      Unravels global_ob and plots onto an array with dimensions Nx by Ny
        integer fld, total_valid, ob_id, myThid, nDim, myIter
        integer, parameter :: plot_on_NxNy = 1
        integer, parameter :: print_correctness = 1
-       integer, parameter :: write_to_binary = 1
+       integer, parameter :: write_to_binary = 0
 
        character*8 fldNm
        character*30 plotTitle

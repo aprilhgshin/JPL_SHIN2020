@@ -8,19 +8,95 @@ import sys
 sys.path.append('/home/mitgcm/Work/MITgcm/utils/python/MITgcmutils/')
 import MITgcmutils as mitgcm
 
+def test_ob_outputs3D(output_dir, mask_dir, ob_mask, ob_output, fname):
+
+    mask = np.fromfile(str(mask_dir / ob_mask), dtype='>f4').reshape(40,90)
+#    field = np.fromfile(str(output_dir / field), dtype='>f4')
+
+    fname1 = fname+".0000036000.001.001"
+    fname2 = fname + ".0000036000.002.001"
+
+    field1 = mitgcm.rdmds(str(output_dir / fname1), itrs=-1)#.reshape(40,90)
+    field2 = mitgcm.rdmds(str(output_dir / fname2), itrs=-1)#.reshape(40,90)
+
+    plt.figure(num=1,clear=True, figsize=(7,6))
+    plt.subplot(211)
+    plt.imshow(field1[0], origin='lower')#, vmin=-2, vmax=16)
+    plt.colorbar()
+    plt.title(fname)
+    plt.subplot(212)
+    plt.imshow(field2[0], origin='lower')
+    plt.colorbar()
+    plt.show()
+
+    plt.title("mask")
+    plt.imshow(mask, origin='lower')
+    plt.colorbar()
+    plt.show()
+
+    print(mask.shape)
+
+    output = np.fromfile(str(output_dir / ob_output), dtype='>f8')
+
+    newFieldOnMask = np.zeros(len(output))
+    diff = np.zeros(len(output))
+
+    print(field1[0][2][46])
+    print(len(mask[0])-1)
+
+    counter = 0
+
+    for row in range(len(mask)-1):
+        for col in range(len(mask[0])-1):
+#                print("mask >= 1:", mask[row][col], "field:", field1[0][row][col])
+#                print("corresponding output:", output[counter])
+            if(mask[row][col] > 0):
+                if (col <= 45):
+                    newFieldOnMask[counter] =  field1[0][row][col]
+                elif (col > 45):
+                    newFieldOnMask[counter] =  field2[0][row][col]
+                counter += 1
+
+    print("len:", len(newFieldOnMask))
+    diff = (output - newFieldOnMask)
+    print("difference between field and output:",diff>0.1)
+
+    plt.subplot(211)
+    plt.plot(output, 'r--', linewidth=2.5, label="ob output")
+    plt.plot(newFieldOnMask, 'b', label="original field")
+    plt.title("OB Output VS. Original Field")
+    plt.legend()
+
+    plt.subplot(212)
+    plt.plot(diff)
+    plt.title("Difference between Output and Original field:")
+    plt.show()
+
+
+
+
+
+
 if __name__ == "__main__":
 
 
 
     output_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run/')
-    field = []
-    arr = np.zeros(45)
-    newfield=[]
+    mask_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/input')
+#    field = []
+#    arr = np.zeros(45)
+#    newfield=[]
+
+
+#    test_ob_outputs(output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_THETA   _00036001.bin", 'T')
+    test_ob_outputs3D(output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_SALT    _00036001.bin", 'S')
+
+
 
 #    field = mitgcm.rdmds(str(output_dir / 'THETA'), itrs=-1,fill_value=0.0)
 #    print(np.fromfile(str(output_dir / 'THETA.001.001.data'), dtype='>f4').shape)
-    field2 = (np.fromfile(str(output_dir / 'THETA.data'), dtype='>f4'))
-    print(field2.shape)
+#    field2 = (np.fromfile(str(output_dir / 'THETA.data'), dtype='>f4'))
+#    print(field2.shape)
 #    newfield = (np.append(arr,field2)).reshape(40,90)
 #    print(newfield)
 #    lines = open(str(output_dir / 'THETA   _on_mask1_global.    122400.meta'))
