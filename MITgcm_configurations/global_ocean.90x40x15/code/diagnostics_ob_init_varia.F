@@ -153,6 +153,12 @@ C---------------------------------------------------------
         ENDDO
       ENDDO
 
+      DO i=1, (sNy+sNx)*(nPx*nPy)
+        global_ob2D(i) = 0.0
+        DO k=1, Nr
+          global_ob3D(i,k) = 0.0
+        ENDDO
+      ENDDO
 
       DO ob_id=1, nOB_mask
         num_ob_points(ob_id) = 0
@@ -168,8 +174,8 @@ C---------------------------------------------------------
             subFieldOnMask_2D(ob_id, fld, i) = 0.0
             subFieldOnMask_2Davg(ob_id, fld, i) = 0.0
             DO k=1, Nr
-              subFieldOnMask_3D(ob_id, fld, k, i) = 0.0
-              subFieldOnMask_3Davg(ob_id, fld, k, i) = 0.0
+              subFieldOnMask_3D(ob_id, fld, i, k) = 0.0
+              subFieldOnMask_3Davg(ob_id, fld, i, k) = 0.0
             ENDDO
           ENDDO
         ENDDO

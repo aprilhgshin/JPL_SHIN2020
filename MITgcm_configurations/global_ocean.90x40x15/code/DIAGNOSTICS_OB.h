@@ -84,13 +84,15 @@ C     First row contains local i's. Second row contains local j's.
       INTEGER numOBPnts_allproc(nOB_mask, nPx*nPy)
 
       _RL subFieldOnMask_2D(nOB_mask,MAX_NFLDS, sNx + sNy)
-      _RL subFieldOnMask_3D(nOB_mask,MAX_NFLDS, Nr, sNx + sNy)
+C      _RL subFieldOnMask_3D(nOB_mask,MAX_NFLDS, Nr, sNx + sNy)
+      _RL subFieldOnMask_3D(nOB_mask,MAX_NFLDS, sNx + sNy, Nr)
       _RL subFieldOnMask_2Davg(nOB_mask,MAX_NFLDS, sNx + sNy)
-      _RL subFieldOnMask_3Davg(nOB_mask,MAX_NFLDS, Nr, sNx + sNy)
+C      _RL subFieldOnMask_3Davg(nOB_mask,MAX_NFLDS, Nr, sNx + sNy)
+      _RL subFieldOnMask_3Davg(nOB_mask,MAX_NFLDS, sNx + sNy, Nr)
 
       INTEGER lookup_table(nOB_mask, Ny*Nx)
       _RL global_ob2D((sNy+sNx)*(nPx*nPy))
-      _RL global_ob3D(Nr,(sNy+sNx)*(nPx*nPy))
+      _RL global_ob3D((sNy+sNx)*(nPx*nPy), Nr)
 
 
       _RL global_ob_mask(nOB_mask,Nx, Ny,nSx,nSy)

@@ -151,6 +151,9 @@ C      Although we read REAL*4 values, most built in functions have _RS input wh
 #ifdef ALLOW_USE_MPI
        integer pid, ierror, status(MPI_STATUS_SIZE)
        common / mpi_var / status, ierror
+C  All MPI objects (e.g., MPI_Datatype, MPI_Comm) are of type INTEGER in Fortran.
+       integer floattype
+       integer full_dim(2), sub_dim(2), start_ind(2)
 #endif
 
        common / local_var / total_valid
@@ -282,12 +285,33 @@ C        Field numbers, fld2D and fld3D, are used as message tags.
             DO k=1, ob_levels3D(fld3D,ob_id)
              print *,"printing at level k",k
              call PRINT_FLOAT_ARR(
-     &             subFieldOnMask_3Davg(ob_id,fld3D,k,:), sNx + sNy)
+     &             subFieldOnMask_3Davg(ob_id,fld3D,:,k), sNx + sNy)
             ENDDO
+
+            full_dim(1) = Nr
+            full_dim(2) = sNx+sNy
+            sub_dim(1) = ob_levels3D(fld3D,ob_id)
+            sub_dim(2) = sNx+sNy
+            start_ind(1) = 1
+            start_ind(2) = 1
+
+C            call MPI_Type_create_subarray(2,
+C     &                         full_dim,
+C     &                         sub_dim,
+C     &                         start_ind,
+C     &                         MPI_ORDER_FORTRAN,
+C     &                         MPI_REAL,
+C     &                         floattype,
+C     &                         ierror)
+
+            call MPI_TYPE_CONTIGUOUS(ob_levels3D(fld3D,ob_id)*(sNx+sNy),
+     &                               MPI_REAL, floattype, ierror)
+            call MPI_TYPE_COMMIT(floattype, ierror)
             call MPI_SEND(
-     &  subFieldOnMask_3Davg(ob_id,fld3D,1,:)
-     &  ,(sNx+sNy), MPI_REAL,0,
+     &  subFieldOnMask_3Davg(ob_id,fld3D,:,:)
+     &  ,1, floattype,0,
      &  tag, MPI_COMM_MODEL, ierror)
+            call MPI_TYPE_FREE(floattype, ierror)
 C     &  subFieldOnMask_3Davg(ob_id,fld3D,1:ob_levels3D(fld3D,ob_id),:)
 C     &  ,ob_levels3D(fld3D,ob_id)*(sNx+sNy), MPI_REAL,0,
 C     &  tag, MPI_COMM_MODEL, ierror)
@@ -353,7 +377,7 @@ C     myTime :: current time in model
       INTEGER fld, ob_id, nDim, myThid, myIter
       _RL myTime
       _RL recv_arr2D(sNx + sNy)
-      _RL recv_arr3D(Nr, sNx + sNy)
+      _RL recv_arr3D(sNx + sNy, Nr)
       _RS dummyRS(1)
       INTEGER pid, status(MPI_STATUS_SIZE), ierror, tag
       INTEGER total_valid, i, k
@@ -366,11 +390,8 @@ C     myTime :: current time in model
 
       DO i=1, sNx + sNy
         recv_arr2D(i) = 0.0
-      ENDDO
-
-      DO k=1, Nr
-       DO i=1, sNx + sNy
-         recv_arr3D(k,i) = 0.0
+        DO k=1, 3
+         recv_arr3D(i,k) = 0.0
        ENDDO
       ENDDO
 
@@ -417,7 +438,7 @@ C        print *,"MASTER 3D: num_ob_points(ob_id)",num_ob_points(ob_id)
          do k=1, ob_levels3D(fld,ob_id)
           print *,"MASTER 3D: global_ob3D at depth",k,"with total_valid"
      &            ,total_valid
-          call PRINT_FLOAT_ARR(global_ob3D(k,:), total_valid)
+          call PRINT_FLOAT_ARR(global_ob3D(:,k), total_valid)
          enddo
         end if
        end if
@@ -464,7 +485,7 @@ C       If number of valid elements is greater than or equal to 1
           tag = ob_tags(ob_id, 2, fld)
           print *,"MASTER 3D receiving from tag", tag
           print *,"recv_arr3D shape:",shape(recv_arr3D)
-          call MPI_RECV(recv_arr3D(1:ob_levels3D(fld,ob_id),:),
+          call MPI_RECV(recv_arr3D(:,1:ob_levels3D(fld,ob_id)),
      &                    ob_levels3D(fld,ob_id)*(sNx+sNy),MPI_REAL,
      &                    pid, tag ,MPI_COMM_MODEL, status, ierror)
           if (debug .eq. 1) then
@@ -475,7 +496,7 @@ C       If number of valid elements is greater than or equal to 1
      &                       ," valid elements"
             DO k=1, ob_levels3D(fld,ob_id)
              print *,"printing at level k", k
-             call PRINT_FLOAT_ARR(recv_arr3D(k,:),sNx+sNy)
+             call PRINT_FLOAT_ARR(recv_arr3D(:,k),sNx+sNy)
            ENDDO
           end if
 C         !append_ob_values3D params: ob_id, pid, fld, ob_values
@@ -520,11 +541,11 @@ C------End of receiving arrays through MPI and appending------------------------
          print *, "MASTER_PROC_TASKS: total_valid",total_valid
          print *,"MASTER ob_levels3D",ob_levels3D(fld,ob_id)
          print*,"MASTER shape",
-     &   shape(global_ob3D(1:ob_levels3D(fld,ob_id),1:total_valid))
+     &   shape(global_ob3D(1:total_valid, 1:ob_levels3D(fld,ob_id)))
 
          call MDS_WRITE_FIELD(ob_flds3D(fld,ob_id), 32, .FALSE.,.TRUE.,
      &    'RL',ob_levels3D(fld,ob_id), 1, ob_levels3D(fld,ob_id),
-     &    global_ob3D(1:ob_levels3D(fld,ob_id),1:total_valid), dummyRS,
+     &    global_ob3D(1:total_valid, 1:ob_levels3D(fld,ob_id)), dummyRS,
      &    1, myIter, myThid)
         ENDIF
        ENDIF
@@ -567,9 +588,9 @@ C     Initializes average fields to zero
 
          nFlds3D = ob_nFlds3D(ob_id)
          DO fld3D=1, nFlds3D
-          DO k=1, ob_levels3D(fld3D, ob_id)
-           DO i=1, sNx+sNy
-            subFieldOnMask_3Davg(ob_id,fld3D,k,i) = 0.0
+          DO i=1, sNx+sNy
+           DO k=1, ob_levels3D(fld3D, ob_id)
+            subFieldOnMask_3Davg(ob_id,fld3D,i,k) = 0.0
            ENDDO
           ENDDO
          ENDDO
@@ -658,25 +679,25 @@ C      Looping through 3D fields, if any.
            DO k=1, ob_levels3D(fld3D,ob_id)
 C            print *,"SET_SUBFIELDS: k",k,"loc_count",loc_count
             IF (ob_flds3D(fld3D,ob_id) .eq. 'UVEL') then
-             subFieldOnMask_3D(ob_id,fld3D,k,loc_count) =
+             subFieldOnMask_3D(ob_id,fld3D,loc_count,k) =
      &                                        uVel(i,j,k,bi,bj)
             ELSE IF (ob_flds3D(fld3D,ob_id) .eq. 'VVEL') then
-              subFieldOnMask_3D(ob_id,fld3D,k,loc_count) =
+              subFieldOnMask_3D(ob_id,fld3D,loc_count,k) =
      &                                        vVel(i,j,k,bi,bj)
             ELSE IF (ob_flds3D(fld3D,ob_id) .eq. 'THETA') then
-              subFieldOnMask_3D(ob_id,fld3D,k,loc_count) =
+              subFieldOnMask_3D(ob_id,fld3D,loc_count,k) =
      &                                        theta(i,j,k,bi,bj)
             ELSE IF (ob_flds3D(fld3D,ob_id) .eq. 'SALT') then
 C              print *,"SET_SUBFIELDS: ij",i,j,"salt:",salt(i,j,k,bi,bj)
-              subFieldOnMask_3D(ob_id,fld3D,k,loc_count)=
+              subFieldOnMask_3D(ob_id,fld3D,loc_count,k)=
      &                                       salt(i,j,k,bi,bj)
 C              print *,"SET_SUBFIELDS:subFieldOnMask_3D",
-C     &                subFieldOnMask_3D(ob_id,fld3D,k,loc_count)
+C     &                subFieldOnMask_3D(ob_id,fld3D,loc_count,k)
             ELSE IF (ob_flds3D(fld3D,ob_id) .eq. 'GU') then
-              subFieldOnMask_3D(ob_id,fld3D,k,loc_count) =
+              subFieldOnMask_3D(ob_id,fld3D,loc_count,k) =
      &                                        gU(i,j,k,bi,bj)
             ELSE IF (ob_flds3D(fld3D,ob_id) .eq. 'GV') then
-              subFieldOnMask_3D(ob_id,fld3D,k,loc_count) =
+              subFieldOnMask_3D(ob_id,fld3D,loc_count,k) =
      &                                        gV(i,j,k,bi,bj)
             ENDIF
            ENDDO
@@ -689,7 +710,7 @@ C     &                subFieldOnMask_3D(ob_id,fld3D,k,loc_count)
       print *, "FINAL set 2D:"
       call PRINT_FLOAT_ARR(subFieldOnMask_2D(1,1,:), sNx+sNy)
       print *,"FINAL set 3D first level:"
-      call PRINT_FLOAT_ARR(subFieldOnMask_3D(1,1,1,:), (sNx+sNy))
+      call PRINT_FLOAT_ARR(subFieldOnMask_3D(1,1,:,1), (sNx+sNy))
 
       END
 
@@ -712,9 +733,9 @@ C       Cumulate Diagnostics_ob fields
         ENDDO
         DO fld3D=1, ob_nFlds3D(ob_id)
          DO k=1, ob_levels3D(fld3D, ob_id)
-          subFieldOnMask_3Davg(ob_id,fld3D,k,i)
-     &                    = subFieldOnMask_3Davg(ob_id,fld3D,k,i)
-     &                      + subFieldOnMask_3D(ob_id,fld3D,k,i)
+          subFieldOnMask_3Davg(ob_id,fld3D,i,k)
+     &                    = subFieldOnMask_3Davg(ob_id,fld3D,i,k)
+     &                      + subFieldOnMask_3D(ob_id,fld3D,i,k)
          ENDDO
         ENDDO
        ENDDO
@@ -740,8 +761,8 @@ C       Computes average of Diagnostics_ob fields using the number of time steps
            ENDDO
            DO fld3D=1, ob_nFlds3D(ob_id)
             DO k=1, ob_levels3D(fld3D,ob_id)
-             subFieldOnMask_3Davg(ob_id,fld3D,k,i) =
-     &              subFieldOnMask_3Davg(ob_id,fld3D,k,i)/nTimeSteps_ob
+             subFieldOnMask_3Davg(ob_id,fld3D,i,k) =
+     &              subFieldOnMask_3Davg(ob_id,fld3D,i,k)/nTimeSteps_ob
             ENDDO
            ENDDO
           ENDDO
@@ -806,7 +827,7 @@ C           end if
 #include "EESUPPORT.h"
 #include "DIAGNOSTICS_OB.h"
 
-        _RL ob_values(Nr, sNx+sNy)
+        _RL ob_values(sNx+sNy, Nr)
         integer num_valid, i, k, ob_index, ob_id, pid, fld
         integer, parameter :: print_debug = 1
 
@@ -824,8 +845,8 @@ C           end if
            print*,"APPEND_OB_VALUE3D: ob_index",ob_index
          endif
          do k=1, ob_levels3D(fld,ob_id)
-          global_ob3D(k,int(ob_index)) = ob_values(k,i)
-          print*,"ob_values",ob_values(k,i),"at k",k,"i",i
+          global_ob3D(ob_index,k) = ob_values(i,k)
+          print*,"ob_values",ob_values(i,k),"at k",k,"i",i
          enddo
        enddo
 
@@ -833,7 +854,7 @@ C           end if
          do k=1, ob_levels3D(fld,ob_id)
           print *, "APPEND_OB_VALUE: global_ob3D with total depth:",
      &       ob_levels3D(fld, ob_id), "printing for depth #",k
-          call PRINT_FLOAT_ARR(global_ob3D(1,:),
+          call PRINT_FLOAT_ARR(global_ob3D(:,k),
      &                            (sNy+sNx)*(nPx*nPy))
          enddo
 C     &                       ob_levels3D(fld,ob_id)*(sNy+sNx)*(nPx*nPy))
@@ -916,7 +937,7 @@ c      Writing global array to binary file
          call CREATE_FILENAME(dir, ob_flds3D(fld,ob_id), ob_id, filename
      &                      ,0, myIter)
          open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
-         write(1) global_ob3D(1:ob_levels3D(fld,ob_id),1:total_valid)
+         write(1) global_ob3D(1:total_valid,1:ob_levels3D(fld,ob_id))
          print *,"WRITE_GLOBAL_BIN: 3D field ",ob_flds3D(fld,ob_id),
      &           "written to file:",filename
 
@@ -996,7 +1017,7 @@ C                 !Inserting field points into NxNy array
                    global_NxNy(i,j,bi,bj) = global_ob2D(ob_counter)
                   else if  (nDim .eq. 3) then
                    global_NxNy(i,j,bi,bj) =
-     &             global_ob3D((ob_levels3D(fld,ob_id)/2)+1,ob_counter)
+     &             global_ob3D(ob_counter,(ob_levels3D(fld,ob_id)/2)+1)
                   endif
                   if (global_ob_mask(ob_id,i,j,bi,bj) .eq. 0) then
                     correct = 0
