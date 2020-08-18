@@ -194,7 +194,7 @@ c       field(1-Olx:sNx+Olx,1-Oly:sNy+Oly,nSx,nSy)
      &                   (abs(1-OLy)+(sNy+OLy))*nSx*nSy
 
 
-        CALL SET_SUBFIELDS(myThid)
+        CALL SET_SUBFIELDS(myThid, myIter)
         if (debug .eq. 1) then
          print *,"OB_EXTRACT_OUTPUT: num valid elements:",
      &              numOBPnts_allproc(1,mpiMyId+1)
@@ -255,9 +255,9 @@ C       Now looping through each mask and communicating fields between master pr
 
 #ifdef ALLOW_USE_MPI
          if (mpiMyId .gt. 0) then
-          print *,"Process",mpiMyId, "at mask", ob_id
-          print *,"numOBPnts_allproc(ob_id,mpiMyId+1)",
-     &             numOBPnts_allproc(ob_id,mpiMyId+1)
+          print *,"OB_EXTRACT_OUTPUT: Process",mpiMyId,"at mask",ob_id
+          print *,"OB_EXTRACT_OUTPUTnumOBPnts_allproc(ob_id,mpiMyId+1)"
+     &             ,numOBPnts_allproc(ob_id,mpiMyId+1)
 C        Processes 1 and onward send sub fields to Parent process
 C        Field numbers, fld2D and fld3D, are used as message tags.
 
@@ -266,16 +266,31 @@ C        Field numbers, fld2D and fld3D, are used as message tags.
            print *,"Yes going to send for mask", ob_id
            do fld2D=1, ob_nFlds2D(ob_id)
             tag = ob_tags(ob_id, 1, fld2D)
+            print*,"Sending with tag:",tag,"for ob_id",ob_id,
+     &             "fld2D",fld2D, "at myIter", myIter, "proc",mpiMyId
             call MPI_SEND(subFieldOnMask_2Davg(ob_id,fld2D,:),sNx+sNy
      &      ,MPI_REAL,0, tag, MPI_COMM_MODEL, ierror)
            end do
 
            do fld3D=1, ob_nFlds3D(ob_id)
             tag = ob_tags(ob_id, 2, fld3D)
+            print*,"Sending with tag:",tag,"for ob_id",ob_id,
+     &             "fld3D",fld3D, "at myIter", myIter, "proc",mpiMyId
+            print *,"Sending array shape: ",
+     &                shape(subFieldOnMask_3Davg(ob_id,fld3D,:,:))
+            print *,"Sending array:"
+            DO k=1, ob_levels3D(fld3D,ob_id)
+             print *,"printing at level k",k
+             call PRINT_FLOAT_ARR(
+     &             subFieldOnMask_3Davg(ob_id,fld3D,k,:), sNx + sNy)
+            ENDDO
             call MPI_SEND(
-     &              subFieldOnMask_3Davg(ob_id,fld3D,:,:),
-     &              ob_levels3D(fld3D,ob_id)*(sNx+sNy), MPI_REAL,0,
-     &              tag, MPI_COMM_MODEL, ierror)
+     &  subFieldOnMask_3Davg(ob_id,fld3D,1,:)
+     &  ,(sNx+sNy), MPI_REAL,0,
+     &  tag, MPI_COMM_MODEL, ierror)
+C     &  subFieldOnMask_3Davg(ob_id,fld3D,1:ob_levels3D(fld3D,ob_id),:)
+C     &  ,ob_levels3D(fld3D,ob_id)*(sNx+sNy), MPI_REAL,0,
+C     &  tag, MPI_COMM_MODEL, ierror)
            end do
           end if
          end if
@@ -368,24 +383,46 @@ C     - Indices referring to process IDs begin with 1 in numOBPnts_allproc and
 C          subFieldOnMask_2Davg
 C-------------------------------------------------------------------------------
 
-
+      print *,"MASTER: numOBPnts_allproc ",
+     &            numOBPnts_allproc(ob_id,1), "at ob_id",ob_id
       IF (numOBPnts_allproc(ob_id,1).ge.1) then
        if (nDim .eq. 2) then
+        print *,"MASTER2D: 2 dimensional field appending local field",
+     &           ob_flds2D(fld,ob_id)
         call APPEND_OB_VALUE2D(ob_id, 0,
      &                            subFieldOnMask_2Davg(ob_id,fld,:))
+        total_valid = total_valid + numOBPnts_allproc(ob_id, 1)
+
+        if (debug .eq. 1) then
+         print *,"MASTER 2D: mask number:", ob_id
+         print *,"MASTER 2D: appended local field to global array"
+     &          ," with ",numOBPnts_allproc(ob_id, 1),"valid elements:"
+C         print *,"MASTER 2D: num_ob_points(ob_id)",num_ob_points(ob_id)
+         print *,"MASTER 2D: global_ob2D: with total_valid",total_valid
+         call PRINT_FLOAT_ARR(global_ob2D, total_valid)
+        end if
+
        else if (nDim .eq. 3) then
+        print *,"MASTER3D: 3 dimensional field appending local field",
+     &           ob_flds3D(fld,ob_id)
         call APPEND_OB_VALUE3D(ob_id, 0, fld,
      &                            subFieldOnMask_3Davg(ob_id,fld,:,:))
-       endif
-       total_valid = total_valid + numOBPnts_allproc(ob_id, 1)
-       if (debug .eq. 1) then
-        print *,"MASTER: mask number:", ob_id
-        print *,"MASTER: appending local field to global array"
-     &           ," with ",numOBPnts_allproc(ob_id, 1),"valid elements:"
-        print *,"num_ob_points(ob_id)",num_ob_points(ob_id)
-        call PRINT_FLOAT_ARR(global_ob2D, total_valid)
+        total_valid = total_valid + numOBPnts_allproc(ob_id, 1)
+
+        if (debug .eq. 1) then
+         print *,"MASTER 3D: mask number:", ob_id
+         print *,"MASTER 3D: appended local field to global array"
+     &          ," with ",numOBPnts_allproc(ob_id, 1),"valid elements:"
+C        print *,"MASTER 3D: num_ob_points(ob_id)",num_ob_points(ob_id)
+         do k=1, ob_levels3D(fld,ob_id)
+          print *,"MASTER 3D: global_ob3D at depth",k,"with total_valid"
+     &            ,total_valid
+          call PRINT_FLOAT_ARR(global_ob3D(k,:), total_valid)
+         enddo
+        end if
        end if
-      end if
+
+      ENDIF
 
 C-----End of appending local array----------------------------------------------
 
@@ -399,30 +436,48 @@ C-------------------------------------------------------------------------------
        DO pid=1, mpiNprocs-1
 C       If number of valid elements is greater than or equal to 1
         IF (numOBPnts_allproc(ob_id,pid+1) .ge. 1) then
+         print *,"MASTER: DO pid loop to receive with MPI"
          print*,"MASTER: ",numOBPnts_allproc(ob_id,pid+1),
-     &           "elements for mask", ob_id
+     &           "elements for mask", ob_id, "at pid",pid
          print *,"MASTER: time to receive",
      &                    numOBPnts_allproc(ob_id,pid+1), "elements"
          IF (nDim .eq. 2) then
+          print *, "MASTER HERE in dim 2"
           tag = ob_tags(ob_id, 1, fld)
           call MPI_RECV(recv_arr2D, sNx+sNy, MPI_REAL,
      &                   pid, tag ,MPI_COMM_MODEL, status, ierror)
 
           if (debug .eq. 1) then
-           print *, "Received from process", pid
-           print *, "Received recv_arr2D for fields"
-           print *, "shape:", shape(recv_arr2D)
-           print *, "Displaying FULL array, beyond number of "
-     &                       ,"valid elements"
+           print *, "MASTER 2D Received from process", pid
+           print *, "MASTER Received recv_arr2D for fields"
+           print *, "MASTER recv_arr2D shape:", shape(recv_arr2D)
+           print *, "MASTER Displaying FULL 2D array, beyond number of"
+     &                       ," valid elements"
            call PRINT_FLOAT_ARR(recv_arr2D, sNx+sNy)
           end if
 
           call APPEND_OB_VALUE2D(ob_id, pid, recv_arr2D)
 
          ELSE IF (nDim .eq. 3) then
+           print *, "MASTER HERE in dim 3"
+
           tag = ob_tags(ob_id, 2, fld)
-          call MPI_RECV(recv_arr3D, ob_levels3D(fld,ob_id)*(sNx+sNy),
-     &         MPI_REAL, pid, tag ,MPI_COMM_MODEL, status, ierror)
+          print *,"MASTER 3D receiving from tag", tag
+          print *,"recv_arr3D shape:",shape(recv_arr3D)
+          call MPI_RECV(recv_arr3D(1:ob_levels3D(fld,ob_id),:),
+     &                    ob_levels3D(fld,ob_id)*(sNx+sNy),MPI_REAL,
+     &                    pid, tag ,MPI_COMM_MODEL, status, ierror)
+          if (debug .eq. 1) then
+            print *, "MASTER 3D Received from process", pid
+            print *, "MASTER Received recv_arr3D for fields"
+            print *, "MASTER recv_arr3D shape:", shape(recv_arr3D)
+            print *, "MASTER Displaying FULL 3D array, beyond number of"
+     &                       ," valid elements"
+            DO k=1, ob_levels3D(fld,ob_id)
+             print *,"printing at level k", k
+             call PRINT_FLOAT_ARR(recv_arr3D(k,:),sNx+sNy)
+           ENDDO
+          end if
 C         !append_ob_values3D params: ob_id, pid, fld, ob_values
           call APPEND_OB_VALUE3D(ob_id,pid, fld, recv_arr3D)
 
@@ -522,7 +577,7 @@ C     Initializes average fields to zero
 
       END
 
-      SUBROUTINE SET_SUBFIELDS(myThid)
+      SUBROUTINE SET_SUBFIELDS(myThid, myIter)
 
 C     Stores desired fields chosen by user into array subFields
 C     Assign unique tags to all 2D and 3D fields for MPI_SEND
@@ -540,7 +595,7 @@ C     Assign unique tags to all 2D and 3D fields for MPI_SEND
 #include "DIAGNOSTICS_OB.h"
 
 
-      INTEGER ob_id, myThid, loc_count
+      INTEGER ob_id, myThid, loc_count, myIter
       INTEGER i, j, k, bi, bj, numValid, tag
       INTEGER nFlds2D, nFlds3D, fld2D, fld3D
       print *,"Inside SET_SUBFIELDS"
@@ -555,7 +610,7 @@ C      Looping through 2D fields first, if any.
        nFlds2D = ob_nFlds2D(ob_id)
        DO fld2D=1, nFlds2D
         ob_tags(ob_id, 1, fld2D) =  tag
-        print *,"SET_SUBFIELDS: tag",tag
+        print *,"SET_SUBFIELDS: tag",tag, "in myIter",myIter
         tag = tag + 1
         DO bj = myByLo(myThid), myByHi(myThid)
          DO bi = myBxLo(myThid), myBxHi(myThid)
@@ -593,7 +648,7 @@ C      Looping through 3D fields, if any.
        nFlds3D = ob_nFlds3D(ob_id)
        DO fld3D=1, nFlds3D
         ob_tags(ob_id, 2, fld3D) = tag
-        print *,"SET_SUBFIELDS: tag",tag
+        print *,"SET_SUBFIELDS: tag",tag, "in myIter",myIter
         tag = tag + 1
         DO bj = myByLo(myThid), myByHi(myThid)
          DO bi = myBxLo(myThid), myBxHi(myThid)
@@ -714,7 +769,7 @@ C       Store field value at position in final global array global_ob.
          integer, parameter :: print_debug = 0
 
          if (print_debug .eq. 1) then
-          print *, "APPEND_OB_VALUE: sub_glo_indices_allproc:"
+          print *, "APPEND_OB_VALUE2D: sub_glo_indices_allproc:"
           call PRINT_INT_ARR(sub_glo_indices_allproc(ob_id,pid+1,:)
      &                         ,sNx+sNy )
          end if
@@ -723,7 +778,7 @@ C       Store field value at position in final global array global_ob.
          num_valid = numOBPnts_allproc(ob_id,pid+1)
 
          if (print_debug .eq. 1) then
-           print *, "APPEND_OB_VALUE: num_valid", num_valid
+           print *, "APPEND_OB_VALUE2D: num_valid", num_valid
          end if
 
          do i=1, num_valid
@@ -731,15 +786,15 @@ C       Store field value at position in final global array global_ob.
      &                 sub_glo_indices_allproc(ob_id,pid+1,i))
 C           if (ob_index .le. (sNy+sNx)*(nPx*nPy)) then
              if (print_debug .eq. 1) then
-               print *, "APPEND_OB_VALUE: ob_index", ob_index
-               print *, "APPEND_OB_VALUE: counter i",i
-               print *, "APPEND_OB_VALUE: ob_value", ob_values(i)
+               print *, "APPEND_OB_VALUE2D: ob_index", ob_index
+               print *, "APPEND_OB_VALUE2D: counter i",i
+               print *, "APPEND_OB_VALUE2D: ob_value", ob_values(i)
              end if
              global_ob2D(ob_index) = ob_values(i)
 C           end if
        end do
          if (print_debug .eq. 1) then
-           print *, "APPEND_OB_VALUE: global_ob2D:"
+           print *, "APPEND_OB_VALUE2D: global_ob2D:"
            call PRINT_FLOAT_ARR(global_ob2D, (sNy+sNx)*(nPx*nPy))
          end if
 
@@ -762,21 +817,26 @@ C           end if
           print *,"APPEND_OB_VALUE3D: pid",pid
         endif
 
-        do k=1, ob_levels3D(fld,ob_id)
-         do i=1, num_valid
-          ob_index = lookup_table(ob_id,
+        do i=1, num_valid
+         ob_index = lookup_table(ob_id,
      &                 sub_glo_indices_allproc(ob_id,pid+1,i))
-          if (print_debug .eq. 1) then
-            print*,"APPEND_OB_VALUE3D: ob_index",ob_index
-          endif
+         if (print_debug .eq. 1) then
+           print*,"APPEND_OB_VALUE3D: ob_index",ob_index
+         endif
+         do k=1, ob_levels3D(fld,ob_id)
           global_ob3D(k,int(ob_index)) = ob_values(k,i)
+          print*,"ob_values",ob_values(k,i),"at k",k,"i",i
          enddo
        enddo
 
        if (print_debug .eq. 1) then
-         print *, "APPEND_OB_VALUE: global_ob3D:"
-         call PRINT_FLOAT_ARR(global_ob3D,
-     &                       ob_levels3D(fld,ob_id)*(sNy+sNx)*(nPx*nPy))
+         do k=1, ob_levels3D(fld,ob_id)
+          print *, "APPEND_OB_VALUE: global_ob3D with total depth:",
+     &       ob_levels3D(fld, ob_id), "printing for depth #",k
+          call PRINT_FLOAT_ARR(global_ob3D(1,:),
+     &                            (sNy+sNx)*(nPx*nPy))
+         enddo
+C     &                       ob_levels3D(fld,ob_id)*(sNy+sNx)*(nPx*nPy))
        end if
 
       end
@@ -874,13 +934,15 @@ c      Unravels global_ob and plots onto an array with dimensions Nx by Ny
 #include "EEPARAMS.h"
 #include "EESUPPORT.h"
 #include "PARAMS.h"
+#include "DYNVARS.h"
 #include "DIAGNOSTICS_OB.h"
 
        _RL global_correct((sNy+sNx)*(nPx*nPy))
        _RL global_NxNy(Nx,Ny,nSx,nSy)
        _RS dummyRS(1)
+       _RL global_theta(Nx,Ny)
 
-       integer i,j, bi, bj, counter, ob_counter, correct
+       integer i,j, bi, bj, k, counter, ob_counter, correct
        integer fld, total_valid, ob_id, myThid, nDim, myIter
        integer, parameter :: plot_on_NxNy = 1
        integer, parameter :: print_correctness = 1
@@ -948,6 +1010,7 @@ C                 !Inserting field points into NxNy array
            ENDDO
          ENDDO
        ENDDO
+
 
        if (correct .eq. 0) then
          if (print_correctness .eq. 1) then

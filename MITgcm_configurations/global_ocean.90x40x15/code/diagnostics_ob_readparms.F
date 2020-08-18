@@ -61,6 +61,7 @@ C -----------------------------
       _RL avgPeriod_nml
       _RL startTime_nml
       _RL endTime_nml
+      _RL undefRL
 
       NAMELIST / DIAG_OB_EXTRACT /
      &     avgPeriod_nml, startTime_nml, endTime_nml,
@@ -110,9 +111,9 @@ C       Initializing local variables and variables from DIAG_OB_EXTRACT COMMON b
 C-------------------------------------------------------------------------------
 
 C     CHANGE THESE VALUES TO THE UNDEFINED CONSTANT
-      avgPeriod_nml = 0.0
-      startTime_nml = 0.0
-      endTime_nml = 0.0
+      avgPeriod_nml = undefRL
+      startTime_nml = undefRL
+      endTime_nml = undefRL
       time_passed = 0.0
 
       DO j=1, MAX_NMASKS
@@ -193,9 +194,23 @@ C     Fill DIAGNOSTICS_OB.h Common Block with Namelist Info
         ENDDO
       ENDDO
 
-      avgPeriod_ob = avgPeriod_nml
-      startTime_ob = startTime_nml
-      endTime_ob = endTime_nml
+      IF (avgPeriod_nml .eq. undefRL) then
+        avgPeriod_ob = deltaTClock
+      ELSE
+        avgPeriod_ob = avgPeriod_nml
+      ENDIF
+
+      IF (startTime_nml .eq. undefRL) then
+        startTime_ob = startTime
+      ELSE
+        startTime_ob = startTime_nml
+      ENDIF
+
+      IF (endTime_nml .eq. undefRL) then
+        endTime_ob = endTime
+      ELSE
+        endTime_ob = endTime_nml
+      ENDIF
 
       print *,"OB readparms:",ob_levels3D
 
