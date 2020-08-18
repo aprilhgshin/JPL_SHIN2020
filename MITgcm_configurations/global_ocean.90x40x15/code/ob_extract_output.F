@@ -152,7 +152,6 @@ C      Although we read REAL*4 values, most built in functions have _RS input wh
        integer pid, ierror, status(MPI_STATUS_SIZE)
        common / mpi_var / status, ierror
 C  All MPI objects (e.g., MPI_Datatype, MPI_Comm) are of type INTEGER in Fortran.
-       integer floattype
        integer full_dim(2), sub_dim(2), start_ind(2)
 #endif
 
@@ -288,10 +287,11 @@ C        Field numbers, fld2D and fld3D, are used as message tags.
      &             subFieldOnMask_3Davg(ob_id,fld3D,:,k), sNx + sNy)
             ENDDO
 
-            full_dim(1) = Nr
-            full_dim(2) = sNx+sNy
-            sub_dim(1) = ob_levels3D(fld3D,ob_id)
-            sub_dim(2) = sNx+sNy
+C           Some parameters for MPI_Type_create_subarray:
+            full_dim(2) = Nr
+            full_dim(1) = sNx+sNy
+            sub_dim(2) = ob_levels3D(fld3D,ob_id)
+            sub_dim(1) = sNx+sNy
             start_ind(1) = 1
             start_ind(2) = 1
 
@@ -301,20 +301,20 @@ C     &                         sub_dim,
 C     &                         start_ind,
 C     &                         MPI_ORDER_FORTRAN,
 C     &                         MPI_REAL,
-C     &                         floattype,
+C     &                         cont_mpi_type,
 C     &                         ierror)
-
-            call MPI_TYPE_CONTIGUOUS(ob_levels3D(fld3D,ob_id)*(sNx+sNy),
-     &                               MPI_REAL, floattype, ierror)
-            call MPI_TYPE_COMMIT(floattype, ierror)
+C       call MPI_TYPE_CONTIGUOUS(ob_levels3D(fld,ob_id)*(sNx+sNy),
+C     &                               MPI_REAL, cont_mpi_type, ierror)
+C       call MPI_TYPE_COMMIT(cont_mpi_type, ierror)
             call MPI_SEND(
-     &  subFieldOnMask_3Davg(ob_id,fld3D,:,:)
-     &  ,1, floattype,0,
+     &  subFieldOnMask_3Davg(ob_id,fld3D,:,1:ob_levels3D(fld3D,ob_id))
+     &  ,ob_levels3D(fld3D,ob_id)*(sNx+sNy), MPI_REAL,0,
      &  tag, MPI_COMM_MODEL, ierror)
-            call MPI_TYPE_FREE(floattype, ierror)
-C     &  subFieldOnMask_3Davg(ob_id,fld3D,1:ob_levels3D(fld3D,ob_id),:)
-C     &  ,ob_levels3D(fld3D,ob_id)*(sNx+sNy), MPI_REAL,0,
+C            call MPI_SEND(
+C     &  subFieldOnMask_3Davg(ob_id,fld3D,:,1:ob_levels3D(fld3D,ob_id))
+C     &  ,1, cont_mpi_type,0,
 C     &  tag, MPI_COMM_MODEL, ierror)
+
            end do
           end if
          end if
@@ -485,9 +485,17 @@ C       If number of valid elements is greater than or equal to 1
           tag = ob_tags(ob_id, 2, fld)
           print *,"MASTER 3D receiving from tag", tag
           print *,"recv_arr3D shape:",shape(recv_arr3D)
+
+C          call MPI_TYPE_CONTIGUOUS(ob_levels3D(fld,ob_id)*(sNx+sNy),
+C     &                               MPI_REAL, cont_mpi_type, ierror)
+C          call MPI_TYPE_COMMIT(cont_mpi_type, ierror)
+
           call MPI_RECV(recv_arr3D(:,1:ob_levels3D(fld,ob_id)),
      &                    ob_levels3D(fld,ob_id)*(sNx+sNy),MPI_REAL,
      &                    pid, tag ,MPI_COMM_MODEL, status, ierror)
+C     &                    ob_levels3D(fld,ob_id)*(sNx+sNy),MPI_REAL,
+C     &                    1, cont_mpi_type,
+
           if (debug .eq. 1) then
             print *, "MASTER 3D Received from process", pid
             print *, "MASTER Received recv_arr3D for fields"

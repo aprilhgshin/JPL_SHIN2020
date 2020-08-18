@@ -175,7 +175,7 @@ C---------------------------------------------------------
             subFieldOnMask_2Davg(ob_id, fld, i) = 0.0
             DO k=1, Nr
               subFieldOnMask_3D(ob_id, fld, i, k) = 0.0
-              subFieldOnMask_3Davg(ob_id, fld, i, k) = 0.0
+              subFieldOnMask_3Davg(ob_id, fld, i, k) = 40.0
             ENDDO
           ENDDO
         ENDDO
