@@ -229,9 +229,9 @@ if __name__ == "__main__":
 
 #    test_ob_outputs3D_L1(output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_THETA   _00036001.bin", 'T')
 
-    test_ob_outputs3D(output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_THETA   _00036001.bin", 'T', 1)
+#    test_ob_outputs3D(output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_THETA   _00036001.bin", 'T', 1)
 #    test_ob_outputs2D(output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_SALT    _00036001.bin", 'S')
-#    test_ob_outputs2D(output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_UVEL    _00036001.bin", 'U')
+    test_ob_outputs2D(output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_UVEL    _00036001.bin", 'U')
 
 
 
