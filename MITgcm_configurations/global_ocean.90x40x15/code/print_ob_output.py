@@ -8,7 +8,147 @@ import sys
 sys.path.append('/home/mitgcm/Work/MITgcm/utils/python/MITgcmutils/')
 import MITgcmutils as mitgcm
 
-def test_ob_outputs3D(output_dir, mask_dir, ob_mask, ob_output, fname):
+def test_ob_outputs3D(output_dir, mask_dir, ob_mask, ob_output, fname, depth):
+
+    mask = np.fromfile(str(mask_dir / ob_mask), dtype='>f4').reshape(40,90)
+#    field = np.fromfile(str(output_dir / field), dtype='>f4')
+
+    fname1 = fname+".0000036000.001.001"
+    fname2 = fname + ".0000036000.002.001"
+
+    field1 = mitgcm.rdmds(str(output_dir / fname1), itrs=-1)#.reshape(40,90)
+    field2 = mitgcm.rdmds(str(output_dir / fname2), itrs=-1)#.reshape(40,90)
+
+    plt.figure(num=1,clear=True, figsize=(7,6))
+    plt.subplot(211)
+    plt.imshow(field1[0], origin='lower')#, vmin=-2, vmax=16)
+    plt.colorbar()
+    plt.title(fname)
+    plt.subplot(212)
+    plt.imshow(field2[0], origin='lower')
+    plt.colorbar()
+    plt.show()
+
+    plt.title("mask")
+    plt.imshow(mask, origin='lower')
+    plt.colorbar()
+    plt.show()
+
+    print(mask.shape)
+
+    ob_out = np.fromfile(str(output_dir / ob_output), dtype='>f8')
+    depth = int(len(ob_out)/90)
+    output = ob_out.reshape(depth,90)
+
+    newFieldOnMask = [[0 for x in range(90)] for y in range(depth)]
+    diff = [[0 for x in range(90)] for y in range(depth)]
+
+    print(len(field1))
+    print(field1[0][2][46])
+    print(len(mask[0])-1)
+    print("output shape:",output.shape)
+
+
+
+    counter = 0
+
+    for row in range(len(mask)-1):
+        for col in range(len(mask[0])-1):
+#                print("mask >= 1:", mask[row][col], "field:", field1[0][row][col])
+#                print("corresponding output:", output[counter])
+            if(mask[row][col] > 0):
+                for k in range(depth-1):
+                    if (col <= 45):
+                        newFieldOnMask[k][counter] =  field1[k][row][col]
+                    elif (col > 45):
+                        newFieldOnMask[k][counter] =  field2[k][row][col]
+                counter += 1
+
+    diff = (output - newFieldOnMask)
+    print("difference between field and output:",diff>0.1)
+
+    for k in range(len(field1)):
+        plt.subplot(211)
+        plt.plot(output[k], 'r--', linewidth=2.5, label="ob output")
+        plt.plot(newFieldOnMask[k], 'b', label="original field")
+        plt.title("OB Output VS. Original Field")
+        plt.legend()
+
+        plt.subplot(212)
+        plt.plot(diff[k])
+        plt.title("Difference between Output and Original field:")
+        plt.show()
+
+
+
+def test_ob_outputs3D_L1(output_dir, mask_dir, ob_mask, ob_output, fname):
+
+    mask = np.fromfile(str(mask_dir / ob_mask), dtype='>f4').reshape(40,90)
+#    field = np.fromfile(str(output_dir / field), dtype='>f4')
+
+    fname1 = fname+".0000036000.001.001"
+    fname2 = fname + ".0000036000.002.001"
+
+    field1 = mitgcm.rdmds(str(output_dir / fname1), itrs=-1)#.reshape(40,90)
+    field2 = mitgcm.rdmds(str(output_dir / fname2), itrs=-1)#.reshape(40,90)
+
+    plt.figure(num=1,clear=True, figsize=(7,6))
+    plt.subplot(211)
+    plt.imshow(field1[0], origin='lower')#, vmin=-2, vmax=16)
+    plt.colorbar()
+    plt.title(fname)
+    plt.subplot(212)
+    plt.imshow(field2[0], origin='lower')
+    plt.colorbar()
+    plt.show()
+
+    plt.title("mask")
+    plt.imshow(mask, origin='lower')
+    plt.colorbar()
+    plt.show()
+
+    print(mask.shape)
+
+    output = np.fromfile(str(output_dir / ob_output), dtype='>f8').reshape(15,90)[0]
+
+    newFieldOnMask = np.zeros(len(output))
+    diff = np.zeros(len(output))
+
+    print(field1[0][2][46])
+    print(len(mask[0])-1)
+
+    counter = 0
+
+    for row in range(len(mask)-1):
+        for col in range(len(mask[0])-1):
+#                print("mask >= 1:", mask[row][col], "field:", field1[0][row][col])
+#                print("corresponding output:", output[counter])
+            if(mask[row][col] > 0):
+                if (col <= 45):
+                    newFieldOnMask[counter] =  field1[0][row][col]
+                elif (col > 45):
+                    newFieldOnMask[counter] =  field2[0][row][col]
+                counter += 1
+
+    print("len:", len(newFieldOnMask))
+    diff = (output - newFieldOnMask)
+    print("difference between field and output:",diff>0.1)
+
+    plt.subplot(211)
+    plt.plot(output, 'r--', linewidth=2.5, label="ob output")
+    plt.plot(newFieldOnMask, 'b', label="original field")
+    plt.title("OB Output VS. Original Field")
+    plt.legend()
+
+    plt.subplot(212)
+    plt.plot(diff)
+    plt.title("Difference between Output and Original field:")
+    plt.show()
+
+
+
+
+def test_ob_outputs2D(output_dir, mask_dir, ob_mask, ob_output, fname):
 
     mask = np.fromfile(str(mask_dir / ob_mask), dtype='>f4').reshape(40,90)
 #    field = np.fromfile(str(output_dir / field), dtype='>f4')
@@ -87,9 +227,11 @@ if __name__ == "__main__":
 #    arr = np.zeros(45)
 #    newfield=[]
 
+#    test_ob_outputs3D_L1(output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_THETA   _00036001.bin", 'T')
 
-#    test_ob_outputs(output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_THETA   _00036001.bin", 'T')
-    test_ob_outputs3D(output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_SALT    _00036001.bin", 'S')
+    test_ob_outputs3D(output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_THETA   _00036001.bin", 'T', 1)
+#    test_ob_outputs2D(output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_SALT    _00036001.bin", 'S')
+#    test_ob_outputs2D(output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_UVEL    _00036001.bin", 'U')
 
 
 
