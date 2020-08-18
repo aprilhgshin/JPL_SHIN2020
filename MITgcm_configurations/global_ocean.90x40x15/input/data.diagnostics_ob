@@ -16,15 +16,14 @@
  endTime_nml = 122400.0,
 # endTime_nml = 640800.0,
 
- nml_fields2D(1:1,1) = 'ETAN    ',
+ nml_fields2D(1:1,1) = 'UVEL',
 
- nml_fields3D(1:1,1) = 'THETA   ',
+ nml_fields3D(1:1,1) = 'THETA',
 
- nml_levels3D(1:1,1) =  1,
+ nml_levels3D(1:1,1) =  2,
 
  nml_nFields2D(1) = 1,
  nml_nFields3D(1) = 1,
 
  nml_fileNames(1) = 'domain_flt32_mask1.bin',
-
  &
