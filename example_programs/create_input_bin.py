@@ -95,8 +95,8 @@ def main():
     filename1 = "./input_domains/domain_mask1.bin"
     filename2 = "./input_domains/domain_mask2.bin"
 
-    fname_ob_mitgcm = "/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run/domain_flt32_mask1.bin"
-    fname_temp_mitgcm = "/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run/domain_temp.bin"
+    fname_ob_mitgcm = "/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/input/domain_flt32_mask1.bin"
+    fname_temp_mitgcm = "/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/input/domain_temp.bin"
 
     #load_domain_mask(filename_mask)
     #load_domain_temp(filename_temp)
