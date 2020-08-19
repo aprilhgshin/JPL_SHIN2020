@@ -27,7 +27,8 @@
 #   fileName(1) = 'surfDiag',
 # frequency(1) = 311040000.,
 
-  fields(1:2,1) = 'THETA   ','SALT    ',
+#  fields(1:2,1) = 'THETA   ','SALT    ',
+  fields(1:1,1)  = 'ETAN    '
   fileName(1) = 'diags/obDiag',
   frequency(1) = -1,
 
