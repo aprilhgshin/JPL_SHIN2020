@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/eesupp/src/exch_sm_3d_r8.F

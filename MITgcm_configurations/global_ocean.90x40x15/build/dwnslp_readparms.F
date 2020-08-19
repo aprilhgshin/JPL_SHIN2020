@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/down_slope/dwnslp_readparms.F

@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/diagnostics/diagnostics_main_init.F

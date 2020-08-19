@@ -22,4 +22,5 @@ C      CALL PRINT_FLOAT_ARR(subField(1,:,:,:,:),sz)
      &                'OB_DEMO:Open Boundary Submask', -1, myThid )
 
 
+
       END

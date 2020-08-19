@@ -1,3 +1,0 @@
-(PID.TID 0005.0001) *** ERROR *** EEBOOT_MINIMAL: No. of procs=     6 not equal to nPx*nPy=     2
-(PID.TID 0005.0001) *** ERROR *** EEDIE: earlier error in multi-proc/thread setting
-(PID.TID 0005.0001) *** ERROR *** PROGRAM MAIN: ends with fatal Error

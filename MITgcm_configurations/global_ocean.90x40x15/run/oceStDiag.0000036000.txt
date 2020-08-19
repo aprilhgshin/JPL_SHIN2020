@@ -1,9 +1,0 @@
-# header of file: oceStDiag
-# frequency (s):    2592000.000000
-# phase (s)    :          0.000000
-# Regions      :   0
-# Fields       : RHOAnoma DRHODR   CONVADJ 
-# Nb of levels :   15  15  15
-# end of header ------------------------------------------------------------
- 
-# records End here.

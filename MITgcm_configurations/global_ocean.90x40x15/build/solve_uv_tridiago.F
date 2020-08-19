@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/model/src/solve_uv_tridiago.F

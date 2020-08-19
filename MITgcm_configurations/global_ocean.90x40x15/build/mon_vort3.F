@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/monitor/mon_vort3.F

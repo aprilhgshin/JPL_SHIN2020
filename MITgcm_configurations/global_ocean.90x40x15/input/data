@@ -55,7 +55,8 @@
  startTime = 36000.,
 # endTime   = 3110400000.,
 # 7 days and 10 hours = 640800 seconds
- endTime = 640800.,
+# endTime = 640800.,
+ nTimeSteps = 24,
  deltaTmom = 1800.,
  tauCD =     321428.,
  deltaTtracer= 86400.,
@@ -63,8 +64,7 @@
  deltaTfreesurf= 86400.,
  abEps = 0.1,
  pChkPtFreq= 311040000.,
- dumpFreq=   311040000.,
- dumpFreq=   864000.,
+ dumpFreq=   3600.,
 #monitorFreq=31104000.,
  monitorFreq=1.,
 # 2 months restoring timescale for temperature

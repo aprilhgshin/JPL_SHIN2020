@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/diagnostics/DIAG_OPTIONS.h

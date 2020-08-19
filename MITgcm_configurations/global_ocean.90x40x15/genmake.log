@@ -64,7 +64,7 @@ genmake_test.c:1:31: warning: implicit declaration of function ‘tsub’ [-Wimp
  --> set FC_NAMEMANGLE='#define FC_NAMEMANGLE(X)  X ## _'
 mpicc -O0 -mcmodel=medium -c genmake_tc_1.c
 mpif77 -fconvert=big-endian -fimplicit-none -mcmodel=medium -o genmake_tc genmake_tc_2.f genmake_tc_1.o
-  HELLO WORLD   1595957358.6813719     
+  HELLO WORLD   1596652335.1875000     
  --> set HAVE_CLOC='t'
 
 running: check_HAVE_SETRLSTK()

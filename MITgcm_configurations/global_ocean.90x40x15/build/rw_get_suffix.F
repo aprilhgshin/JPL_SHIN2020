@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/rw/rw_get_suffix.F

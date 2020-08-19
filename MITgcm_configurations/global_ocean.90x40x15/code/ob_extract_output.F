@@ -142,6 +142,7 @@ C      Although we read REAL*4 values, most built in functions have _RS input wh
        integer i,j, k, iG, jG, bi, bj, fld2D, fld3D
        integer ob_subMask_size, ob_id, tag
        integer total_valid
+       real*8 temp_arr(3, 85), recv_arr(3, 85), fld
 
        integer, parameter :: debug = 1
        integer, parameter :: print_debug = 0
@@ -182,6 +183,12 @@ C-------------------------------------------------------------------------------
         print *,"OB_EXTRACT_OUTPUT: ob_nFlds3D",ob_nFlds3D
         print *,"OB_EXTRACT_OUTPUT: ob_levels3D",ob_levels3D
 
+        DO i=1,3
+          DO j=1,85
+            temp_arr(i,j) = j
+            recv_arr(i,j) = 0.0
+          ENDDO
+        ENDDO
 
         DO ob_id=1, nOB_mask
          DO i=1, ob_nFlds3D(ob_id)
@@ -266,13 +273,13 @@ C        Field numbers, fld2D and fld3D, are used as message tags.
           if (numOBPnts_allproc(ob_id,mpiMyId+1) .ge. 1) then
            print *, "num valid:",numOBPnts_allproc(ob_id,mpiMyId+1)
            print *,"Yes going to send for mask", ob_id
-           do fld2D=1, ob_nFlds2D(ob_id)
-            tag = ob_tags(ob_id, 1, fld2D)
-            print*,"Sending with tag:",tag,"for ob_id",ob_id,
-     &             "fld2D",fld2D, "at myIter", myIter, "proc",mpiMyId
-            call MPI_SEND(subFieldOnMask_2Davg(ob_id,fld2D,:),sNx+sNy
-     &      ,MPI_REAL,0, tag, MPI_COMM_MODEL, ierror)
-           end do
+C           do fld2D=1, ob_nFlds2D(ob_id)
+C            tag = ob_tags(ob_id, 1, fld2D)
+C            print*,"Sending with tag:",tag,"for ob_id",ob_id,
+C     &             "fld2D",fld2D, "at myIter", myIter, "proc",mpiMyId
+C            call MPI_SEND(subFieldOnMask_2Davg(ob_id,fld2D,:),sNx+sNy
+C     &      ,MPI_REAL,0, tag, MPI_COMM_MODEL, ierror)
+C           end do
 
            do fld3D=1, ob_nFlds3D(ob_id)
             tag = ob_tags(ob_id, 2, fld3D)
@@ -281,19 +288,32 @@ C        Field numbers, fld2D and fld3D, are used as message tags.
             print *,"Sending array shape: ",
      &                shape(subFieldOnMask_3Davg(ob_id,fld3D,:,:))
             print *,"Sending array:"
-            DO k=1, ob_levels3D(fld3D,ob_id)
-             print *,"printing at level k",k
-             call PRINT_FLOAT_ARR(
-     &             subFieldOnMask_3Davg(ob_id,fld3D,:,k), sNx + sNy)
-            ENDDO
+CCCC
+C            DO k=1, ob_levels3D(fld3D,ob_id)
+             print *,"printing at level k",k, "with tag", tag+(100*k)
+C             call PRINT_FLOAT_ARR(
+C     &             subFieldOnMask_3Davg(ob_id,fld3D,:,k), sNx + sNy)
+C             print *,"NEW unique tag for 3D message", tag+(100*k)
+C             call MPI_SEND(subFieldOnMask_3Davg(ob_id,fld3D,:,k),
+C     &        sNx+sNy, MPI_REAL, 0, tag+(100*k), MPI_COMM_MODEL, ierror)
+             print *,"MPI_SEND: temp_arr", temp_arr
+             call MPI_SEND(temp_arr,
+     &        3*85, MPI_REAL8, 0, tag+(100), MPI_COMM_MODEL, ierror)
+C             DO i=1, sNx+sNy
+C               print*,"subFieldOnMask_3Davg at i",i,":",
+C     &           subFieldOnMask_3Davg(ob_id,fld3D,i,k)
+C             ENDDO
+C            ENDDO
+            print *,"FINISHED SENDING."
+CCCCC
 
 C           Some parameters for MPI_Type_create_subarray:
-            full_dim(2) = Nr
-            full_dim(1) = sNx+sNy
-            sub_dim(2) = ob_levels3D(fld3D,ob_id)
-            sub_dim(1) = sNx+sNy
-            start_ind(1) = 1
-            start_ind(2) = 1
+C            full_dim(2) = Nr
+C            full_dim(1) = sNx+sNy
+C            sub_dim(2) = ob_levels3D(fld3D,ob_id)
+C            sub_dim(1) = sNx+sNy
+C            start_ind(1) = 1
+C            start_ind(2) = 1
 
 C            call MPI_Type_create_subarray(2,
 C     &                         full_dim,
@@ -306,10 +326,16 @@ C     &                         ierror)
 C       call MPI_TYPE_CONTIGUOUS(ob_levels3D(fld,ob_id)*(sNx+sNy),
 C     &                               MPI_REAL, cont_mpi_type, ierror)
 C       call MPI_TYPE_COMMIT(cont_mpi_type, ierror)
-            call MPI_SEND(
-     &  subFieldOnMask_3Davg(ob_id,fld3D,:,1:ob_levels3D(fld3D,ob_id))
-     &  ,ob_levels3D(fld3D,ob_id)*(sNx+sNy), MPI_REAL,0,
-     &  tag, MPI_COMM_MODEL, ierror)
+
+C            call MPI_SEND(
+C     &  subFieldOnMask_3Davg(ob_id,fld3D,:,1:ob_levels3D(fld3D,ob_id))
+C     &  ,ob_levels3D(fld3D,ob_id)*(sNx+sNy), MPI_REAL,0,
+C     &  tag, MPI_COMM_MODEL, ierror)
+C            call MPI_SEND(
+C     &  subFieldOnMask_3Davg(ob_id,fld3D,:,1:ob_levels3D(fld3D,ob_id))
+C     &  ,3*85, MPI_REAL,0,
+C     &  tag, MPI_COMM_MODEL, ierror)
+
 C            call MPI_SEND(
 C     &  subFieldOnMask_3Davg(ob_id,fld3D,:,1:ob_levels3D(fld3D,ob_id))
 C     &  ,1, cont_mpi_type,0,
@@ -317,28 +343,57 @@ C     &  tag, MPI_COMM_MODEL, ierror)
 
            end do
           end if
+
+        else if (mpiMyId .eq. 0) then
+          print *,"NOT MPIT PROC > 0. I AM 0"
          end if
+         print *,"BEFORE the #endif"
 
 #endif
+
+         print *,"AFTER IF STATEMENT"
 
 C-------------------------------------------------------------------------------
 C           Master Process Tasks:
 C-------------------------------------------------------------------------------
          IF (mpiMyId .eq. 0) then
+           print *,"HELLO HERE"
+           DO pid=1, mpiNprocs-1
+            DO fld=1, ob_nFlds3D(ob_id)
+             print *,"HELLO HERE IN fld",fld
 
-          print *,"OB_EXTRACT_OUTPUT: MASK", ob_id,
-     &              "Before calling on master tasks"
-          print *,"numOBPnts_allproc(ob_id,mpiMyId+1)",
-     &             numOBPnts_allproc(ob_id,mpiMyId+1)
-          DO fld2D=1, ob_nFlds2D(ob_id)
-            call MASTER_PROC_TASKS(fld2D, ob_id, 2, myThid, myTime,
-     &                             myIter)
+             tag = ob_tags(ob_id, 2, fld)
+
+C             DO k=1, 1
+C               ob_levels3D(fld,ob_id)
+              print *,"receving tag",tag+(100)
+C           print *,"MASTER 3D receiving from tag", tag+(100*k)
+C           call MPI_RECV(recv_arr, sNx+sNy, MPI_REAL, pid,
+C     &                   tag+(100*k) ,MPI_COMM_MODEL, status, ierror)
+              call MPI_RECV(recv_arr, 3*85, MPI_REAL8, pid,
+     &                   tag+(100) ,MPI_COMM_MODEL, status, ierror)
+              print *,"MPI_RECV:", recv_arr
+C           DO i=1, sNx+sNy
+C            recv_arr3D(i,k) = recv_arr(i)
+C            print *,"recv_arr at",i,":",recv_arr(i)
+C           ENDDO
+C            ENDDO
+           ENDDO
           ENDDO
 
-          DO fld3D=1, ob_nFlds3D(ob_id)
-            call MASTER_PROC_TASKS(fld3D, ob_id, 3, myThid, myTime,
-     &                             myIter)
-          ENDDO
+C          print *,"OB_EXTRACT_OUTPUT: MASK", ob_id,
+C     &              "Before calling on master tasks"
+C          print *,"numOBPnts_allproc(ob_id,mpiMyId+1)",
+C     &             numOBPnts_allproc(ob_id,mpiMyId+1)
+C          DO fld2D=1, ob_nFlds2D(ob_id)
+C            call MASTER_PROC_TASKS(fld2D, ob_id, 2, myThid, myTime,
+C     &                             myIter)
+C          ENDDO
+
+C          DO fld3D=1, ob_nFlds3D(ob_id)
+C            call MASTER_PROC_TASKS(fld3D, ob_id, 3, myThid, myTime,
+C     &                             myIter)
+C          ENDDO
 
 C         !ENDIF for mpiMyId .eq. 0
          ENDIF
@@ -376,11 +431,11 @@ C     myThid :: thread number
 C     myTime :: current time in model
       INTEGER fld, ob_id, nDim, myThid, myIter
       _RL myTime
-      _RL recv_arr2D(sNx + sNy)
+      _RL recv_arr(sNx + sNy)
       _RL recv_arr3D(sNx + sNy, Nr)
       _RS dummyRS(1)
       INTEGER pid, status(MPI_STATUS_SIZE), ierror, tag
-      INTEGER total_valid, i, k
+      INTEGER total_valid, i, k, count
       INTEGER, PARAMETER :: debug = 1
       integer, parameter :: write_to_binary = 0
 
@@ -389,10 +444,10 @@ C     myTime :: current time in model
       common / mpi_var / status, ierror
 
       DO i=1, sNx + sNy
-        recv_arr2D(i) = 0.0
-        DO k=1, 3
-         recv_arr3D(i,k) = 0.0
-       ENDDO
+        recv_arr(i) = 0.0
+C      DO k=1, 3
+C         recv_arr3D(i,k) = 0.0
+C       ENDDO
       ENDDO
 
       total_valid = 0
@@ -465,36 +520,54 @@ C       If number of valid elements is greater than or equal to 1
          IF (nDim .eq. 2) then
           print *, "MASTER HERE in dim 2"
           tag = ob_tags(ob_id, 1, fld)
-          call MPI_RECV(recv_arr2D, sNx+sNy, MPI_REAL,
+          call MPI_RECV(recv_arr, sNx+sNy, MPI_REAL,
      &                   pid, tag ,MPI_COMM_MODEL, status, ierror)
 
           if (debug .eq. 1) then
            print *, "MASTER 2D Received from process", pid
-           print *, "MASTER Received recv_arr2D for fields"
-           print *, "MASTER recv_arr2D shape:", shape(recv_arr2D)
+           print *, "MASTER Received recv_arr for fields"
+           print *, "MASTER recv_arr shape:", shape(recv_arr)
            print *, "MASTER Displaying FULL 2D array, beyond number of"
      &                       ," valid elements"
-           call PRINT_FLOAT_ARR(recv_arr2D, sNx+sNy)
+           call PRINT_FLOAT_ARR(recv_arr, sNx+sNy)
           end if
 
-          call APPEND_OB_VALUE2D(ob_id, pid, recv_arr2D)
+          call APPEND_OB_VALUE2D(ob_id, pid, recv_arr)
 
          ELSE IF (nDim .eq. 3) then
            print *, "MASTER HERE in dim 3"
 
           tag = ob_tags(ob_id, 2, fld)
-          print *,"MASTER 3D receiving from tag", tag
-          print *,"recv_arr3D shape:",shape(recv_arr3D)
 
-C          call MPI_TYPE_CONTIGUOUS(ob_levels3D(fld,ob_id)*(sNx+sNy),
-C     &                               MPI_REAL, cont_mpi_type, ierror)
-C          call MPI_TYPE_COMMIT(cont_mpi_type, ierror)
+          DO k=1, ob_levels3D(fld,ob_id)
 
-          call MPI_RECV(recv_arr3D(:,1:ob_levels3D(fld,ob_id)),
-     &                    ob_levels3D(fld,ob_id)*(sNx+sNy),MPI_REAL,
-     &                    pid, tag ,MPI_COMM_MODEL, status, ierror)
+C           print *,"MASTER 3D receiving from tag", tag+(100*k)
+C           call MPI_RECV(recv_arr, sNx+sNy, MPI_REAL, pid,
+C     &                   tag+(100*k) ,MPI_COMM_MODEL, status, ierror)
+           call MPI_RECV(recv_arr, 85, MPI_REAL, pid,
+     &                   tag+(100*k) ,MPI_COMM_MODEL, status, ierror)
+           print *,"MPI_RECV:", recv_arr
+C           DO i=1, sNx+sNy
+C            recv_arr3D(i,k) = recv_arr(i)
+C            print *,"recv_arr at",i,":",recv_arr(i)
+C           ENDDO
+          ENDDO
+
+C        call MPI_RECV(recv_arr3D(:,1:ob_levels3D(fld,ob_id)),
+C     &                    3*85,MPI_REAL,
+C     &                    pid, tag ,MPI_COMM_MODEL, status, ierror)
+
+C          call MPI_RECV(recv_arr3D(:,1:ob_levels3D(fld,ob_id)),
+C     &                    ob_levels3D(fld,ob_id)*(sNx+sNy),MPI_REAL,
+C     &                    pid, tag ,MPI_COMM_MODEL, status, ierror)
+
 C     &                    ob_levels3D(fld,ob_id)*(sNx+sNy),MPI_REAL,
 C     &                    1, cont_mpi_type,
+C          DO k=1, ob_levels3D(fld,ob_id)
+C           DO i=1, sNx+sNy
+C            recv_arr3D(i,k) = recv(i,k)
+C           ENDDO
+C          ENDDO
 
           if (debug .eq. 1) then
             print *, "MASTER 3D Received from process", pid
@@ -508,7 +581,7 @@ C     &                    1, cont_mpi_type,
            ENDDO
           end if
 C         !append_ob_values3D params: ob_id, pid, fld, ob_values
-          call APPEND_OB_VALUE3D(ob_id,pid, fld, recv_arr3D)
+CC          call APPEND_OB_VALUE3D(ob_id,pid, fld, recv_arr3D)
 
 C          if (debug .eq. 1) then
 C           print *,"APPEND_OB_VALUE: appending recv_arr "
@@ -533,10 +606,10 @@ C------End of receiving arrays through MPI and appending------------------------
 
        print *,"MASTER: For mask", ob_id
        print *,"Plotting final array at time", myTime
-       call PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld, nDim, myIter)
+CC       call PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld, nDim, myIter)
 
        print*,"MASTER: myIter:",myIter
-       call WRITE_GLOBAL_BIN(total_valid,fld,ob_id,myIter,nDim)
+CC       call WRITE_GLOBAL_BIN(total_valid,fld,ob_id,myIter,nDim)
 
        IF (write_to_binary .eq. 1) then
         IF (nDim .eq. 2) then

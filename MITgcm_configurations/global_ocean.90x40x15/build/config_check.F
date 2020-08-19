@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/model/src/config_check.F

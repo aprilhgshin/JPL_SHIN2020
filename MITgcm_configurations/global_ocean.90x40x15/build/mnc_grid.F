@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/mnc/mnc_grid.F

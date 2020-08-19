@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/eesupp/src/exch1_uv_r8_cube.F

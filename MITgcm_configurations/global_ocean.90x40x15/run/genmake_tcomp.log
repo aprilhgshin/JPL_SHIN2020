@@ -1,3 +1,0 @@
-/tmp/ccznMIiC.o: In function `MAIN__':
-genmake_tcomp_1.f:(.text+0x1a): undefined reference to `etime_'
-collect2: error: ld returned 1 exit status

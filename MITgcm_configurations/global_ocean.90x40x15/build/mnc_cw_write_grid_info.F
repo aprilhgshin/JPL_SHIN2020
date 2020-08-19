@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/mnc/mnc_cw_write_grid_info.F

@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/mnc/mnc_create_dir.c

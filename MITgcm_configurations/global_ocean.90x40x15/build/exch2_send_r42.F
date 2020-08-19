@@ -1,1 +1,0 @@
-/home/mitgcm/Work/MITgcm/pkg/exch2/exch2_send_r42.F

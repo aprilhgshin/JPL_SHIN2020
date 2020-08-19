@@ -1,0 +1,16 @@
+ simulation = { 'global_ocean.90x40x15' };
+ nDims = [   3 ];
+ dimList = [
+    90,   46,   90,
+    40,    1,   40,
+    15,    1,   15
+ ];
+ dataprec = [ 'float32' ];
+ nrecords = [          2 ];
+ timeStepNumber = [      36017 ];
+ timeInterval = [  1.504800000000E+06 ];
+ missingValue = [ -9.99000000000000E+02 ];
+ nFlds = [    2 ];
+ fldList = {
+ 'THETA   ' 'SALT    '
+ };
