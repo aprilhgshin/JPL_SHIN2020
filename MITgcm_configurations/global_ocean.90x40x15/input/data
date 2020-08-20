@@ -55,8 +55,9 @@
  startTime = 36000.,
 # endTime   = 3110400000.,
 # 7 days and 10 hours = 640800 seconds
-# endTime = 640800.,
- nTimeSteps = 24,
+# 31 days and 10 hours = 2678400 + 36000 = 2714400
+ endTime = 2714400.,
+# nTimeSteps = 24,
  deltaTmom = 1800.,
  tauCD =     321428.,
  deltaTtracer= 86400.,

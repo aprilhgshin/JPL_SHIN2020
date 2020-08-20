@@ -146,7 +146,7 @@ C      Although we read REAL*4 values, most built in functions have _RS input wh
        real*8 buffer2D(sNx+sNy)
        real*8 buffer3D(sNx+sNy, Nr)
 
-       integer, parameter :: debug = 1
+       integer, parameter :: debug = 0
        integer, parameter :: print_debug = 0
        integer, parameter :: send_debug = 0
 
@@ -252,12 +252,11 @@ C       Compute time average of all sub fields
         CALL TIMEAVE_OB_FLD(myThid, myTime)
 
 
-        IF (print_debug .eq. 1) then
-         DO ob_id=1, nOB_mask
-           print*,"SFOM3Davg fld1:",subFieldOnMask_3Davg(ob_id,1,:,1),
-     &          "at ob_id", ob_id
-         ENDDO
-        ENDIF
+C         DO ob_id=1, nOB_mask
+C           print*,"SFOM3Davg fld1:",
+C     &subFieldOnMask_3Davg(ob_id,1,1:30,1)
+C     &         , "at ob_id", ob_id
+C         ENDDO
 
 
 
@@ -581,7 +580,12 @@ C          print *,"MASTER: global_ob2D",global_ob2D
 
 C         !append_ob_values3D params: ob_id, pid, fld, ob_values
           call APPEND_OB_VALUE3D(ob_id,pid, fld, buffer3D)
-          print *,"MASTER: global_ob3D",global_ob3D
+          print *,"MASTER: global_ob3D"
+          print *,"shape(global_ob3D)",shape(global_ob3D)
+          DO k=1, ob_levels3D(fld,ob_id)
+           print *,"printing at level k", k
+           print*,global_ob3D(:,k)
+         ENDDO
 
          ENDIF
          total_valid = total_valid + numOBPnts_allproc(ob_id, pid+1)
@@ -602,7 +606,7 @@ C------End of receiving arrays through MPI and appending------------------------
         print *,"MASTER: For mask", ob_id
         print *,"Plotting final array at time", myTime
        end if
-CC       call PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld, nDim, myIter)
+       call PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld, nDim, myIter)
 
        if (debug .eq. 1) then
         print*,"MASTER: myIter:",myIter
@@ -767,9 +771,9 @@ C            print *,"SET_SUBFIELDS: k",k,"loc_count",loc_count
             ELSE IF (ob_flds3D(fld3D,ob_id) .eq. 'THETA') then
               subFieldOnMask_3D(ob_id,fld3D,loc_count,k) =
      &                                        theta(i,j,k,bi,bj)
-            print*,"DOUBLE CHECKING THETA:"
-            print*,"orig then copy",theta(i,j,k,bi,bj),
-     &            subFieldOnMask_3D(ob_id,fld3D,loc_count,k)
+C            print*,"DOUBLE CHECKING THETA:"
+C            print*,"orig then copy",theta(i,j,k,bi,bj),
+C     &            subFieldOnMask_3D(ob_id,fld3D,loc_count,k)
             ELSE IF (ob_flds3D(fld3D,ob_id) .eq. 'SALT') then
 C              print *,"SET_SUBFIELDS: ij",i,j,"salt:",salt(i,j,k,bi,bj)
               subFieldOnMask_3D(ob_id,fld3D,loc_count,k)=
@@ -1056,19 +1060,21 @@ c      Writing global array to binary file
          if (debug .eq. 1) then
           print *,"WRITE_GLOBAL_BIN: 2D field",ob_flds2D(fld,ob_id),
      &           "written to file:",filename
-          print *, "WRITE_GLOBAL_BIN: global_ob2D",global_ob2D
+          print *, "WRITE_GLOBAL_BIN: global_ob2D s",
+     &      (global_ob2D(1:total_valid))
          endif
         ELSE IF (nDim .eq. 3) then
          call CREATE_FILENAME(dir, ob_flds3D(fld,ob_id), ob_id, filename
      &                      ,0, myIter)
-         open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
-         write(1) global_ob3D(1:total_valid,1:ob_levels3D(fld,ob_id))
          if (debug .eq. 1) then
           print *,"WRITE_GLOBAL_BIN: 3D field ",ob_flds3D(fld,ob_id),
      &           "written to file:",filename
-          print *, "WRITE_GLOBAL_BIN: global_ob3D",global_ob3D
+          print *, "WRITE_GLOBAL_BIN: global_ob3D shape",
+     &      (global_ob3D(1:total_valid,1:ob_levels3D(fld,ob_id)))
 
          endif
+         open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+         write(1) global_ob3D(1:total_valid,1:ob_levels3D(fld,ob_id))
         ENDIF
 
        ENDIF
@@ -1142,8 +1148,9 @@ c      Unravels global_ob and plots onto an array with dimensions Nx by Ny
        integer i,j, bi, bj, k, counter, ob_counter, correct
        integer fld, total_valid, ob_id, myThid, nDim, myIter
        integer, parameter :: plot_on_NxNy = 1
-       integer, parameter :: print_correctness = 1
+       integer, parameter :: print_correctness = 0
        integer, parameter :: write_to_binary = 0
+       integer, parameter :: verify = 0
 
        character*8 fldNm
        character*30 plotTitle
@@ -1209,24 +1216,24 @@ C                 !Inserting field points into NxNy array
        ENDDO
 
 
-       if (correct .eq. 0) then
-         if (print_correctness .eq. 1) then
-           print *, "PLOT_TEST_GLOBAL_OB: global_ob final array is ",
-     &            "incorrect for ", fldNm, "for ob", ob_id
-           call PRINT_FLOAT_ARR(global_correct, (sNy+sNx)*(nPx*nPy))
-         end if
-       else
-         if (print_correctness .eq. 1) then
-           print *, "PLOT_TEST_GLOBAL_OB: global_ob final array is ",
-     &         "correct for the ", fldNm, " field for ob", ob_id
-         end if
+C       if (correct .eq. 0) then
+C         if (print_correctness .eq. 1) then
+C           print *, "PLOT_TEST_GLOBAL_OB: global_ob final array is ",
+C     &            "incorrect for ", fldNm, "for ob", ob_id
+C           call PRINT_FLOAT_ARR(global_correct, (sNy+sNx)*(nPx*nPy))
+C         end if
+C       else
+C         if (print_correctness .eq. 1) then
+C           print *, "PLOT_TEST_GLOBAL_OB: global_ob final array is ",
+C     &         "correct for the ", fldNm, " field for ob", ob_id
+C         end if
          if (plot_on_NxNy .eq. 1) then
            print *, "PLOT_TEST_GLOBAL_OB: plotting global_ob ",
      &              "on NxNy dimension array:"
            write(plotTitle, "(2A)") "PLOT_TEST_GLOBAL_OB: ", fldNm
            call PLOT_GLO_FIELD_XYRL(global_NxNy,plotTitle,myThid)
          end if
-       end if
+C       end if
 
 
        IF (write_to_binary .eq. 1) then

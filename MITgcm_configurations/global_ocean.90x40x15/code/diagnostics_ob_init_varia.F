@@ -205,8 +205,8 @@ C     Using GATHER_2D_R8 to correctly combine sub masks into a single global mas
         CALL GATHER_2D_R8(global_ob_mask(ob_id,:,:,1,1),
      &                  ob_subMask(ob_id,1:sNx,1:sNy,1,1),
      &                  Nx, Ny, .true., .true., myThid)
-C      CALL PLOT_GLO_FIELD_XYRL(global_ob_mask(ob_id,:,:,:,:),
-C     &                    "OB_EXTRACT_OUTPUT: global mask", myThid)
+      CALL PLOT_GLO_FIELD_XYRL(global_ob_mask(ob_id,:,:,:,:),
+     &                    "INIT_VARIA: global mask", myThid)
 
 
 #ifdef ALLOW_USE_MPI
