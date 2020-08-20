@@ -89,14 +89,14 @@ def load_mitgcm_boxregion_masks(dir, xs, xe, ys, ye, dimx, dimy):
     fname2 = dir + "flt32_mask2.bin"
     fname3 = dir + "flt32_mask3.bin"
     fname4 = dir + "flt32_mask4.bin"
-    fname_comb = dir + "flt32_mask_comb.bin"
+#fname_comb = dir + "flt32_mask_comb.bin"
 
     #Writing to file in big endian format for float32 values:
     mask1.ravel(order='C').astype('>f4').tofile(fname1)
     mask2.ravel(order='C').astype('>f4').tofile(fname2)
     mask3.ravel(order='C').astype('>f4').tofile(fname3)
     mask4.ravel(order='C').astype('>f4').tofile(fname4)
-    mask_combined.ravel(order='C').astype('>f4').tofile(fname_comb)
+#    mask_combined.ravel(order='C').astype('>f4').tofile(fname_comb)
 
     #mask.ravel(order='F').astype('>f4').tofile(filename)
 
