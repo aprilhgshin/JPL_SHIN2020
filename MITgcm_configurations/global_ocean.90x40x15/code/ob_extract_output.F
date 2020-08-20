@@ -62,6 +62,7 @@ C 4. Delete all diagnostics_ob files and variables not used
 
 
 
+
        SUBROUTINE OB_EXTRACT_OUTPUT( myTime, myIter, myThid )
 C-------------------------------------------------------------------------------
 C      OB_EXTRACT_OUTPUT:
@@ -142,9 +143,8 @@ C      Although we read REAL*4 values, most built in functions have _RS input wh
        integer i,j, k, iG, jG, bi, bj, fld2D, fld3D, fld
        integer ob_subMask_size, ob_id, tag
        integer total_valid
-       _RL recv_arr3D(sNx+sNy, Nr)
-       _RL recv_arr(sNx+sNy)
-C       real*8 temp_arr(3, 85), recv_arr(3, 85), fld
+       real*8 buffer2D(sNx+sNy)
+       real*8 buffer3D(sNx+sNy, Nr)
 
        integer, parameter :: debug = 1
        integer, parameter :: print_debug = 0
@@ -186,10 +186,10 @@ C-------------------------------------------------------------------------------
         print *,"OB_EXTRACT_OUTPUT: ob_levels3D",ob_levels3D
 
         DO i=1,sNx+sNy
-C          DO j=1,85
-C            temp_arr(i,j) = j
-            recv_arr(i) = 0.0
-C          ENDDO
+          buffer2D(i) = 0.0
+          DO k=1,Nr
+            buffer3D(i,k) = 0.0
+          ENDDO
         ENDDO
 
         DO ob_id=1, nOB_mask
@@ -250,14 +250,14 @@ C       Compute time average of all sub fields
         CALL TIMEAVE_OB_FLD(myThid, myTime)
 
 
-        IF (print_debug .eq. 1) then
+        IF (debug .eq. 1) then
          DO ob_id=1, nOB_mask
-           DO pid=1,nPx*nPy
-            print *, "numOBPnts_allproc process", pid-1
-            print *,"numOBPnts_allproc:",numOBPnts_allproc(ob_id,pid+1)
-           ENDDO
+           print*,"SFOM3Davg fld1:",subFieldOnMask_3Davg(ob_id,1,:,1),
+     &          "at ob_id", ob_id
          ENDDO
         ENDIF
+
+
 
 
 C       Now looping through each mask and communicating fields between master process and child processes
@@ -273,93 +273,53 @@ C        Processes 1 and onward send sub fields to Parent process
 C        Field numbers, fld2D and fld3D, are used as message tags.
 
           if (numOBPnts_allproc(ob_id,mpiMyId+1) .ge. 1) then
+
            print *, "num valid:",numOBPnts_allproc(ob_id,mpiMyId+1)
            print *,"Yes going to send for mask", ob_id
+
            do fld2D=1, ob_nFlds2D(ob_id)
+            call OB_PASS_RL_to_R8(buffer2D,buffer3D,ob_id,2,fld2D)
             tag = ob_tags(ob_id, 1, fld2D)
+
             print*,"Sending with tag:",tag,"for ob_id",ob_id,
      &             "fld2D",fld2D, "at myIter", myIter, "proc",mpiMyId
-            call MPI_SEND(subFieldOnMask_2Davg(ob_id,fld2D,:),sNx+sNy
-     &      ,MPI_REAL8,0, tag, MPI_COMM_MODEL, ierror)
+
+C            call MPI_SEND(subFieldOnMask_2Davg(ob_id,fld2D,:),sNx+sNy
+C     &      ,MPI_REAL8,0, tag, MPI_COMM_MODEL, ierror)
+            call MPI_SEND(buffer2D, sNx+sNy, MPI_REAL8, 0, tag,
+     &                    MPI_COMM_MODEL, ierror)
+
             print *,"Sending array:",ob_flds2D(fld2D,ob_id)
-            call PRINT_FLOAT_ARR(subFieldOnMask_2Davg(ob_id,fld2D,:),
-     &        sNx+sNy)
+            call PRINT_FLOAT_ARR(buffer2D, sNx+sNy)
+
            end do
 
            do fld3D=1, ob_nFlds3D(ob_id)
             tag = ob_tags(ob_id, 2, fld3D)
+            call OB_PASS_RL_to_R8(buffer2D,buffer3D,ob_id,3,fld3D)
+
             print*,"Sending with tag:",tag,"for ob_id",ob_id,
      &             "fld3D",fld3D, "at myIter", myIter, "proc",mpiMyId
-            print *,"Sending array shape: ",
-     &                shape(subFieldOnMask_3Davg(ob_id,fld3D,:,:))
-            print *,"Sending array:"
-CCCC
-            call MPI_SEND(subFieldOnMask_3Davg(ob_id,fld3D,:,:),
-     &   ob_levels3D(fld3D,ob_id)*(sNx+sNy), MPI_REAL8, 0, tag,
-     &   MPI_COMM_MODEL, ierror)
+            print *,"Sending array shape: ", shape(buffer3D)
+C            call MPI_SEND(subFieldOnMask_3Davg(ob_id,fld3D,:,:),
+C     &   ob_levels3D(fld3D,ob_id)*(sNx+sNy), MPI_REAL8, 0, tag,
+C     &   MPI_COMM_MODEL, ierror)
+            call MPI_SEND(buffer3D, ob_levels3D(fld3D,ob_id)*(sNx+sNy),
+     &                    MPI_REAL8, 0, tag, MPI_COMM_MODEL, ierror)
+
             DO k=1, ob_levels3D(fld3D,ob_id)
-             print *,"printing at level k",k, "with tag", tag+(100*k)
-             call PRINT_FLOAT_ARR(
-     &             subFieldOnMask_3Davg(ob_id,fld3D,:,k), sNx + sNy)
-CC             print *,"NEW unique tag for 3D message", tag+(100*k)
-C             call MPI_SEND(subFieldOnMask_3Davg(ob_id,fld3D,:,k),
-C     &    sNx+sNy, MPI_REAL8, 0, tag+(100*k), MPI_COMM_MODEL, ierror)
-C             print *,"MPI_SEND: temp_arr", temp_arr
-C             call MPI_SEND(temp_arr,
-C     &        3*85, MPI_REAL8, 0, tag+(100), MPI_COMM_MODEL, ierror)
-C             DO i=1, sNx+sNy
-C               print*,"subFieldOnMask_3Davg at i",i,":",
-C     &           subFieldOnMask_3Davg(ob_id,fld3D,i,k)
-C             ENDDO
+             print *,"printing at level k",k, "with tag", tag
+             call PRINT_FLOAT_ARR(buffer3D(:,k), sNx+sNy)
             ENDDO
+
             print *,"FINISHED SENDING."
-CCCCC
-
-C           Some parameters for MPI_Type_create_subarray:
-C            full_dim(2) = Nr
-C            full_dim(1) = sNx+sNy
-C            sub_dim(2) = ob_levels3D(fld3D,ob_id)
-C            sub_dim(1) = sNx+sNy
-C            start_ind(1) = 1
-C            start_ind(2) = 1
-
-C            call MPI_Type_create_subarray(2,
-C     &                         full_dim,
-C     &                         sub_dim,
-C     &                         start_ind,
-C     &                         MPI_ORDER_FORTRAN,
-C     &                         MPI_REAL,
-C     &                         cont_mpi_type,
-C     &                         ierror)
-C       call MPI_TYPE_CONTIGUOUS(ob_levels3D(fld,ob_id)*(sNx+sNy),
-C     &                               MPI_REAL, cont_mpi_type, ierror)
-C       call MPI_TYPE_COMMIT(cont_mpi_type, ierror)
-
-C            call MPI_SEND(
-C     &  subFieldOnMask_3Davg(ob_id,fld3D,:,1:ob_levels3D(fld3D,ob_id))
-C     &  ,ob_levels3D(fld3D,ob_id)*(sNx+sNy), MPI_REAL,0,
-C     &  tag, MPI_COMM_MODEL, ierror)
-C            call MPI_SEND(
-C     &  subFieldOnMask_3Davg(ob_id,fld3D,:,1:ob_levels3D(fld3D,ob_id))
-C     &  ,3*85, MPI_REAL,0,
-C     &  tag, MPI_COMM_MODEL, ierror)
-
-C            call MPI_SEND(
-C     &  subFieldOnMask_3Davg(ob_id,fld3D,:,1:ob_levels3D(fld3D,ob_id))
-C     &  ,1, cont_mpi_type,0,
-C     &  tag, MPI_COMM_MODEL, ierror)
 
            end do
           end if
-
-        else if (mpiMyId .eq. 0) then
-          print *,"NOT MPIT PROC > 0. I AM 0"
          end if
-         print *,"BEFORE the #endif"
 
 #endif
 
-         print *,"AFTER IF STATEMENT"
 
 C-------------------------------------------------------------------------------
 C           Master Process Tasks:
@@ -407,6 +367,32 @@ C      Move on to next time step
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
+      SUBROUTINE OB_PASS_RL_to_R8(buffer2D, buffer3D, ob_id, nDim,fld)
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "DIAGNOSTICS_OB.h"
+
+        REAL*8 buffer2D(sNx + sNy)
+        REAL*8 buffer3D(sNx + sNy, Nr)
+        INTEGER ob_id, nDim, fld
+        INTEGER i,k
+
+        IF (nDim .eq. 2) then
+          DO i=1, sNx+sNy
+            buffer2D(i) = subFieldOnMask_2Davg(ob_id,fld,i)
+          ENDDO
+
+        ELSE IF (nDim .eq. 3) then
+          DO i=1, sNx+sNy
+            DO k=1,ob_levels3D(fld,ob_id)
+              buffer3D(i,k) = subFieldOnMask_3Davg(ob_id,fld,i,k)
+            ENDDO
+          ENDDO
+
+        ENDIF
+
+      END
+
 
       SUBROUTINE MASTER_PROC_TASKS(fld, ob_id, nDim, myThid, myTime,
      &                             myIter)
@@ -425,8 +411,9 @@ C     myThid :: thread number
 C     myTime :: current time in model
       INTEGER fld, ob_id, nDim, myThid, myIter
       _RL myTime
-      _RL recv_arr(sNx + sNy)
-      _RL recv_arr3D(sNx + sNy, Nr)
+      REAL*8 buffer2D(sNx+sNy)
+      REAL*8 buffer3D(sNx+sNy, Nr)
+
       _RS dummyRS(1)
       INTEGER pid, status(MPI_STATUS_SIZE), ierror, tag
       INTEGER total_valid, i, k, count
@@ -437,11 +424,11 @@ C     myTime :: current time in model
       common / local_var / total_valid
       common / mpi_var / status, ierror
 
-      DO i=1, sNx + sNy
-        recv_arr(i) = 0.0
-C      DO k=1, 3
-C         recv_arr3D(i,k) = 0.0
-C       ENDDO
+      DO i=1,sNx+sNy
+        buffer2D(i) = 0.0
+        DO k=1,Nr
+          buffer3D(i,k) = 0.0
+        ENDDO
       ENDDO
 
       total_valid = 0
@@ -457,10 +444,11 @@ C-------------------------------------------------------------------------------
      &            numOBPnts_allproc(ob_id,1), "at ob_id",ob_id
       IF (numOBPnts_allproc(ob_id,1).ge.1) then
        if (nDim .eq. 2) then
+
         print *,"MASTER2D: 2 dimensional field appending local field",
      &           ob_flds2D(fld,ob_id)
-        call APPEND_OB_VALUE2D(ob_id, 0,
-     &                            subFieldOnMask_2Davg(ob_id,fld,:))
+        call OB_PASS_RL_to_R8(buffer2D, buffer3D, ob_id, 2,fld)
+        call APPEND_OB_VALUE2D(ob_id, 0, buffer2D)
         total_valid = total_valid + numOBPnts_allproc(ob_id, 1)
 
         if (debug .eq. 1) then
@@ -475,8 +463,9 @@ C         print *,"MASTER 2D: num_ob_points(ob_id)",num_ob_points(ob_id)
        else if (nDim .eq. 3) then
         print *,"MASTER3D: 3 dimensional field appending local field",
      &           ob_flds3D(fld,ob_id)
-        call APPEND_OB_VALUE3D(ob_id, 0, fld,
-     &                            subFieldOnMask_3Davg(ob_id,fld,:,:))
+        call OB_PASS_RL_to_R8(buffer2D, buffer3D, ob_id, 3,fld)
+
+        call APPEND_OB_VALUE3D(ob_id, 0, fld, buffer3D)
         total_valid = total_valid + numOBPnts_allproc(ob_id, 1)
 
         if (debug .eq. 1) then
@@ -514,79 +503,54 @@ C       If number of valid elements is greater than or equal to 1
          IF (nDim .eq. 2) then
           print *, "MASTER HERE in dim 2"
           tag = ob_tags(ob_id, 1, fld)
-          call MPI_RECV(recv_arr, sNx+sNy, MPI_REAL8,
+          call MPI_RECV(buffer2D, sNx+sNy, MPI_REAL8,
      &                   pid, tag ,MPI_COMM_MODEL, status, ierror)
 
           if (debug .eq. 1) then
            print *, "MASTER 2D Received from process", pid
-           print *, "MASTER Received recv_arr for fields"
-           print *, "MASTER recv_arr shape:", shape(recv_arr)
+           print *, "MASTER Received buffer2D for fields"
+           print *, "MASTER buffer2D shape:", shape(buffer2D)
            print *, "MASTER Displaying FULL 2D array, beyond number of"
      &                       ," valid elements"
-           call PRINT_FLOAT_ARR(recv_arr, sNx+sNy)
+           call PRINT_FLOAT_ARR(buffer2D, sNx+sNy)
           end if
 
-          call APPEND_OB_VALUE2D(ob_id, pid, recv_arr)
+          call APPEND_OB_VALUE2D(ob_id, pid, buffer2D)
 
          ELSE IF (nDim .eq. 3) then
           print *, "MASTER HERE in dim 3"
 
           tag = ob_tags(ob_id, 2, fld)
 
-          call MPI_RECV(recv_arr3D(:,1:ob_levels3D(fld,ob_id)),
+          call MPI_RECV(buffer3D(:,1:ob_levels3D(fld,ob_id)),
      &           ob_levels3D(fld,ob_id)*(sNx+sNy), MPI_REAL8, pid,
      &           tag ,MPI_COMM_MODEL, status, ierror)
           DO k=1, ob_levels3D(fld,ob_id)
            print *,"receving tag",tag
            print *,"MASTER 3D receiving from tag", tag
-           print *,"printing recv_arr3D at k",k
-C              call MPI_RECV(recv_arr, sNx+sNy, MPI_REAL8, pid,
-C     &                   tag+(100*k) ,MPI_COMM_MODEL, status, ierror)
-C              call MPI_RECV(recv_arr, 3*85, MPI_REAL8, pid,
-C     &                   tag+(100) ,MPI_COMM_MODEL, status, ierror)
-           call PRINT_FLOAT_ARR(recv_arr3D(:,k), sNx+sNy)
+           print *,"printing buffer3D at k",k
+
+           call PRINT_FLOAT_ARR(buffer3D(:,k), sNx+sNy)
 C              DO i=1, sNx+sNy
 C                recv_arr3D(i,k) = recv_arr(i)
 C            print *,"recv_arr at",i,":",recv_arr(i)
 C              ENDDO
           ENDDO
 
-C        call MPI_RECV(recv_arr3D(:,1:ob_levels3D(fld,ob_id)),
-C     &                    3*85,MPI_REAL,
-C     &                    pid, tag ,MPI_COMM_MODEL, status, ierror)
-
-C          call MPI_RECV(recv_arr3D(:,1:ob_levels3D(fld,ob_id)),
-C     &                    ob_levels3D(fld,ob_id)*(sNx+sNy),MPI_REAL,
-C     &                    pid, tag ,MPI_COMM_MODEL, status, ierror)
-
-C     &                    ob_levels3D(fld,ob_id)*(sNx+sNy),MPI_REAL,
-C     &                    1, cont_mpi_type,
-C          DO k=1, ob_levels3D(fld,ob_id)
-C           DO i=1, sNx+sNy
-C            recv_arr3D(i,k) = recv(i,k)
-C           ENDDO
-C          ENDDO
-
           if (debug .eq. 1) then
             print *, "MASTER 3D Received from process", pid
-            print *, "MASTER Received recv_arr3D for fields"
-            print *, "MASTER recv_arr3D shape:", shape(recv_arr3D)
+            print *, "MASTER Received buffer3D for fields"
+            print *, "MASTER buffer3D shape:", shape(buffer3D)
             print *, "MASTER Displaying FULL 3D array, beyond number of"
      &                       ," valid elements"
             DO k=1, ob_levels3D(fld,ob_id)
              print *,"printing at level k", k
-             call PRINT_FLOAT_ARR(recv_arr3D(:,k),sNx+sNy)
+             call PRINT_FLOAT_ARR(buffer3D(:,k),sNx+sNy)
            ENDDO
           end if
 C         !append_ob_values3D params: ob_id, pid, fld, ob_values
-          call APPEND_OB_VALUE3D(ob_id,pid, fld, recv_arr3D)
+          call APPEND_OB_VALUE3D(ob_id,pid, fld, buffer3D)
 
-C          if (debug .eq. 1) then
-C           print *,"APPEND_OB_VALUE: appending recv_arr "
-C     &            ,"field to global_ob with ",
-C     &            numOBPnts_allproc(ob_id, pid+1),"valid elements:"
-C           call PRINT_FLOAT_ARR(global_ob, total_valid)
-C          end if
          ENDIF
          total_valid = total_valid + numOBPnts_allproc(ob_id, pid+1)
 
@@ -650,7 +614,6 @@ C       WRITE_REC_XYZ_RL( fName,field,iRec,myIter,myThid )
 C     Initializes average fields to zero
 #include "SIZE.h"
 #include "EEPARAMS.h"
-#include "PARAMS.h"
 #include "DIAGNOSTICS_OB.h"
 
         INTEGER myThid
@@ -846,11 +809,10 @@ C       Computes average of Diagnostics_ob fields using the number of time steps
            ENDDO
           ENDDO
 
-C       Set number of time steps wihtin averaging period back to zero
-        print *, "setting nTimeSteps_ob back to zero at avg"
-        nTimeSteps_ob = 0
-
        ENDDO
+C       Set number of time steps wihtin averaging period back to zero
+       print *, "setting nTimeSteps_ob back to zero at avg"
+       nTimeSteps_ob = 0
       END
 
 
@@ -864,7 +826,7 @@ C       Store field value at position in final global array global_ob.
 #include "EESUPPORT.h"
 #include "DIAGNOSTICS_OB.h"
 
-         _RL ob_values(sNx+sNy)
+         REAL*8 ob_values(sNx+sNy)
          integer num_valid, i, ob_index, ob_id, pid
          integer, parameter :: print_debug = 1
 
@@ -901,7 +863,7 @@ C           end if
 #include "EESUPPORT.h"
 #include "DIAGNOSTICS_OB.h"
 
-        _RL ob_values(sNx+sNy, Nr)
+        REAL*8 ob_values(sNx+sNy, Nr)
         integer num_valid, i, k, ob_index, ob_id, pid, fld
         integer, parameter :: print_debug = 1
 
@@ -993,33 +955,99 @@ C     &                           "_global.",str_time,".bin"
 
        character*2 dir
        character*50 filename
+       real*4 bufferR4_2D((sNy+sNx)*(nPx*nPy))
+       real*4 bufferR4_3D((sNy+sNx)*(nPx*nPy), Nr)
 
 c      Writing global array to binary file
        dir = "./"
 
-       print *,"WRITE_GLO:cdiag", cdiag
+       IF (ob_filePrec .eq. 32) then
 
-       IF (nDim .eq. 2) then
-        call CREATE_FILENAME(dir, ob_flds2D(fld,ob_id), ob_id, filename
+        IF (nDim .eq. 2) then
+
+         call OB_R8_to_R4(bufferR4_2D, bufferR4_3D,2,fld,ob_id)
+         call CREATE_FILENAME(dir, ob_flds2D(fld,ob_id), ob_id,filename
      &                      ,0, myIter)
-        open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
-        write(1) global_ob2D(1:total_valid)
-        print *,"WRITE_GLOBAL_BIN: 2D field",ob_flds2D(fld,ob_id),
+         open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+         write(1) bufferR4_2D(1:total_valid)
+         print *,"WRITE_GLOBAL_BIN: 2D field",ob_flds2D(fld,ob_id),
      &           "written to file:",filename
 
-       ELSE IF (nDim .eq. 3) then
+        ELSE IF (nDim .eq. 3) then
+         call OB_R8_to_R4(bufferR4_2D, bufferR4_3D,3,fld,ob_id)
+         call CREATE_FILENAME(dir, ob_flds3D(fld,ob_id), ob_id, filename
+     &                      ,0, myIter)
+         open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+         write(1) bufferR4_3D(1:total_valid,1:ob_levels3D(fld,ob_id))
+         print *,"WRITE_GLOBAL_BIN: 3D field ",ob_flds3D(fld,ob_id),
+     &           "written to file:",filename
+
+        ENDIF
+
+       ELSE IF (ob_filePrec .eq. 64) then
+
+        IF (nDim .eq. 2) then
+
+         call CREATE_FILENAME(dir, ob_flds2D(fld,ob_id), ob_id,filename
+     &                      ,0, myIter)
+         open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+         write(1) global_ob2D(1:total_valid)
+         print *,"WRITE_GLOBAL_BIN: 2D field",ob_flds2D(fld,ob_id),
+     &           "written to file:",filename
+
+        ELSE IF (nDim .eq. 3) then
          call CREATE_FILENAME(dir, ob_flds3D(fld,ob_id), ob_id, filename
      &                      ,0, myIter)
          open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
          write(1) global_ob3D(1:total_valid,1:ob_levels3D(fld,ob_id))
          print *,"WRITE_GLOBAL_BIN: 3D field ",ob_flds3D(fld,ob_id),
      &           "written to file:",filename
+        ENDIF
 
        ENDIF
 
        close(1)
 
        end
+
+
+       SUBROUTINE OB_R8_to_R4(bufferR4_2D, bufferR4_3D,nDim,fld,ob_id)
+#include "SIZE.h"
+#include "EEPARAMS.h"
+#include "EESUPPORT.h"
+#include "DIAGNOSTICS_OB.h"
+
+         real*4 bufferR4_2D((sNy+sNx)*(nPx*nPy))
+         real*4 bufferR4_3D((sNy+sNx)*(nPx*nPy), Nr)
+         integer nDim, fld, ob_id
+         integer i, k
+
+C        Initialize buffer arrays:
+        do i=1, (sNy+sNx)*(nPx*nPy)
+          bufferR4_2D(i) = 0.0
+          do k=1, Nr
+            bufferR4_3D(i,k) = 0.0
+          enddo
+        enddo
+
+C        Set real*8 values to real*4
+
+         if (nDim .eq. 2) then
+           do i=1, (sNy+sNx)*(nPx*nPy)
+             bufferR4_2D(i) = global_ob2D(i)
+           enddo
+
+         else if (nDim .eq. 3) then
+           do i=1, (sNy+sNx)*(nPx*nPy)
+             do k=1, ob_levels3D(fld,ob_id)
+               bufferR4_3D(i,k) = global_ob3D(i,k)
+               print *,"OB: buf:",bufferR4_3D(i,k),"glo:",
+     &                global_ob3D(i,k)
+             enddo
+           enddo
+         endif
+
+       END
 
 
        SUBROUTINE PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld, nDim, myIter)
@@ -1032,10 +1060,10 @@ c      Unravels global_ob and plots onto an array with dimensions Nx by Ny
 #include "DYNVARS.h"
 #include "DIAGNOSTICS_OB.h"
 
-       _RL global_correct((sNy+sNx)*(nPx*nPy))
-       _RL global_NxNy(Nx,Ny,nSx,nSy)
+       REAL*8 global_correct((sNy+sNx)*(nPx*nPy))
+       REAL*8 global_NxNy(Nx,Ny,nSx,nSy)
        _RS dummyRS(1)
-       _RL global_theta(Nx,Ny)
+       REAL*8 global_theta(Nx,Ny)
 
        integer i,j, bi, bj, k, counter, ob_counter, correct
        integer fld, total_valid, ob_id, myThid, nDim, myIter

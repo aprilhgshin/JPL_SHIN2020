@@ -149,7 +149,7 @@ def test_ob_outputs3D_L1(output_dir, mask_dir, ob_mask, ob_output, fname):
 
 
 
-def new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum):
+def new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec):
 
     mask = np.fromfile(str(mask_dir / ob_mask), dtype='>f4').reshape(40,90)
 
@@ -163,10 +163,16 @@ def new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, ob_mask, ob_output, 
     plt.title(fname)
     plt.show()
 
+    if (filePrec == 32):
+        ob_out = np.fromfile(str(output_dir / ob_output), dtype='>f4')
+        depth = int(len(ob_out)/90)
+        output = ob_out.reshape(depth,90)
+        depth = int(depth/2)
+    elif (filePrec == 64):
+        ob_out = np.fromfile(str(output_dir / ob_output), dtype='>f8')
+        depth = int(len(ob_out)/90)
+        output = ob_out.reshape(depth,90)
 
-    ob_out = np.fromfile(str(output_dir / ob_output), dtype='>f8')
-    depth = int(len(ob_out)/90)
-    output = ob_out.reshape(depth,90)
     print(output.shape)
     print("depth:",depth)
 
@@ -181,9 +187,16 @@ def new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, ob_mask, ob_output, 
             if(mask[row][col] > 0):
                 print("counter:",counter,"field:",field[fieldNum][0][row][col])
                 for k in range(depth):
-                    newFieldOnMask[k][counter] =  field[fieldNum][k][row][col]
+                    if (field[fieldNum][k][row][col] == 0):
+                        newFieldOnMask[k][counter] = None
+                    else:
+                        newFieldOnMask[k][counter] =  field[fieldNum][k][row][col]
                 counter += 1
 
+    for i in range(90):
+        for k in range(depth):
+            if(output[k][i] == 0):
+                output[k][i] = None
 
     print("output shape",output.shape)
     print("output first element:",output[0][0])
@@ -191,8 +204,12 @@ def new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, ob_mask, ob_output, 
     print("newFieldOnMask:",newFieldOnMask[0])
 
     for k in range(depth):
-        diff[k] = abs(output[k] - newFieldOnMask[k])
-        print("abs difference between field and output:",diff[k]>0.1)
+        for i in range(len(newFieldOnMask)):
+            if (newFieldOnMask[k][i] == None):
+                diff[k][i] = None
+            else:
+                diff[k][i] = abs(output[k][i] - newFieldOnMask[k][i])
+        print("abs difference between field and output:",diff[k])
 
         plt.subplot(211)
         plt.plot(output[k], 'r--', linewidth=2.5, label="ob output")
@@ -241,11 +258,17 @@ def test_ob_outputs2D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, 
     for row in range(len(mask)-1):
         for col in range(len(mask[0])-1):
             if(mask[row][col] > 0):
-                print(field[row][col])
+                if (field[row][col] == 0):
+                    newFieldOnMask[counter] = None
+                else:
 #                newFieldOnMask[counter] =  field[fieldNum][row][col]
-                newFieldOnMask[counter] =  field[row][col]
+                    newFieldOnMask[counter] =  field[row][col]
 
                 counter += 1
+
+    for i in range(90):
+            if(output[i] == 0):
+                output[i] = None
 
     print("len:", len(newFieldOnMask))
     diff = (output[0] - newFieldOnMask)
@@ -280,11 +303,11 @@ if __name__ == "__main__":
 #    test_ob_outputs3D(output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_THETA   _00036001.bin", 'T', 1)
 #    test_ob_outputs2D(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_THETA   _00036001.bin", 'THETA')
 ###PARAMS: test_ob_outputs2D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname)
-    test_ob_outputs2D(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_ETAN    _00036001.bin", 'ETAN', 0)
+#    test_ob_outputs2D(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_ETAN    _00036001.bin", 'ETAN', 0)
 
 ### PARAMS: new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum
-#    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_SALT    _00036001.bin", 'SALT', 1)
-#    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_THETA   _00036001.bin", 'THETA', 0)
+    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_SALT    _00036001.bin", 'SALT', 1, 64)
+#    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_THETA   _00036001.bin", 'THETA', 0, 64)
 
 #    field = mitgcm.rdmds(str(output_dir / 'THETA'), itrs=-1,fill_value=0.0)
 #    print(np.fromfile(str(output_dir / 'THETA.001.001.data'), dtype='>f4').shape)

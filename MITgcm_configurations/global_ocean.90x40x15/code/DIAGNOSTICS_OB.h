@@ -65,6 +65,7 @@ C     ob_tags      :: Int array of unique tags assigned to every field in every 
       INTEGER, PARAMETER :: MAX_NMASKS = 12
       INTEGER, PARAMETER :: MAX_NFLDS = 20
 
+      INTEGER ob_filePrec
       CHARACTER*8 ob_flds2D(MAX_NFLDS, nOB_mask)
       CHARACTER*8 ob_flds3D(MAX_NFLDS, nOB_mask)
 
@@ -91,8 +92,8 @@ C      _RL subFieldOnMask_3Davg(nOB_mask,MAX_NFLDS, Nr, sNx + sNy)
       _RL subFieldOnMask_3Davg(nOB_mask,MAX_NFLDS, sNx + sNy, Nr)
 
       INTEGER lookup_table(nOB_mask, Ny*Nx)
-      _RL global_ob2D((sNy+sNx)*(nPx*nPy))
-      _RL global_ob3D((sNy+sNx)*(nPx*nPy), Nr)
+      REAL*8 global_ob2D((sNy+sNx)*(nPx*nPy))
+      REAL*8 global_ob3D((sNy+sNx)*(nPx*nPy), Nr)
 
 
       _RL global_ob_mask(nOB_mask,Nx, Ny,nSx,nSy)
@@ -118,7 +119,7 @@ C     ==========================================================================
 
       COMMON / DIAG_OB_EXTRACT_I /
      &     lookup_table, sub_local_ij_ob, sub_glo_indices_allproc,
-     &     numOBPnts_allproc, num_ob_points,
+     &     numOBPnts_allproc, num_ob_points, ob_filePrec,
      &     ob_levels3D, ob_nFlds2D, ob_nFlds3D, ob_tags
       COMMON / DIAG_OB_EXTRACT_C /
      &     ob_flds2D, ob_flds3D, ob_fnames

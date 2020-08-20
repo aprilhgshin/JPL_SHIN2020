@@ -201,12 +201,13 @@ C       Plotting for debugging
 
 C     Using GATHER_2D_R8 to correctly combine sub masks into a single global mask
       DO ob_id=1, nOB_mask
+        print *,"INIT_VARIA: ob_id in loop", ob_id
         CALL GATHER_2D_R8(global_ob_mask(ob_id,:,:,1,1),
      &                  ob_subMask(ob_id,1:sNx,1:sNy,1,1),
      &                  Nx, Ny, .true., .true., myThid)
 C      CALL PLOT_GLO_FIELD_XYRL(global_ob_mask(ob_id,:,:,:,:),
 C     &                    "OB_EXTRACT_OUTPUT: global mask", myThid)
-      ENDDO
+
 
 #ifdef ALLOW_USE_MPI
 
@@ -219,6 +220,11 @@ C       Store global_ob_masks into lookup table
             do i=1, Nx, 1
               lookup_table(ob_id,counter) =
      &         int(global_ob_mask(ob_id,i,j,bi,bj))
+              if ((ob_id .eq. 2).AND.
+     &            (global_ob_mask(ob_id,i,j,bi,bj) .gt. 0)) then
+               print *,"INIT_V g_m:",
+     &            int(global_ob_mask(ob_id,i,j,bi,bj))
+              endif
               counter = counter + 1
               if (global_ob_mask(ob_id,i,j,bi,bj) .ge. 1) then
                 num_ob_points(ob_id) = num_ob_points(ob_id) + 1
@@ -228,7 +234,7 @@ C       Store global_ob_masks into lookup table
           end do
         end do
       end if
-
+      ENDDO
 #endif
 
 C      num_ob_points = 0

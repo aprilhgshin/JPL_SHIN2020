@@ -7,6 +7,7 @@
 #     nml_levels3D : depths of 3D fields for each open boundary (starting from surface)
 #     nml_nFields : number of fields for each open boundary mask
 #     nml_fileNames : filenames of open boundary mask
+#     nml_filePrec : output file real precision (32 or 64 bits)
 #--------------------
 
  &DIAG_OB_EXTRACT
@@ -17,13 +18,21 @@
 # endTime_nml = 640800.0,
 
  nml_fields2D(1:2,1) = 'ETAN    ','AREA    ',
+ nml_fields2D(1:2,2) = 'ETAN    ','AREA    ',
 
  nml_fields3D(1:2,1) = 'THETA   ','SALT    ',
+ nml_fields3D(1:2,2) = 'THETA   ','SALT    ',
 
  nml_levels3D(1:2,1) =  3,3,
+ nml_levels3D(1:2,2) =  3,3,
 
  nml_nFields2D(1) = 2,
  nml_nFields3D(1) = 2,
 
- nml_fileNames(1) = 'domain_flt32_mask1.bin',
+ nml_nFields2D(2) = 2,
+ nml_nFields3D(2) = 2,
+
+ nml_fileNames(1) = 'domain_flt32_mask1.bin','domain_flt32_mask1.bin',
+
+ nml_filePrec = 64
  &

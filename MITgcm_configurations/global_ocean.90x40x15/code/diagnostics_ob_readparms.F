@@ -57,7 +57,7 @@ C -----------------------------
 
       INTEGER nml_nFields2D(MAX_NMASKS)
       INTEGER nml_nFields3D(MAX_NMASKS)
-
+      INTEGER nml_filePrec
       _RL avgPeriod_nml
       _RL startTime_nml
       _RL endTime_nml
@@ -65,6 +65,7 @@ C -----------------------------
 
       NAMELIST / DIAG_OB_EXTRACT /
      &     avgPeriod_nml, startTime_nml, endTime_nml,
+     &     nml_filePrec, 
      &     nml_fields2D, nml_fields3D,
      &     nml_fileNames, nml_levels3D,
      &     nml_nFields2D, nml_nFields3D
@@ -115,6 +116,7 @@ C     CHANGE THESE VALUES TO THE UNDEFINED CONSTANT
       startTime_nml = undefRL
       endTime_nml = undefRL
       time_passed = 0.0
+      nml_filePrec = 64
 
       DO j=1, MAX_NMASKS
         DO i=1, MAX_NFLDS
@@ -211,6 +213,8 @@ C     Fill DIAGNOSTICS_OB.h Common Block with Namelist Info
       ELSE
         endTime_ob = endTime_nml
       ENDIF
+
+      ob_filePrec = nml_filePrec
 
       print *,"OB readparms:",ob_levels3D
 
