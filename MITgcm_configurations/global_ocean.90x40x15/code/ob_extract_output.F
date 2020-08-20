@@ -354,6 +354,14 @@ C         !ENDIF for mpiMyId .eq. 0
 C       !ENDDO for ob_id
         ENDDO
 C     !ENDIF for end of averaging period
+
+C      Set averages to back zero
+       CALL SET_TO_INI_STATE(myThid)
+       if (debug .eq. 1) then
+         print *,"OB_EXTRACT_OUTPUT: subFieldOnMask_avg ini"
+C           call PRINT_FLOAT_ARR(subFieldOnMask_avg(1,1,:), sNx+sNy)
+       endif
+
       ENDIF
 C      Move on to next time step
        nTimeSteps_ob = nTimeSteps_ob + 1
@@ -765,6 +773,8 @@ C       Cumulate Diagnostics_ob fields
 
       INTEGER myThid
       INTEGER i, k, ob_id, fld, fld2D, fld3D
+
+      print *,"Cumulating at ",nTimeSteps_ob
 
       DO ob_id=1, nOB_mask
        DO i=1, sNx+sNy

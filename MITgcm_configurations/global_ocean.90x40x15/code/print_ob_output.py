@@ -199,7 +199,7 @@ def new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, ob_mask, ob_output, 
                 output[k][i] = None
 
     print("output shape",output.shape)
-    print("output first element:",output[0][0])
+    print("output:",output)
     print("newFieldOnMask last element",newFieldOnMask[0][-1] )
     print("newFieldOnMask:",newFieldOnMask[0])
 
@@ -306,8 +306,8 @@ if __name__ == "__main__":
 #    test_ob_outputs2D(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_ETAN    _00036001.bin", 'ETAN', 0)
 
 ### PARAMS: new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum
-    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_SALT    _00036001.bin", 'SALT', 1, 64)
-#    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_THETA   _00036001.bin", 'THETA', 0, 64)
+#    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_SALT    _00036001.bin", 'SALT', 1, 64)
+    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_THETA   _00036005.bin", 'THETA', 0, 64)
 
 #    field = mitgcm.rdmds(str(output_dir / 'THETA'), itrs=-1,fill_value=0.0)
 #    print(np.fromfile(str(output_dir / 'THETA.001.001.data'), dtype='>f4').shape)
