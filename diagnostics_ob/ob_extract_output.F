@@ -372,6 +372,7 @@ C       if (debug .eq. 1) then
 C         print *,"OB_EXTRACT_OUTPUT: subFieldOnMask_avg ini"
 C           call PRINT_FLOAT_ARR(subFieldOnMask_avg(1,1,:), sNx+sNy)
 C       endif
+       time_level = time_level + 1
 
       ENDIF
 C      Move on to next time step
@@ -768,6 +769,9 @@ C            print *,"SET_SUBFIELDS: k",k,"loc_count",loc_count
             ELSE IF (ob_flds3D(fld3D,ob_id) .eq. 'VVEL') then
               subFieldOnMask_3D(ob_id,fld3D,loc_count,k) =
      &                                        vVel(i,j,k,bi,bj)
+            ELSE IF (ob_flds3D(fld3D,ob_id) .eq. 'WVEL') then
+             subFieldOnMask_3D(ob_id,fld3D,loc_count,k) =
+     &                                        wVel(i,j,k,bi,bj)
             ELSE IF (ob_flds3D(fld3D,ob_id) .eq. 'THETA') then
               subFieldOnMask_3D(ob_id,fld3D,loc_count,k) =
      &                                        theta(i,j,k,bi,bj)
@@ -991,7 +995,12 @@ c         Creating a filename for global arrays
 C         write(filename, "(7A)") dir, fldNm, "_on_mask", str_ob,
 C     &                           "_global.",str_time,".bin"
 
-         write(filename, "(5A)") "MASK_", str_ob, "_", fldNm,".bin"
+         IF (combineMaskTimeLevels) then
+          write(filename, "(5A)") "MASK_", str_ob, "_", fldNm,".bin"
+         ELSE
+           write(filename, "(7A)") "MASK_", str_ob, "_", fldNm,
+     &          "_",str_iter,".bin"
+         ENDIF
 
 C     &          "_", str_iter, ".bin"
        end if
@@ -1013,11 +1022,14 @@ C     &          "_", str_iter, ".bin"
        character*50 filename
        real*4 bufferR4_2D((sNy+sNx)*(nPx*nPy))
        real*4 bufferR4_3D((sNy+sNx)*(nPx*nPy), Nr)
+       real*8 temp((sNy+sNx)*(nPx*nPy), Nr)
        integer, parameter :: debug = 1
+       logical exists
+       integer LEN, i
 
 c      Writing global array to binary file
        dir = "./"
-
+       print *,"combineMaskTimeLevels",combineMaskTimeLevels
        IF (ob_filePrec .eq. 32) then
 
         IF (nDim .eq. 2) then
@@ -1025,14 +1037,29 @@ c      Writing global array to binary file
          call OB_R8_to_R4(bufferR4_2D, bufferR4_3D,2,fld,ob_id)
          call CREATE_FILENAME(dir, ob_flds2D(fld,ob_id), ob_id,filename
      &                      ,0, myIter)
-         open(1, FILE=filename, FORM="unformatted", ACCESS="APPEND")
-         write(1) bufferR4_2D(1:total_valid)
+         IF (combineMaskTimeLevels) then
+          INQUIRE (IOLENGTH = LEN) bufferR4_2D(1:total_valid)
+          INQUIRE (FILE=filename, EXIST=exists)
+C         If file already exists, set status as 'old'. Otherwise, 'replace'
+          if (exists) then
+           open( 1, FILE=filename, STATUS='OLD', ACCESS='DIRECT',
+     &          RECL = LEN )
+          else
+           open( 1, FILE=filename, STATUS='REPLACE', ACCESS='DIRECT',
+     &          RECL = LEN )
+          endif
+          write(1, REC=time_level) bufferR4_2D(1:total_valid)
+         ELSE
+          open(1, FILE=filename, FORM="unformatted",ACCESS='STREAM')
+          write(1) bufferR4_2D(1:total_valid)
+         ENDIF
          close(1)
+
          if (debug .eq. 1) then
           print *,"WRITE_GLOBAL_BIN: 2D field",ob_flds2D(fld,ob_id),
-     &           "written to file:",filename
-          print *, "WRITE_GLOBAL_BIN: bufferR4_2D",
-     &     bufferR4_2D(1:total_valid)
+     &            "written to file:",filename
+          print *,"WRITE_GLOBAL_BIN: bufferR4_2D",
+     &            bufferR4_2D(1:total_valid)
 
          endif
 
@@ -1040,38 +1067,77 @@ c      Writing global array to binary file
          call OB_R8_to_R4(bufferR4_2D, bufferR4_3D,3,fld,ob_id)
          call CREATE_FILENAME(dir, ob_flds3D(fld,ob_id), ob_id, filename
      &                      ,0, myIter)
-C         open(1, FILE=filename, FORM="unformatted", ACCESS="APPEND")
-         open(1, FILE=filename, FORM="unformatted", action='write',
-     &               position='append')
-         write(1) bufferR4_3D(1:total_valid,1:ob_levels3D(fld,ob_id))
+         IF (combineMaskTimeLevels) then
+          INQUIRE (IOLENGTH = LEN) bufferR4_3D(1:total_valid,
+     &          1:ob_levels3D(fld,ob_id))
+          INQUIRE (FILE=filename, EXIST=exists)
+C         If file already exists, set status as 'old'. Otherwise, 'replace'
+          if (exists) then
+           open( 1, FILE=filename, STATUS='OLD', ACCESS='DIRECT',
+     &          RECL = LEN )
+          else
+           open( 1, FILE=filename, STATUS='REPLACE', ACCESS='DIRECT',
+     &          RECL = LEN )
+          endif
+          write(1, REC=time_level) bufferR4_3D(1:total_valid,
+     &          1:ob_levels3D(fld,ob_id))
+         ELSE
+          open(1, FILE=filename, FORM="unformatted",ACCESS='STREAM')
+          write(1) bufferR4_3D(1:total_valid,1:ob_levels3D(fld,ob_id))
+         ENDIF
          close(1)
+
          if (debug .eq. 1) then
           print *,"WRITE_GLOBAL_BIN: 3D field ",ob_flds3D(fld,ob_id),
-     &           "written to file:",filename
-          print *, "WRITE_GLOBAL_BIN: bufferR4_3D",
-     &     bufferR4_3D(1:total_valid,1:ob_levels3D(fld,ob_id))
+     &            "written to file:",filename
+          print *,"WRITE_GLOBAL_BIN: bufferR4_3D",
+     &            bufferR4_3D(1:total_valid,1:ob_levels3D(fld,ob_id))
          endif
 
         ENDIF
 
+
        ELSE IF (ob_filePrec .eq. 64) then
 
         IF (nDim .eq. 2) then
-
+C       --------------------------------
+C       File precision: 64
+C       Field dimension: 2
+C       --------------------------------
          call CREATE_FILENAME(dir, ob_flds2D(fld,ob_id), ob_id,filename
      &                      ,0, myIter)
-C         open(1, FILE=filename, FORM="unformatted", ACCESS="APPEND") action='write',position='append'
-         open(1, FILE=filename, FORM="unformatted", action='write',
-     &               position='append')
+         IF (combineMaskTimeLevels) then
+          INQUIRE (IOLENGTH = LEN) global_ob2D(1:total_valid)
+          INQUIRE (FILE=filename, EXIST=exists)
+C         If file already exists, set status as 'old'. Otherwise, 'replace'
+          if (exists) then
+           open( 1, FILE=filename, STATUS='OLD', ACCESS='DIRECT',
+     &          RECL = LEN )
+          else
+           open( 1, FILE=filename, STATUS='REPLACE', ACCESS='DIRECT',
+     &          RECL = LEN )
+          endif
 
-         write(1) global_ob2D(1:total_valid)
+          write(1, REC=time_level) global_ob2D(1:total_valid)
+         ELSE
+          open(1, FILE=filename, FORM="unformatted",ACCESS='STREAM')
+          write(1) global_ob2D(1:total_valid)
+         ENDIF
+         close(1)
+
          if (debug .eq. 1) then
           print *,"WRITE_GLOBAL_BIN: 2D field",ob_flds2D(fld,ob_id),
      &           "written to file:",filename
           print *, "WRITE_GLOBAL_BIN: global_ob2D",
      &      (global_ob2D(1:total_valid))
          endif
+
+
         ELSE IF (nDim .eq. 3) then
+C       --------------------------------
+C       File precision: 64
+C       Field dimension: 3
+C       --------------------------------
          call CREATE_FILENAME(dir, ob_flds3D(fld,ob_id), ob_id, filename
      &                      ,0, myIter)
          if (debug .eq. 1) then
@@ -1079,12 +1145,36 @@ C         open(1, FILE=filename, FORM="unformatted", ACCESS="APPEND") action='wr
      &           "written to file:",filename
           print *, "WRITE_GLOBAL_BIN: global_ob3D",
      &      (global_ob3D(1:total_valid,1:ob_levels3D(fld,ob_id)))
-
          endif
-C         open(1, FILE=filename, FORM="unformatted", ACCESS="APPEND")
-         open(1, FILE=filename, FORM="unformatted", action='write',
-     &               position='append')
-         write(1) global_ob3D(1:total_valid,1:ob_levels3D(fld,ob_id))
+
+         IF (combineMaskTimeLevels) then
+          INQUIRE (IOLENGTH = LEN) global_ob3D(1:total_valid,
+     &                                   1:ob_levels3D(fld,ob_id))
+          INQUIRE (FILE=filename, EXIST=exists)
+C         If file already exists, set status as 'old'. Otherwise, 'replace'
+          if (exists) then
+           open( 1, FILE=filename, STATUS='OLD', ACCESS='DIRECT',
+     &          RECL = LEN )
+          else
+           open( 1, FILE=filename, STATUS='REPLACE', ACCESS='DIRECT',
+     &          RECL = LEN )
+          endif
+          write(1, REC=time_level) global_ob3D(1:total_valid,
+     &                                      1:ob_levels3D(fld,ob_id))
+          if (debug .eq. 1) then
+           do i=1, time_level
+            read(1, REC=i) temp(1:total_valid,
+     &                                    1:ob_levels3D(fld,ob_id))
+            print*,"time level:",time_level
+            print *,"TEMP: ",temp(1:total_valid,
+     &                                    1:ob_levels3D(fld,ob_id))
+           enddo
+          endif
+         ELSE
+          open(1, FILE=filename, FORM="unformatted",ACCESS='STREAM')
+          write(1) global_ob3D(1:total_valid,1:ob_levels3D(fld,ob_id))
+         ENDIF
+
          close(1)
 
         ENDIF

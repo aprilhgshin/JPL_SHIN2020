@@ -181,6 +181,8 @@ C---------------------------------------------------------
         ENDDO
       ENDDO
 
+      time_level = 1
+
 
       DO ob_id=1, nOB_mask
         CALL READ_REC_XY_RL( ob_fnames(ob_id),

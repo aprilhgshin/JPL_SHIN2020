@@ -54,6 +54,7 @@ C -----------------------------
 
       CHARACTER*30 nml_fileNames(nOB_mask)
       INTEGER nml_levels3D(MAX_NFLDS, nOB_mask)
+      LOGICAL nml_combMaskTimeLevels
 
       INTEGER nml_filePrec
       _RL avgPeriod_nml
@@ -65,7 +66,8 @@ C -----------------------------
      &     avgPeriod_nml, startTime_nml, endTime_nml,
      &     nml_filePrec,
      &     nml_fields2D, nml_fields3D,
-     &     nml_fileNames, nml_levels3D
+     &     nml_fileNames, nml_levels3D,
+     &     nml_combMaskTimeLevels
 
       IF ( .NOT.useDIAGNOSTICS_OB ) THEN
 C-    pkg DIAGNOSTICS_OB is not used
@@ -113,6 +115,8 @@ C-------------------------------------------------------------------------------
       endTime_nml = undefRL
       time_passed = 0.0
       nml_filePrec = 64
+      nml_combMaskTimeLevels = .TRUE.
+
 
       DO j=1, nOB_mask
         DO i=1, MAX_NFLDS
@@ -213,6 +217,7 @@ C     Fill DIAGNOSTICS_OB.h Common Block with Namelist Info
       ENDIF
 
       ob_filePrec = nml_filePrec
+      combineMaskTimeLevels = nml_combMaskTimeLevels
 
 
 

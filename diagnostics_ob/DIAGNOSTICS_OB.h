@@ -97,6 +97,9 @@ C      _RL subFieldOnMask_3Davg(nOB_mask,MAX_NFLDS, Nr, sNx + sNy)
       _RL endTime_ob
       _RL nTimeSteps_ob
       _RL time_passed
+
+      INTEGER time_level
+      LOGICAL combineMaskTimeLevels
 C     ==========================================================================
 
       COMMON / DIAG_OB_EXTRACT_R /
@@ -111,9 +114,12 @@ C     ==========================================================================
       COMMON / DIAG_OB_EXTRACT_I /
      &     lookup_table, sub_local_ij_ob, sub_glo_indices_allproc,
      &     numOBPnts_allproc, num_ob_points, ob_filePrec,
-     &     ob_levels3D, ob_nFlds2D, ob_nFlds3D, ob_tags
+     &     ob_levels3D, ob_nFlds2D, ob_nFlds3D, ob_tags, time_level
       COMMON / DIAG_OB_EXTRACT_C /
      &     ob_flds2D, ob_flds3D, ob_fnames
+      COMMON / DIAG_OB_EXTRACT_C /
+     &     combineMaskTimeLevels  
+
 
 
 #ifdef DIAGNOSTICS_OB_3D_STATE
