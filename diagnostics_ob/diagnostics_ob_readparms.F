@@ -191,6 +191,8 @@ C     Fill DIAGNOSTICS_OB.h Common Block with Namelist Info
         ENDDO
       ENDDO
 
+      print *,"ob_flds2D",ob_flds2D(1,:)
+
 
       IF (avgPeriod_nml .eq. undefRL) then
         avgPeriod_ob = deltaTClock

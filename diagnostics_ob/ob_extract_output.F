@@ -991,8 +991,9 @@ c         Creating a filename for global arrays
 C         write(filename, "(7A)") dir, fldNm, "_on_mask", str_ob,
 C     &                           "_global.",str_time,".bin"
 
-         write(filename, "(7A)") "MASK_", str_ob, "_", fldNm,
-     &          "_", str_iter, ".bin"
+         write(filename, "(5A)") "MASK_", str_ob, "_", fldNm,".bin"
+
+C     &          "_", str_iter, ".bin"
        end if
 
        end
@@ -1024,8 +1025,9 @@ c      Writing global array to binary file
          call OB_R8_to_R4(bufferR4_2D, bufferR4_3D,2,fld,ob_id)
          call CREATE_FILENAME(dir, ob_flds2D(fld,ob_id), ob_id,filename
      &                      ,0, myIter)
-         open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+         open(1, FILE=filename, FORM="unformatted", ACCESS="APPEND")
          write(1) bufferR4_2D(1:total_valid)
+         close(1)
          if (debug .eq. 1) then
           print *,"WRITE_GLOBAL_BIN: 2D field",ob_flds2D(fld,ob_id),
      &           "written to file:",filename
@@ -1038,8 +1040,11 @@ c      Writing global array to binary file
          call OB_R8_to_R4(bufferR4_2D, bufferR4_3D,3,fld,ob_id)
          call CREATE_FILENAME(dir, ob_flds3D(fld,ob_id), ob_id, filename
      &                      ,0, myIter)
-         open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+C         open(1, FILE=filename, FORM="unformatted", ACCESS="APPEND")
+         open(1, FILE=filename, FORM="unformatted", action='write',
+     &               position='append')
          write(1) bufferR4_3D(1:total_valid,1:ob_levels3D(fld,ob_id))
+         close(1)
          if (debug .eq. 1) then
           print *,"WRITE_GLOBAL_BIN: 3D field ",ob_flds3D(fld,ob_id),
      &           "written to file:",filename
@@ -1055,12 +1060,15 @@ c      Writing global array to binary file
 
          call CREATE_FILENAME(dir, ob_flds2D(fld,ob_id), ob_id,filename
      &                      ,0, myIter)
-         open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+C         open(1, FILE=filename, FORM="unformatted", ACCESS="APPEND") action='write',position='append'
+         open(1, FILE=filename, FORM="unformatted", action='write',
+     &               position='append')
+
          write(1) global_ob2D(1:total_valid)
          if (debug .eq. 1) then
           print *,"WRITE_GLOBAL_BIN: 2D field",ob_flds2D(fld,ob_id),
      &           "written to file:",filename
-          print *, "WRITE_GLOBAL_BIN: global_ob2D s",
+          print *, "WRITE_GLOBAL_BIN: global_ob2D",
      &      (global_ob2D(1:total_valid))
          endif
         ELSE IF (nDim .eq. 3) then
@@ -1069,17 +1077,20 @@ c      Writing global array to binary file
          if (debug .eq. 1) then
           print *,"WRITE_GLOBAL_BIN: 3D field ",ob_flds3D(fld,ob_id),
      &           "written to file:",filename
-          print *, "WRITE_GLOBAL_BIN: global_ob3D shape",
+          print *, "WRITE_GLOBAL_BIN: global_ob3D",
      &      (global_ob3D(1:total_valid,1:ob_levels3D(fld,ob_id)))
 
          endif
-         open(1, FILE=filename, FORM="unformatted", ACCESS="stream")
+C         open(1, FILE=filename, FORM="unformatted", ACCESS="APPEND")
+         open(1, FILE=filename, FORM="unformatted", action='write',
+     &               position='append')
          write(1) global_ob3D(1:total_valid,1:ob_levels3D(fld,ob_id))
+         close(1)
+
         ENDIF
 
        ENDIF
 
-       close(1)
 
        end
 
