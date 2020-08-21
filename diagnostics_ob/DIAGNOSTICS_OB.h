@@ -47,11 +47,6 @@ C-    file names for initial conditions:
 
 C     ================== Global Variables for open boundary ====================
 
-
-C     MAX_NMASKS :: Int value for assumed maximum number of open boundary masks.
-C     MAX_NFLDS  :: Int value for assumed maximum number of fields per open boundary mask.
-C     ob_allFlds :: Char array of names of all fields.
-
 C     Defined by user input in data.diagnostics_ob:
 C     ob_flds2D    :: Char array of names of 2D fields for each open boundary mask.
 C     ob_flds3D    :: Char array of names of 3D fields for each open boundary mask.
@@ -60,10 +55,6 @@ C     ob_levels3D  :: Int array of depths of 3D fields for each open boundary ma
 C     ob_nFlds2D   :: Int array of number of 2D fields in each open boundary mask
 C     ob_nFlds3D   :: Int array of number of 3D fields in each open boundary mask
 C     ob_tags      :: Int array of unique tags assigned to every field in every mask
-
-
-      INTEGER, PARAMETER :: MAX_NMASKS = 12
-      INTEGER, PARAMETER :: MAX_NFLDS = 20
 
       INTEGER ob_filePrec
       CHARACTER*8 ob_flds2D(MAX_NFLDS, nOB_mask)

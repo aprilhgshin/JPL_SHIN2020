@@ -49,14 +49,14 @@ C     nml_fldNames : field names for ocean state and flux variables
 
 C -----------------------------
 
-      CHARACTER*8 nml_fields2D(MAX_NFLDS, MAX_NMASKS)
-      CHARACTER*8 nml_fields3D(MAX_NFLDS, MAX_NMASKS)
+      CHARACTER*8 nml_fields2D(MAX_NFLDS, nOB_mask)
+      CHARACTER*8 nml_fields3D(MAX_NFLDS, nOB_mask)
 
-      CHARACTER*30 nml_fileNames(MAX_NMASKS)
-      INTEGER nml_levels3D(MAX_NFLDS, MAX_NMASKS)
+      CHARACTER*30 nml_fileNames(nOB_mask)
+      INTEGER nml_levels3D(MAX_NFLDS, nOB_mask)
 
-      INTEGER nml_nFields2D(MAX_NMASKS)
-      INTEGER nml_nFields3D(MAX_NMASKS)
+      INTEGER nml_nFields2D(nOB_mask)
+      INTEGER nml_nFields3D(nOB_mask)
       INTEGER nml_filePrec
       _RL avgPeriod_nml
       _RL startTime_nml
@@ -65,7 +65,7 @@ C -----------------------------
 
       NAMELIST / DIAG_OB_EXTRACT /
      &     avgPeriod_nml, startTime_nml, endTime_nml,
-     &     nml_filePrec, 
+     &     nml_filePrec,
      &     nml_fields2D, nml_fields3D,
      &     nml_fileNames, nml_levels3D,
      &     nml_nFields2D, nml_nFields3D
@@ -111,14 +111,13 @@ C-------------------------------------------------------------------------------
 C       Initializing local variables and variables from DIAG_OB_EXTRACT COMMON block:
 C-------------------------------------------------------------------------------
 
-C     CHANGE THESE VALUES TO THE UNDEFINED CONSTANT
       avgPeriod_nml = undefRL
       startTime_nml = undefRL
       endTime_nml = undefRL
       time_passed = 0.0
       nml_filePrec = 64
 
-      DO j=1, MAX_NMASKS
+      DO j=1, nOB_mask
         DO i=1, MAX_NFLDS
           nml_fields2D(i,j) = ' '
           nml_fields3D(i,j) = ' '
@@ -181,20 +180,38 @@ C     Fix to avoid running without getting any output:
 
 C     Fill DIAGNOSTICS_OB.h Common Block with Namelist Info
 
+C      DO ob=1, nOB_mask
+C        ob_fnames(ob) = nml_fileNames(ob)
+
+C        ob_nFlds2D(ob) = nml_nFields2D(ob)
+C        ob_nFlds3D(ob) = nml_nFields3D(ob)
+
+C        DO i=1, nml_nFields2D(ob)
+C          ob_flds2D(i,ob) = nml_fields2D(i,ob)
+C        ENDDO
+
+C        DO i=1, nml_nFields3D(ob)
+C          ob_flds3D(i,ob) = nml_fields3D(i,ob)
+C          ob_levels3D(i,ob) = nml_levels3D(i,ob)
+C        ENDDO
+C      ENDDO
+
       DO ob=1, nOB_mask
         ob_fnames(ob) = nml_fileNames(ob)
-        ob_nFlds2D(ob) = nml_nFields2D(ob)
-        ob_nFlds3D(ob) = nml_nFields3D(ob)
 
-        DO i=1, nml_nFields2D(ob)
+        DO i=1, MAX_NFLDS
           ob_flds2D(i,ob) = nml_fields2D(i,ob)
-        ENDDO
-
-        DO i=1, nml_nFields3D(ob)
+          if (nml_fields2D(i,ob) .ne. ' ') then
+            ob_nFlds2D(ob) = ob_nFlds2D(ob) + 1
+          endif
           ob_flds3D(i,ob) = nml_fields3D(i,ob)
+          if (nml_fields3D(i,ob) .ne. ' ') then
+            ob_nFlds3D(ob) = ob_nFlds3D(ob) + 1
+          endif
           ob_levels3D(i,ob) = nml_levels3D(i,ob)
         ENDDO
       ENDDO
+
 
       IF (avgPeriod_nml .eq. undefRL) then
         avgPeriod_ob = deltaTClock
@@ -216,7 +233,6 @@ C     Fill DIAGNOSTICS_OB.h Common Block with Namelist Info
 
       ob_filePrec = nml_filePrec
 
-      print *,"OB readparms:",ob_levels3D
 
 
 

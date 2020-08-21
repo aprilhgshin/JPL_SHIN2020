@@ -22,7 +22,7 @@ def load_mitgcm_single_mask(filename):
 
 def load_mitgcm_boxregion_masks(dir, xs, xe, ys, ye, dimx, dimy):
     '''
-    Creates a open boundary masks to surround a box region within the dimx by dimy global array
+    Creates open boundary masks to surround a box region within the dimx by dimy global array
 
     params:
     xs :: x index start wrt dimx by dimy global array
@@ -121,9 +121,9 @@ if __name__ == "__main__":
     #load_mitgcm_single_mask(fname_ob_mitgcm)
 
     '''
-    Will create a 30 by 10 box region in the pacific ocean
+    Will create a 20 by 10 box region in the pacific ocean
     Within the 90 by 40 array:
-    x: 40 - 70
+    x: 40 - 60
     y: 15 - 25
     '''
     load_mitgcm_boxregion_masks(dir_ob_mitgcm, 40, 60, 15, 25, 90, 40)

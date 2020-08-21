@@ -17,32 +17,28 @@
  endTime_nml = 2714400.0,
 # endTime_nml = 640800.0,
 
- nml_fields2D(1,1:4) = 'ETAN    ',
-                       'ETAN    ',
-                       'ETAN    ',
-                       'ETAN    ',
+ nml_fileNames(1) = 'flt32_mask1.bin',
+ nml_fileNames(2) = 'flt32_mask2.bin',
+ nml_fileNames(3) = 'flt32_mask3.bin',
+ nml_fileNames(4) = 'flt32_mask4.bin',
 
- nml_fields3D(1:4,1:4) = 'THETA   ','SALT    ','UVEL    ','VVEL    '
-                         'THETA   ','SALT    ','UVEL    ','VVEL    '
-                         'THETA   ','SALT    ','UVEL    ','VVEL    '
-                         'THETA   ','SALT    ','UVEL    ','VVEL    '
+ nml_fields2D(1,1) = 'ETAN    ',
+ nml_fields2D(1,2) = 'ETAN    ',
+ nml_fields2D(1:2,3) = 'ETAN    ','AREA    ',
+ nml_fields2D(1:2,4) = 'ETAN    ','AREA    ',
 
- nml_levels3D(1:4,1:4) =   1,1,1,1,
-                           1,1,1,1,
-                           1,1,1,1,
-                           1,1,1,1,
+ nml_fields3D(1:4,1) = 'THETA   ','SALT    ','UVEL    ','VVEL    ',
+ nml_levels3D(1:4,1) =   1, 1, 1, 1,
 
- nml_nFields2D(1:4) =  1,
-                       1,
-                       1,
-                       1,
- nml_nFields3D(1:4) =  4,
-                       4,
-                       4,
-                       4,
+ nml_fields3D(1:4,2) = 'THETA   ','SALT    ','UVEL    ','VVEL    ',
+ nml_levels3D(1:4,2) =   1, 1, 1, 1,
 
+ nml_fields3D(1:4,3) = 'THETA   ','SALT    ','VVEL    ','VVEL    ',
+ nml_levels3D(1:4,3) =   1, 1, 1, 1,
 
- nml_fileNames(1:4) = 'flt32_mask1.bin','flt32_mask2.bin','flt32_mask3.bin','flt32_mask4.bin',
+ nml_fields3D(1:4,4) = 'THETA   ','SALT    ','VVEL    ','VVEL    ',
+ nml_levels3D(1:4,4) =   1, 1, 1, 1,
+
 
  nml_filePrec = 64
  &
