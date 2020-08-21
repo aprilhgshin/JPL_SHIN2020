@@ -1,0 +1,49 @@
+# Diagnostics_ob Package Choices
+#--------------------
+#     avgPeriod_nml : averaging period duration
+#     startTime_nml : start time of output
+#     endTime_nml : end time of output
+#     nml_fields : field names for ocean state and flux variables for each open boundary
+#     nml_levels3D : depths of 3D fields for each open boundary (starting from surface)
+#     nml_nFields : number of fields for each open boundary mask
+#     nml_fileNames : filenames of open boundary mask
+#     nml_filePrec : output file real precision (32 or 64 bits)
+#--------------------
+
+ &DIAG_OB_EXTRACT
+
+ avgPeriod_nml = 86400.0,
+# avgPeriod_nml = 640800.0,
+ startTime_nml = 36000.0,
+ endTime_nml = 2714400.0,
+# endTime_nml = 640800.0,
+
+ nml_fields2D(1,1:4) = 'ETAN    ',
+                       'ETAN    ',
+                       'ETAN    ',
+                       'ETAN    ',
+
+ nml_fields3D(1:4,1:4) = 'THETA   ','SALT    ','UVEL    ','VVEL    '
+                         'THETA   ','SALT    ','UVEL    ','VVEL    '
+                         'THETA   ','SALT    ','UVEL    ','VVEL    '
+                         'THETA   ','SALT    ','UVEL    ','VVEL    '
+
+ nml_levels3D(1:4,1:4) =   1,1,1,1,
+                           1,1,1,1,
+                           1,1,1,1,
+                           1,1,1,1,
+
+ nml_nFields2D(1:4) =  1,
+                       1,
+                       1,
+                       1,
+ nml_nFields3D(1:4) =  4,
+                       4,
+                       4,
+                       4,
+
+
+ nml_fileNames(1:4) = 'flt32_mask1.bin','flt32_mask2.bin','flt32_mask3.bin','flt32_mask4.bin',
+
+ nml_filePrec = 64
+ &
