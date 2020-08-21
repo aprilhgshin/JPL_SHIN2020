@@ -55,8 +55,6 @@ C -----------------------------
       CHARACTER*30 nml_fileNames(nOB_mask)
       INTEGER nml_levels3D(MAX_NFLDS, nOB_mask)
 
-      INTEGER nml_nFields2D(nOB_mask)
-      INTEGER nml_nFields3D(nOB_mask)
       INTEGER nml_filePrec
       _RL avgPeriod_nml
       _RL startTime_nml
@@ -67,8 +65,7 @@ C -----------------------------
      &     avgPeriod_nml, startTime_nml, endTime_nml,
      &     nml_filePrec,
      &     nml_fields2D, nml_fields3D,
-     &     nml_fileNames, nml_levels3D,
-     &     nml_nFields2D, nml_nFields3D
+     &     nml_fileNames, nml_levels3D
 
       IF ( .NOT.useDIAGNOSTICS_OB ) THEN
 C-    pkg DIAGNOSTICS_OB is not used
@@ -124,8 +121,6 @@ C-------------------------------------------------------------------------------
           nml_levels3D(i,j) = 0
         ENDDO
         nml_fileNames(j) = ' '
-        nml_nFields2D(j) = 0
-        nml_nFields3D(j) = 0
       ENDDO
 
       DO j=1, nOB_mask
@@ -179,22 +174,6 @@ C     Fix to avoid running without getting any output:
 
 
 C     Fill DIAGNOSTICS_OB.h Common Block with Namelist Info
-
-C      DO ob=1, nOB_mask
-C        ob_fnames(ob) = nml_fileNames(ob)
-
-C        ob_nFlds2D(ob) = nml_nFields2D(ob)
-C        ob_nFlds3D(ob) = nml_nFields3D(ob)
-
-C        DO i=1, nml_nFields2D(ob)
-C          ob_flds2D(i,ob) = nml_fields2D(i,ob)
-C        ENDDO
-
-C        DO i=1, nml_nFields3D(ob)
-C          ob_flds3D(i,ob) = nml_fields3D(i,ob)
-C          ob_levels3D(i,ob) = nml_levels3D(i,ob)
-C        ENDDO
-C      ENDDO
 
       DO ob=1, nOB_mask
         ob_fnames(ob) = nml_fileNames(ob)
