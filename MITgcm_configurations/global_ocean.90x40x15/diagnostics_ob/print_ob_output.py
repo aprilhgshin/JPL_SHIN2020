@@ -9,8 +9,17 @@ sys.path.append('/home/mitgcm/Work/MITgcm/utils/python/MITgcmutils/')
 import MITgcmutils as mitgcm
 
 
-def new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter, num_obPnts):
-
+def test_ob_outputs3D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter, num_obPnts):
+    '''
+    Some params:
+    ob_mask :: filename of file containing open boundary mask
+    ob_output :: filename of file containing open boundary output
+    fname :: field name
+    fieldNum :: Index to extract field from field array outputted from the diagnostics package (in data.diagnostics)
+    filePrec :: file precision
+    myIter :: iter number at which file was outputted
+    '''
+    
     mask = np.fromfile(str(mask_dir / ob_mask), dtype='>f4').reshape(40,90)
     full_field = np.zeros([40,90])
 
@@ -99,6 +108,10 @@ def new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, ob_mask, ob_output, 
 
 
 def test_ob_outputs2D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter):
+# NOTE: the array field may or may not have a third dimension if there are multiple fields outputted from the diagnostics package.
+# Change accordingly:
+# If yes:  field[fieldNum][y][x]
+# Otherwise: field[y]][x]
 
     mask = np.fromfile(str(mask_dir / ob_mask), dtype='>f4').reshape(40,90)
     full_field = np.zeros([40,90])
@@ -181,33 +194,22 @@ if __name__ == "__main__":
     fld_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run/diags')
     output_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run')
     mask_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/input')
-#    field = []
-#    arr = np.zeros(45)
-#    newfield=[]
 
-
-#    test_ob_outputs3D(output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_THETA   _00036001.bin", 'T', 1)
-#    test_ob_outputs2D(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_01_THETA   _00036001.bin", 'THETA')
-###PARAMS: test_ob_outputs2D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname)
+#    Plotting and comparing 2D field outputs:
+###PARAMS: fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter
 #    test_ob_outputs2D(fld_dir, output_dir, mask_dir, "flt32_mask4.bin", "MASK_04_ETAN    _00036007.bin", 'ETAN', 0, 64, 36007)
 
-### PARAMS: new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum
-#    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_04_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 10)
-    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_THETA   _00036007.bin", 'THETA', 0, 64, 36007, 20)
-#    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 30)
-#    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "flt32_mask3.bin", "MASK_03_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 10)
-#    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "flt32_mask4.bin", "MASK_04_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 10)
+#    Plotting and comparing 3D field outputs:
+### PARAMS: fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter, num_obPnts
+#    ob_mask :: filename of file containing open boundary mask
+#    ob_output :: filename of file containing open boundary output
+#    fname :: field name
+#    fieldNum :: Index to extract field from field array outputted from the diagnostics package (in data.diagnostics)
+#    filePrec :: file precision
+#    myIter :: iter number at which file was outputted
 
-#  fields(1:4,1) = 'THETA   ','SALT    ','UVEL    ','VVEL    ',
-
-#    ob_out = np.fromfile(str(output_dir / "MASK_05_THETA   _00036007.bin"), dtype='>f8').reshape(40,90)
-
-
-    '''
-    plt.figure(num=1,clear=True, figsize=(7,6))
-    plt.subplot(211)
-    plt.imshow(ob_out, origin='lower')#, vmin=-2, vmax=16)
-    plt.colorbar()
-    plt.title("THETA FULL")
-    plt.show()
-    '''
+#    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_04_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 10)
+    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_THETA   _00036007.bin", 'THETA', 0, 64, 36007, 20)
+#    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 30)
+#    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask3.bin", "MASK_03_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 10)
+#    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask4.bin", "MASK_04_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 10)
