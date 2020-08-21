@@ -193,7 +193,7 @@ if __name__ == "__main__":
 
 ### PARAMS: new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum
 #    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_04_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 10)
-    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "flt32_mask1.bin", "MASK_01_THETA   _00036007.bin", 'THETA', 0, 64, 36007, 30)
+    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_THETA   _00036007.bin", 'THETA', 0, 64, 36007, 20)
 #    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 30)
 #    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "flt32_mask3.bin", "MASK_03_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 10)
 #    new_test_ob_outputs3D_L1(fld_dir, output_dir, mask_dir, "flt32_mask4.bin", "MASK_04_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 10)

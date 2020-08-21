@@ -126,4 +126,4 @@ if __name__ == "__main__":
     x: 40 - 70
     y: 15 - 25
     '''
-    load_mitgcm_boxregion_masks(dir_ob_mitgcm, 40, 70, 15, 25, 90, 40)
+    load_mitgcm_boxregion_masks(dir_ob_mitgcm, 40, 60, 15, 25, 90, 40)
