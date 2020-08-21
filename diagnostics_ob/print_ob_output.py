@@ -19,7 +19,7 @@ def test_ob_outputs3D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, 
     filePrec :: file precision
     myIter :: iter number at which file was outputted
     '''
-    
+
     mask = np.fromfile(str(mask_dir / ob_mask), dtype='>f4').reshape(40,90)
     full_field = np.zeros([40,90])
 
@@ -189,7 +189,7 @@ def test_ob_outputs2D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, 
 
 if __name__ == "__main__":
 
-
+    import struct
 
     fld_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run/diags')
     output_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run')
@@ -209,7 +209,36 @@ if __name__ == "__main__":
 #    myIter :: iter number at which file was outputted
 
 #    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_04_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 10)
-    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_THETA   _00036007.bin", 'THETA', 0, 64, 36007, 20)
+#    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_THETA   _00036007.bin", 'THETA', 0, 64, 36007, 20)
 #    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 30)
 #    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask3.bin", "MASK_03_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 10)
 #    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask4.bin", "MASK_04_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 10)
+
+#
+
+    output = np.fromfile(str(output_dir / "MASK_01_THETA   .bin"), dtype='>f8')
+    print(output)
+#    import array
+
+#    with open(str(output_dir / "MASK_01_THETA   .bin"), "rb") as binary_file:
+        # Read the whole file at once
+#        data = binary_file.read()
+#        print(data)
+#        data.split("\r\n")
+#        print(data)
+
+#        doubles_sequence = array.array('>d', data)
+
+
+        #for i in range(len(data)):
+        #    flt_arr = struct.unpack('ff', data[i])
+        #    print(flt_arr)
+#    contents = contents.decode("utf-16")
+#    contents = contents.split("\r\n")
+
+#    print(contents)
+
+
+#    mask = np.fromfile(str(output_dir / "MASK_01_THETA   .bin"),  dtype='>f8')
+#    print(mask.shape)
+#    print(mask)
