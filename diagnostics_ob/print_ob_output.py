@@ -145,13 +145,14 @@ def test_ob_outputs2D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, 
     myIter :: iter number at which file was outputted
     nTimeLevels :: number of time levels included in output binary file
     tLevel :: time level to compare
-    '''
 
-# IMPORTANT NOTE: the array field may or may not have a third dimension if there are multiple fields outputted from the diagnostics package.
-# Change accordingly:
-# If yes:  field[fieldNum][y][x]
-# Otherwise: field[y][x]
-# ALL instances of field with extra fieldNum dimension are commented out for easy change
+
+    IMPORTANT NOTE: the array field may or may not have a third dimension if there are multiple fields outputted from the diagnostics package.
+    Change accordingly:
+    If yes:  field[fieldNum][y][x]
+    Otherwise: field[y][x]
+    ALL instances of field with extra fieldNum dimension are commented out for easy change: Line 172, 209, 210
+    '''
 
     mask = np.fromfile(str(mask_dir / ob_mask), dtype='>f4').reshape(40,90)
     full_field = np.zeros([40,90])
@@ -260,33 +261,38 @@ if __name__ == "__main__":
     output_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run')
     mask_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/input')
 
-# NOTE:
-# 1. When changing data.diagnostics_ob and rerunning model, make sure to empty the run directory first before rerunning.
-# 2. When changing data.diagnostics, make sure to empty diags directory in the run directory before rerunning the model.
-
-#--------------------------------------------------------------------------------------------------------------------------------------
-# Plotting and comparing 2D field outputs:
-###PARAMS: fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter,  nTimeLevels, tLevel
-# Same descriptions as parameters for 3D
+    '''
+    NOTE:
+    1. When changing data.diagnostics_ob and rerunning model, make sure to empty the run directory first before rerunning.
+    2. When changing data.diagnostics, make sure to empty diags directory in the run directory before rerunning the model.
+    '''
+#============================================================================================================================
+    '''
+    Plotting and comparing 2D field outputs:
+    PARAMS: fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter,  nTimeLevels, tLevel
+    Same descriptions as parameters for 3D
+    '''
 
 # Example for multiple time levels:
     test_ob_outputs2D(fld_dir, output_dir, mask_dir, "flt32_mask1.bin", "MASK_01_ETAN.bin", 'ETAN', 0, 64, 36007,4, 0)
 # Example for one time level: Always set nTimeLevels to 1
 #    test_ob_outputs2D(fld_dir, output_dir, mask_dir, "flt32_mask1.bin", "MASK_01_ETAN_00036007.bin", 'ETAN', 0, 32, 36007,1, 0)
 
-#--------------------------------------------------------------------------------------------------------------------------------------
-# Plotting and comparing 3D field outputs:
-# PARAMS: fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter, num_obPnts
-#    ob_mask :: filename of file containing open boundary mask
-#    ob_output :: filename of file containing open boundary output
-#    fname :: field name
-#    fieldNum :: Index to extract field from field array outputted from the diagnostics package (in data.diagnostics)
-#    filePrec :: file precision
-#    myIter :: iter number at which file was outputted
-#    depth :: Depth of field
-#    nTimeLevels :: number of time levels included in output binary file
-#    tLevel :: time level to compare (index from 0 through n time levels)
+#============================================================================================================================
 
+    '''
+    # Plotting and comparing 3D field outputs:
+    # PARAMS: fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter, num_obPnts
+    #    ob_mask :: filename of file containing open boundary mask
+    #    ob_output :: filename of file containing open boundary output
+    #    fname :: field name
+    #    fieldNum :: Index to extract field from field array outputted from the diagnostics package (in data.diagnostics)
+    #    filePrec :: file precision
+    #    myIter :: iter number at which file was outputted
+    #    depth :: Depth of field
+    #    nTimeLevels :: number of time levels included in output binary file
+    #    tLevel :: time level to compare (index from 0 through n time levels)
+    '''
 # Example for one time level: Always set nTimeLevels to 1
 #    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask1.bin", "MASK_01_THETA_00036007.bin", 'THETA', 0, 64, 36007, 2, 1, 0)
 # Example for multiple time levels:
