@@ -9,7 +9,7 @@ sys.path.append('/home/mitgcm/Work/MITgcm/utils/python/MITgcmutils/')
 import MITgcmutils as mitgcm
 
 
-def test_ob_outputs3D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter, num_obPnts):
+def test_ob_outputs3D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter, depth, nTimeLevels, tLevel):
     '''
     Some params:
     ob_mask :: filename of file containing open boundary mask
@@ -18,6 +18,9 @@ def test_ob_outputs3D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, 
     fieldNum :: Index to extract field from field array outputted from the diagnostics package (in data.diagnostics)
     filePrec :: file precision
     myIter :: iter number at which file was outputted
+    depth :: Depth of field
+    nTimeLevels :: number of time levels included in output binary file
+    tLevel :: time level to compare
     '''
 
     mask = np.fromfile(str(mask_dir / ob_mask), dtype='>f4').reshape(40,90)
@@ -33,18 +36,33 @@ def test_ob_outputs3D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, 
     plt.title(fname)
     plt.show()
 
+
     if (filePrec == 32):
-        ob_out = np.fromfile(str(output_dir / ob_output), dtype='>f4')
-        depth = int(len(ob_out)/num_obPnts)
-        output = ob_out.reshape(depth,num_obPnts)
-        depth = int(depth/2)
+        if (nTimeLevels == 1):
+            ob_out = np.fromfile(str(output_dir / ob_output), dtype='>f4')
+            print(ob_out)
+            num_obPnts = int((len(ob_out)/depth))
+            print(num_obPnts)
+            output = ob_out.reshape(depth,num_obPnts)
+        elif (nTimeLevels > 1):
+            ob_out = np.fromfile(str(output_dir / ob_output), dtype='>f4')
+            num_obPnts = int(len(ob_out)/(depth*nTimeLevels))
+            output = ob_out.reshape(nTimeLevels,depth,num_obPnts)
+
     elif (filePrec == 64):
-        ob_out = np.fromfile(str(output_dir / ob_output), dtype='>f8')
-        depth = int(len(ob_out)/num_obPnts)
-        output = ob_out.reshape(depth,num_obPnts)
+        if (nTimeLevels == 1):
+            ob_out = np.fromfile(str(output_dir / ob_output), dtype='>f8')
+            print(ob_out)
+            num_obPnts = int(len(ob_out)/depth)
+            output = ob_out.reshape(depth,num_obPnts)
+        elif (nTimeLevels > 1):
+            ob_out = np.fromfile(str(output_dir / ob_output), dtype='>f8')
+            num_obPnts = int(len(ob_out)/(depth*nTimeLevels))
+            output = ob_out.reshape(nTimeLevels,depth,num_obPnts)
 
     print(output.shape)
     print("depth:",depth)
+
 
     newFieldOnMask = [[0 for x in range(num_obPnts)] for y in range(depth)]
     diff = [[0 for x in range(num_obPnts)] for y in range(depth)]
@@ -69,13 +87,15 @@ def test_ob_outputs3D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, 
 
     for i in range(num_obPnts):
         for k in range(depth):
-            if(output[k][i] == 0):
-                output[k][i] = None
-
+          if (nTimeLevels == 1):
+              if(output[k][i] == 0):
+                  output[k][i] = None
+          elif (nTimeLevels > 1):
+              if(output[tLevel][k][i] == 0):
+                  output[tLevel][k][i] = None
 
     print("output shape",output.shape)
     print("output:",output)
-    print("newFieldOnMask last element",newFieldOnMask[0][-1] )
     print("newFieldOnMask:",newFieldOnMask[0])
 
     for k in range(depth):
@@ -83,8 +103,12 @@ def test_ob_outputs3D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, 
             if (newFieldOnMask[k][i] == None):
                 diff[k][i] = None
             else:
-                print(output[k][i], newFieldOnMask[k][i])
-                diff[k][i] = abs(output[k][i] - newFieldOnMask[k][i])
+                if (nTimeLevels == 1):
+                    print(output[k][i], newFieldOnMask[k][i])
+                    diff[k][i] = abs(output[k][i] - newFieldOnMask[k][i])
+                elif (nTimeLevels > 1):
+                    print(output[tLevel][k][i], newFieldOnMask[k][i])
+                    diff[k][i] = abs(output[tLevel][k][i] - newFieldOnMask[k][i])
         print("abs difference between field and output:",diff[k])
 
         plt.figure(num=1,clear=True, figsize=(7,6))
@@ -95,9 +119,12 @@ def test_ob_outputs3D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, 
         plt.show()
 
         plt.subplot(211)
-        plt.plot(output[k], 'r--', linewidth=2.5, label="ob output")
+        if (nTimeLevels == 1):
+            plt.plot(output[k], 'r--', linewidth=2.5, label="ob output")
+        elif (nTimeLevels > 1):
+            plt.plot(output[tLevel][k], 'r--', linewidth=2.5, label="ob output")
         plt.plot(newFieldOnMask[k], 'b', label="original field")
-        plt.title("OB Output VS. Original Field")
+        plt.title("OB Output VS. Original Field For Each Depth")
         plt.legend(loc="center right")
 
         plt.subplot(212)
@@ -107,11 +134,24 @@ def test_ob_outputs3D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, 
 
 
 
-def test_ob_outputs2D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter):
-# NOTE: the array field may or may not have a third dimension if there are multiple fields outputted from the diagnostics package.
+def test_ob_outputs2D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter, nTimeLevels, tLevel):
+    '''
+    Some params:
+    ob_mask :: filename of file containing open boundary mask
+    ob_output :: filename of file containing open boundary output
+    fname :: field name
+    fieldNum :: Index to extract field from field array outputted from the diagnostics package (in data.diagnostics)
+    filePrec :: file precision
+    myIter :: iter number at which file was outputted
+    nTimeLevels :: number of time levels included in output binary file
+    tLevel :: time level to compare
+    '''
+
+# IMPORTANT NOTE: the array field may or may not have a third dimension if there are multiple fields outputted from the diagnostics package.
 # Change accordingly:
 # If yes:  field[fieldNum][y][x]
-# Otherwise: field[y]][x]
+# Otherwise: field[y][x]
+# ALL instances of field with extra fieldNum dimension are commented out for easy change
 
     mask = np.fromfile(str(mask_dir / ob_mask), dtype='>f4').reshape(40,90)
     full_field = np.zeros([40,90])
@@ -134,14 +174,27 @@ def test_ob_outputs2D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, 
     plt.show()
 
     if (filePrec == 32):
-        output = np.fromfile(str(output_dir / ob_output), dtype='>f4')
+        if (nTimeLevels == 1):
+            output = np.fromfile(str(output_dir / ob_output), dtype='>f4')
+            num_obPnts = len(output)
+        elif (nTimeLevels > 1):
+            ob_out = np.fromfile(str(output_dir / ob_output), dtype='>f4')
+            num_obPnts = int(len(ob_out)/(nTimeLevels))
+            output = ob_out.reshape(nTimeLevels, num_obPnts)
+
     elif (filePrec == 64):
-        output = np.fromfile(str(output_dir / ob_output), dtype='>f8')
+        if (nTimeLevels == 1):
+            output = np.fromfile(str(output_dir / ob_output), dtype='>f8')
+            num_obPnts = len(output)
+        elif (nTimeLevels > 1):
+            ob_out = np.fromfile(str(output_dir / ob_output), dtype='>f8')
+            num_obPnts = int(len(ob_out)/(nTimeLevels))
+            output = ob_out.reshape(nTimeLevels, num_obPnts)
 
 
     print(output.shape)
-    newFieldOnMask = np.zeros(len(output))
-    diff = np.zeros(len(output))
+    newFieldOnMask = np.zeros(num_obPnts)
+    diff = np.zeros(num_obPnts)
 
     counter = 0
 
@@ -157,14 +210,23 @@ def test_ob_outputs2D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, 
 
                 counter += 1
 
-    for i in range(len(output)):
-            if(output[i] == 0):
-                output[i] = None
+    for i in range(num_obPnts):
+      if (nTimeLevels == 1):
+          if(output[i] == 0):
+              output[i] = None
+      elif (nTimeLevels > 1):
+          if(output[tLevel][i] == 0):
+              output[tLevel][i] = None
+
 
     print("len:", len(newFieldOnMask))
-    diff = abs(output - newFieldOnMask)
+    if (nTimeLevels == 1):
+        diff = abs(output - newFieldOnMask)
+    elif (nTimeLevels > 1):
+        diff = abs(output[tLevel] - newFieldOnMask)
+
     print("abs difference between field and output:",diff)
-    print("output",output)
+    print("output",output[tLevel])
     print("newFieldOnMask",newFieldOnMask)
 
     plt.figure(num=1,clear=True, figsize=(7,6))
@@ -175,7 +237,10 @@ def test_ob_outputs2D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, 
     plt.show()
 
     plt.subplot(211)
-    plt.plot(output, 'r--', linewidth=2.5, label="ob output")
+    if (nTimeLevels == 1):
+        plt.plot(output, 'r--', linewidth=2.5, label="ob output")
+    elif (nTimeLevels > 1):
+        plt.plot(output[tLevel], 'r--', linewidth=2.5, label="ob output")
     plt.plot(newFieldOnMask, 'b', label="original field")
     plt.title("OB Output VS. Original Field")
     plt.legend()
@@ -195,50 +260,34 @@ if __name__ == "__main__":
     output_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run')
     mask_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/input')
 
-#    Plotting and comparing 2D field outputs:
-###PARAMS: fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter
-#    test_ob_outputs2D(fld_dir, output_dir, mask_dir, "flt32_mask4.bin", "MASK_04_ETAN    _00036007.bin", 'ETAN', 0, 64, 36007)
+# NOTE:
+# 1. When changing data.diagnostics_ob and rerunning model, make sure to empty the run directory first before rerunning.
+# 2. When changing data.diagnostics, make sure to empty diags directory in the run directory before rerunning the model.
 
-#    Plotting and comparing 3D field outputs:
-### PARAMS: fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter, num_obPnts
+#--------------------------------------------------------------------------------------------------------------------------------------
+# Plotting and comparing 2D field outputs:
+###PARAMS: fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter,  nTimeLevels, tLevel
+# Same descriptions as parameters for 3D
+
+# Example for multiple time levels:
+    test_ob_outputs2D(fld_dir, output_dir, mask_dir, "flt32_mask1.bin", "MASK_01_ETAN.bin", 'ETAN', 0, 64, 36007,4, 0)
+# Example for one time level: Always set nTimeLevels to 1
+#    test_ob_outputs2D(fld_dir, output_dir, mask_dir, "flt32_mask1.bin", "MASK_01_ETAN_00036007.bin", 'ETAN', 0, 32, 36007,1, 0)
+
+#--------------------------------------------------------------------------------------------------------------------------------------
+# Plotting and comparing 3D field outputs:
+# PARAMS: fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter, num_obPnts
 #    ob_mask :: filename of file containing open boundary mask
 #    ob_output :: filename of file containing open boundary output
 #    fname :: field name
 #    fieldNum :: Index to extract field from field array outputted from the diagnostics package (in data.diagnostics)
 #    filePrec :: file precision
 #    myIter :: iter number at which file was outputted
+#    depth :: Depth of field
+#    nTimeLevels :: number of time levels included in output binary file
+#    tLevel :: time level to compare (index from 0 through n time levels)
 
-#    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "domain_flt32_mask1.bin", "MASK_04_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 10)
-#    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_THETA   _00036007.bin", 'THETA', 0, 64, 36007, 20)
-#    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 30)
-#    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask3.bin", "MASK_03_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 10)
-#    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask4.bin", "MASK_04_SALT    _00036007.bin", 'SALT', 1, 64, 36007, 10)
-
-#
-
-    output = np.fromfile(str(output_dir / "MASK_01_THETA   .bin"), dtype='>f8')
-    print(output)
-#    import array
-
-#    with open(str(output_dir / "MASK_01_THETA   .bin"), "rb") as binary_file:
-        # Read the whole file at once
-#        data = binary_file.read()
-#        print(data)
-#        data.split("\r\n")
-#        print(data)
-
-#        doubles_sequence = array.array('>d', data)
-
-
-        #for i in range(len(data)):
-        #    flt_arr = struct.unpack('ff', data[i])
-        #    print(flt_arr)
-#    contents = contents.decode("utf-16")
-#    contents = contents.split("\r\n")
-
-#    print(contents)
-
-
-#    mask = np.fromfile(str(output_dir / "MASK_01_THETA   .bin"),  dtype='>f8')
-#    print(mask.shape)
-#    print(mask)
+# Example for one time level: Always set nTimeLevels to 1
+#    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask1.bin", "MASK_01_THETA_00036007.bin", 'THETA', 0, 64, 36007, 2, 1, 0)
+# Example for multiple time levels:
+#    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask1.bin", "MASK_01_THETA.bin", 'THETA', 0, 32, 36007, 2, 4, 0)

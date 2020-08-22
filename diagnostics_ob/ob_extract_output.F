@@ -54,8 +54,6 @@ C DONE dimensions in data.diagnostics
 C DONE delete obnw
 
 C TODO:
-C 1. Write to binary files using MITGCM's existing subroutine
-C 2. apply program sturcutre on diagnostics output and compare with my outputs
 C 3. Very last addition: passive tracers
 C 4. Delete all diagnostics_ob files and variables not used
 
@@ -337,19 +335,6 @@ C           Master Process Tasks:
 C-------------------------------------------------------------------------------
          IF (mpiMyId .eq. 0) then
 
-C           print *,"HELLO HERE"
-C           DO pid=1, mpiNprocs-1
-C            DO fld=1, ob_nFlds3D(ob_id)
-C             print *,"HELLO HERE IN fld",fld
-
-
-C         ENDDO
-C        ENDDO
-
-C          print *,"OB_EXTRACT_OUTPUT: MASK", ob_id,
-C     &              "Before calling on master tasks"
-C          print *,"numOBPnts_allproc(ob_id,mpiMyId+1)",
-C     &             numOBPnts_allproc(ob_id,mpiMyId+1)
           DO fld2D=1, ob_nFlds2D(ob_id)
             call MASTER_PROC_TASKS(fld2D, ob_id, 2, myThid, myTime,
      &                             myIter)
@@ -368,10 +353,8 @@ C     !ENDIF for end of averaging period
 
 C      Set averages to back zero
        CALL SET_TO_INI_STATE(myThid)
-C       if (debug .eq. 1) then
-C         print *,"OB_EXTRACT_OUTPUT: subFieldOnMask_avg ini"
-C           call PRINT_FLOAT_ARR(subFieldOnMask_avg(1,1,:), sNx+sNy)
-C       endif
+
+C      Incrementing number of time levels passed
        time_level = time_level + 1
 
       ENDIF
@@ -676,6 +659,7 @@ C     Initializes average fields to zero
 
       END
 
+
       SUBROUTINE SET_SUBFIELDS(myThid, myIter)
 
 C     Stores desired fields chosen by user into array subFields
@@ -698,11 +682,14 @@ C     Assign unique tags to all 2D and 3D fields for MPI_SEND
       INTEGER i, j, k, bi, bj, numValid, tag
       INTEGER nFlds2D, nFlds3D, fld2D, fld3D
       INTEGER, PARAMETER :: print_debug = 0
+      _RL AREA_TEST(Nx,Ny,nSx,nSy)
 
       IF (print_debug .eq. 1) then
        print *,"Inside SET_SUBFIELDS"
        print*,"SET_SUBFIELDS: ob_levels3D ",ob_levels3D
       ENDIF
+
+C      call SEAICE_VAR_TEST(AREA_TEST)
 
       tag = 1
       DO ob_id=1, nOB_mask
@@ -736,10 +723,7 @@ C      Looping through 2D fields first, if any.
            ELSE IF (ob_flds2D(fld2D,ob_id) .eq. 'VICE') then
             subFieldOnMask_2D(ob_id,fld2D,loc_count) = VICE(i,j,bi,bj)
            ELSE IF (ob_flds2D(fld2D,ob_id) .eq. 'ETAN') then
-C            print *,"SET_SUBFIELDS: ij",i,j,"etan:",etaN(i,j,bi,bj)
             subFieldOnMask_2D(ob_id,fld2D,loc_count) = etaN(i,j,bi,bj)
-C            print *,"SET_SUBFIELDS:subFieldOnMask_2D",
-C     &                subFieldOnMask_2D(ob_id,fld2D,loc_count)
            ELSE IF (ob_flds2D(fld2D,ob_id) .eq. 'ETAH') then
             subFieldOnMask_2D(ob_id,fld2D,loc_count) = etaH(i,j,bi,bj)
            ENDIF
@@ -762,7 +746,6 @@ C      Looping through 3D fields, if any.
            j = sub_local_ij_ob(ob_id,2,loc_count)
            i = sub_local_ij_ob(ob_id,1,loc_count)
            DO k=1, ob_levels3D(fld3D,ob_id)
-C            print *,"SET_SUBFIELDS: k",k,"loc_count",loc_count
             IF (ob_flds3D(fld3D,ob_id) .eq. 'UVEL') then
              subFieldOnMask_3D(ob_id,fld3D,loc_count,k) =
      &                                        uVel(i,j,k,bi,bj)
@@ -917,6 +900,8 @@ C           end if
 
        end
 
+
+
        SUBROUTINE APPEND_OB_VALUE3D(ob_id, pid, fld, ob_values)
 #include "SIZE.h"
 #include "EEPARAMS.h"
@@ -958,6 +943,7 @@ C          print*,"ob_values",ob_values(i,k),"at k",k,"i",i
       end
 
 
+
        SUBROUTINE CREATE_FILENAME(dir, fldNm, ob_id, filename,
      &                            is_child, myIter)
 c       Creating filenames for all binary files.
@@ -966,7 +952,7 @@ c       Creating filenames for all binary files.
 #include "EESUPPORT.h"
 #include "DIAGNOSTICS_OB.h"
 
-       integer is_child, ob_id, myIter
+       integer is_child, ob_id, myIter, i
        _RL myTime
        character*50 filename
        character*8 fldNm
@@ -977,6 +963,9 @@ c       Creating filenames for all binary files.
        character*2 str_ob
        character*8 str_iter
 
+       integer len, count
+
+
 c       If creating a filename for a child process, create a name in the format: T.001.002.bin
 c       T for temp or mask for mask
 c       001 for index 1 in x axis
@@ -985,30 +974,35 @@ c       002 for index 2 in x axis
        write(str_iter, "(I8.8)") myIter
        write(str_time, "(F11.0)") myTime
 
+C       Counting number of valid characters to trim trailing whitespaces
+        count = 0
+        DO i=1, len(fldNm)
+          IF (fldNm(i:i) .ne. ' ') then
+            count = count + 1
+          ENDIF
+        ENDDO
+
        if (is_child .eq. 1) then
          write(str_px, "(I3.3)") mpiPx
          write(str_py, "(I3.3)") mpiPy
-         write(filename, "(11A)") dir, fldNm,"_avg.",
-     &                      str_time,str_px, ".", str_py, ".bin"
+         write(filename, "(8A)") dir, fldNm(1:count),
+     &                   "_avg.",str_iter,str_px, ".", str_py, ".bin"
        else
 c         Creating a filename for global arrays
-C         write(filename, "(7A)") dir, fldNm, "_on_mask", str_ob,
-C     &                           "_global.",str_time,".bin"
-
          IF (combineMaskTimeLevels) then
-          write(filename, "(5A)") "MASK_", str_ob, "_", fldNm,".bin"
+          write(filename, "(5A)") "MASK_", str_ob, "_",
+     &                            fldNm(1:count),".bin"
          ELSE
-           write(filename, "(7A)") "MASK_", str_ob, "_", fldNm,
-     &          "_",str_iter,".bin"
+           write(filename, "(7A)") "MASK_", str_ob, "_",
+     &                   fldNm(1:count),"_",str_iter,".bin"
          ENDIF
 
-C     &          "_", str_iter, ".bin"
        end if
 
        end
 
-
        SUBROUTINE WRITE_GLOBAL_BIN(total_valid,fld,ob_id,myIter,nDim)
+c      Writing global array to binary file
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "EESUPPORT.h"
@@ -1027,13 +1021,15 @@ C     &          "_", str_iter, ".bin"
        logical exists
        integer LEN, i
 
-c      Writing global array to binary file
        dir = "./"
-       print *,"combineMaskTimeLevels",combineMaskTimeLevels
+
        IF (ob_filePrec .eq. 32) then
 
         IF (nDim .eq. 2) then
-
+C       --------------------------------
+C       File precision: 32
+C       Field dimension: 2
+C       --------------------------------
          call OB_R8_to_R4(bufferR4_2D, bufferR4_3D,2,fld,ob_id)
          call CREATE_FILENAME(dir, ob_flds2D(fld,ob_id), ob_id,filename
      &                      ,0, myIter)
@@ -1064,6 +1060,10 @@ C         If file already exists, set status as 'old'. Otherwise, 'replace'
          endif
 
         ELSE IF (nDim .eq. 3) then
+C       --------------------------------
+C       File precision: 32
+C       Field dimension: 3
+C       --------------------------------
          call OB_R8_to_R4(bufferR4_2D, bufferR4_3D,3,fld,ob_id)
          call CREATE_FILENAME(dir, ob_flds3D(fld,ob_id), ob_id, filename
      &                      ,0, myIter)
@@ -1183,6 +1183,8 @@ C         If file already exists, set status as 'old'. Otherwise, 'replace'
 
 
        end
+
+
 
 
        SUBROUTINE OB_R8_to_R4(bufferR4_2D, bufferR4_3D,nDim,fld,ob_id)

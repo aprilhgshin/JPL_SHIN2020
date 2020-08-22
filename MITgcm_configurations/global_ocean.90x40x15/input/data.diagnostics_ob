@@ -28,7 +28,7 @@
  nml_fields2D(1:2,4) = 'ETAN    ','AREA    ',
 
  nml_fields3D(1:4,1) = 'THETA   ','SALT    ','UVEL    ','VVEL    ',
- nml_levels3D(1:4,1) =   1, 1, 1, 1,
+ nml_levels3D(1:4,1) =   2, 1, 1, 1,
 
  nml_fields3D(1:4,2) = 'THETA   ','SALT    ','UVEL    ','VVEL    ',
  nml_levels3D(1:4,2) =   1, 1, 1, 1,
@@ -40,5 +40,6 @@
  nml_levels3D(1:4,4) =   1, 1, 1, 1,
 
 
- nml_filePrec = 64
+ nml_filePrec = 64,
+ nml_combMaskTimeLevels = .TRUE.,
  &
