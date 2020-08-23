@@ -1,0 +1,45 @@
+# Diagnostics_ob Package Choices
+#--------------------
+#     avgPeriod_nml : averaging period duration
+#     startTime_nml : start time of output
+#     endTime_nml : end time of output
+#     nml_fields : field names for ocean state and flux variables for each open boundary
+#     nml_levels3D : depths of 3D fields for each open boundary (starting from surface)
+#     nml_nFields : number of fields for each open boundary mask
+#     nml_fileNames : filenames of open boundary mask
+#     nml_filePrec : output file real precision (32 or 64 bits)
+#--------------------
+
+ &DIAG_OB_EXTRACT
+
+ avgPeriod_nml = 86400.0,
+ startTime_nml = 3600.0,
+# endTime_nml = 864000.0,
+# endTime_nml = 640800.0,
+ endTime_nml = 31622400.0,
+
+ nml_fileNames(1) = 'flt32_mask1.bin',
+ nml_fileNames(2) = 'flt32_mask2.bin',
+ nml_fileNames(3) = 'flt32_mask3.bin',
+ nml_fileNames(4) = 'flt32_mask4.bin',
+
+ nml_fields2D(1:5,1) = 'ETAN    ','AREA    ','HEFF    ','HSNOW   ','VICE    ',
+ nml_fields2D(1:5,2) = 'ETAN    ','AREA    ','HEFF    ','HSNOW   ','VICE    ',
+ nml_fields2D(1:5,3) = 'ETAN    ','AREA    ','HEFF    ','HSNOW   ','UICE    ',
+ nml_fields2D(1:5,4) = 'ETAN    ','AREA    ','HEFF    ','HSNOW   ','UICE    ',
+
+ nml_fields3D(1:4,1) = 'THETA   ','SALT    ','VVEL    ','WVEL    ',
+ nml_levels3D(1:4,1) =   23, 23, 23, 23,
+
+ nml_fields3D(1:4,2) = 'THETA   ','SALT    ','VVEL    ','WVEL    ',
+ nml_levels3D(1:4,2) =   23, 23, 23, 23,
+
+ nml_fields3D(1:4,3) = 'THETA   ','SALT    ','UVEL    ','WVEL    ',
+ nml_levels3D(1:4,3) =   23, 23, 23, 23,
+
+ nml_fields3D(1:4,4) = 'THETA   ','SALT    ','UVEL    ','WVEL    ',
+ nml_levels3D(1:4,4) =   23, 23, 23, 23,
+
+ nml_filePrec = 32,
+ nml_combMaskTimeLevels = .TRUE.,
+ &
