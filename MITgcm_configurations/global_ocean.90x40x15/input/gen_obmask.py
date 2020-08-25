@@ -19,6 +19,38 @@ def load_mitgcm_single_mask(filename):
     print("mask row ordered: ", np.fromfile(filename, dtype='>f4'))
     #print("mask row ordered: ", mask.ravel(order='C'))
 
+def load_mitgcm_single_vertical(filename):
+
+    mask = np.zeros([40, 90])
+    counter = 1
+    global_arr = np.zeros(40)
+    points_arr = np.zeros(40)
+    glo_count = 0
+
+    # Initializing mask:
+    for row in range(40):
+        mask[row][8] = row+1
+
+    c = 1
+    for row in range(40):
+        for col in range(90):
+            if col == 8:
+                global_arr[glo_count] = counter
+                points_arr[glo_count] = c
+                glo_count += 1
+                c += 1
+            counter += 1
+
+
+    #mask.ravel(order='F').astype('>f4').tofile(filename)
+    mask.ravel(order='C').astype('>f4').tofile(filename)
+    #print("mask column ordered: ", np.fromfile(filename, dtype='>f4'))
+    print("mask row ordered: ", np.fromfile(filename, dtype='>f4'))
+    print("global indices on ob points:", global_arr)
+    print("points on ob points:", points_arr)
+
+    #print("mask row ordered: ", mask.ravel(order='C'))
+
 
 def load_mitgcm_boxregion_masks(dir, xs, xe, ys, ye, dimx, dimy):
     '''
@@ -126,4 +158,12 @@ if __name__ == "__main__":
     x: 40 - 60
     y: 15 - 25
     '''
-    load_mitgcm_boxregion_masks(dir_ob_mitgcm, 40, 60, 15, 25, 90, 40)
+#    load_mitgcm_boxregion_masks(dir_ob_mitgcm, 40, 60, 15, 25, 90, 40)
+    filename = dir_ob_mitgcm + "flt32_mask1.bin"
+    load_mitgcm_single_vertical(filename)
+    filename = dir_ob_mitgcm + "flt32_mask2.bin"
+    load_mitgcm_single_vertical(filename)
+    filename = dir_ob_mitgcm + "flt32_mask3.bin"
+    load_mitgcm_single_vertical(filename)
+    filename = dir_ob_mitgcm + "flt32_mask4.bin"
+    load_mitgcm_single_vertical(filename)
