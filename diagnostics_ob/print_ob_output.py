@@ -143,7 +143,7 @@ def test_ob_outputs3D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, 
         plt.show()
 
 
-def test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, depth, nx, ny):
+def test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, depth, nx, ny, basename):
     '''
     Some params:
     ob_mask :: filename of file containing open boundary mask
@@ -162,7 +162,7 @@ def test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, ob_mask, ob_output,
 
 #    mask_test = np.fromfile(str(output_dir / "m1.bin"), dtype='>f8').reshape(ny,nx)
 
-    field, itrs, meta = mitgcm.rdmds(str(fld_dir / "obDiag"), returnmeta=True, itrs=np.NaN, fill_value=-9999)
+    field, itrs, meta = mitgcm.rdmds(str(fld_dir / basename), returnmeta=True, itrs=np.NaN, fill_value=-9999)
     print("field shape",field.shape)
 
     nTimeLevels = len(field)
@@ -195,7 +195,7 @@ def test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, ob_mask, ob_output,
 
     counter = 0
     # Depth set to k = 1
-    k = 1
+    k = 0
 
 
     for row in range(len(mask)):
@@ -206,9 +206,11 @@ def test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, ob_mask, ob_output,
                         newFieldOnMask[t][counter] = None
                     else:
                         newFieldOnMask[t][counter] =  field[t][fieldNum][k][row][col]
+    #                    field[t][fieldNum][k][row][col] = 45
                         full_field[row][col] = field[0][fieldNum][k][row][col]
 
                 counter += 1
+
 
 #    output_copy = [[0.0 for x in range(num_obPnts)] for y in range(nTimeLevels)]
     output_copy = np.zeros([nTimeLevels, num_obPnts])
@@ -237,6 +239,8 @@ def test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, ob_mask, ob_output,
 
 
 
+    plt.figure(num=10,clear=True, figsize=(7,6))
+    plt.imshow(field[0][0][1][:][:], origin='lower')#, vmin=-2, vmax=16)
 
 
 
@@ -436,7 +440,8 @@ if __name__ == "__main__":
 #    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask3.bin", "MASK_03_THETA.bin", 'THETA', 0, 64, 36030, 15, 1, 0)
 # Example for multiple time levels:
 #    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask1.bin", "MASK_01_THETA_00000002.bin", 'THETA', 0, 32, 2, 1, 1, 0)
-#    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask3.bin", "MASK_03_THETA.bin", 'THETA', 0, 32, 23, 20,16)
+#    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask3.bin", "MASK_03_SALT.bin", 'SALT', 1, 32, 23, 20,16, 'diagsTSUVW')
+    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask4.bin", "MASK_04_WVEL.bin", 'WVEL', 1, 32, 15, 90,40, 'obDiag')
 
 #fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, depth, nx, ny
-    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask3.bin", "MASK_03_THETA.bin", 'THETA', 0, 32, 15, 90,40)
+#    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_THETA.bin", 'THETA', 0, 32, 15, 90,40)

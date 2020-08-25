@@ -155,6 +155,7 @@ C       Store global_ob_masks into lookup table
               endif
               counter = counter + 1
               if (global_ob_mask(ob_id,i,j,bi,bj) .ge. 1) then
+                print*,"LOOKUP global:",counter -1
                 num_ob_points(ob_id) = num_ob_points(ob_id) + 1
               end if
             end do
@@ -222,8 +223,10 @@ C     Saved count of open boundary points in process' piece of global mask
        DO bi = myBxLo(myThid), myBxHi(myThid)
          DO j=1,sNy
            DO i=1,sNx
-             global_index = int((j-1)*sNx+(j-1)*(Nx-(iG+sNx-1))+
-     &                       j*(iG-1)+i)
+C             global_index = int((j-1)*sNx+(j-1)*(Nx-(iG+sNx-1))+
+C     &                       j*(iG-1)+i)
+             global_index = int(((j-1)*sNx+(j-1)*(Nx-(iG+sNx-1))+
+     &                       j*(iG-1)+i)+((jG-1)*Nx))
 C             print *,"IDENTIFY_OB_POINTS: global_index:", global_index
 C             IF (ob_id .eq. 2) then
 C              print *,"INIT_VARIA: ob_subMask:",
@@ -253,6 +256,7 @@ C     &            sub_glo_indices_allproc(ob_id,mpiMyId+1,counter)
           ENDDO
         ENDDO
       ENDDO
+      print*,"IDENTIFY_OB_POINTS: pid", mpiMyId
       print *,"IDENTIFY_OB_POINTS: sub_glo_indices_allproc",
      &    sub_glo_indices_allproc(ob_id,mpiMyId+1,:)
       print *,"INIT_VARIA: num_valid for mask",ob_id,":", num_valid
@@ -280,6 +284,8 @@ C     Sending global indices and number of open boundary points from processes >
           DO ob_id=1, nOB_mask
             print *,"init_varia: numOBPnts_allproc from proc",
      &              mpiMyId,":", numOBPnts_allproc
+            print *,"init_varia: BEFORE sub_glo_indices_allproc",
+     &              sub_glo_indices_allproc(ob_id,mpiMyId+1,:)
 C           !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
             call MPI_SEND(sub_glo_indices_allproc(ob_id,mpiMyId+1,:),
      &             sNx+sNy, MPI_INT,0, ob_id, MPI_COMM_MODEL, ierror)
