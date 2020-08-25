@@ -166,30 +166,7 @@ C       Store global_ob_masks into lookup table
       ENDDO
 #endif
 
-C      num_ob_points = 0
-C     DO ob_id=1, nOB_mask
-C        counter = 1
-C        open(ob_id, FILE=ob_filenames(ob_id),FORM="unformatted",
-C     &      ACCESS="stream")
-C        print *, "global_ob_mask shape", shape(global_ob_mask)
-C        print *, "global_ob_mask Nx", Nx, "Ny", Ny
-C        read(ob_id) global_ob_mask2(ob_id,:,:)
-
-C        read(ob_id) ob_subMask(ob_id,1:sNx,1:sNy,1,1)
-
-C        print *, "ob_subMask read successful"
-C        close(ob_id)
-
-C        print *, "HERE IN VARIA"
-C        call PLOT_FIELD_XYRL(ob_subMask(1,:,:,:,:),
-C     &                 "OB_EXTRACT_OUTPUT: ob_subMask", myThid)
-
-
-C      ENDDO
-
-
 #endif /* ALLOW_DIAGNOSTICS_OB */
-
 
 
       RETURN

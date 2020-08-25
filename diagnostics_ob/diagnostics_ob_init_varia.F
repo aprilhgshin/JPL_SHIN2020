@@ -31,99 +31,8 @@ C     === Local variables ===
       INTEGER i,j,k,l, bi,bj
 
 
-      DO bj = myByLo(myThid), myByHi(myThid)
-       DO bi = myBxLo(myThid), myBxHi(myThid)
-
-C     Initialize arrays in common blocks :
-C     3-dim.
-        DO k=1,Nr
-         DO j=1-Oly,sNy+OLy
-          DO i=1-Olx,sNx+Olx
-#ifdef DIAGNOSTICS_OB_3D_STATE
-           diagOB_StatScal1(i,j,k,bi,bj) = 0. _d 0
-           diagOB_StatScal2(i,j,k,bi,bj) = 0. _d 0
-           diagOB_StatVelU (i,j,k,bi,bj) = 0. _d 0
-           diagOB_StatVelV (i,j,k,bi,bj) = 0. _d 0
-#endif /* DIAGNOSTICS_OB_3D_STATE */
-#ifdef DIAGNOSTICS_OB_TENDENCY
-           diagOB_TendScal1(i,j,k,bi,bj) = 0. _d 0
-           diagOB_TendScal2(i,j,k,bi,bj) = 0. _d 0
-           diagOB_TendVelU (i,j,k,bi,bj) = 0. _d 0
-           diagOB_TendVelV (i,j,k,bi,bj) = 0. _d 0
-#endif /* DIAGNOSTICS_OB_TENDENCY */
-          ENDDO
-         ENDDO
-        ENDDO
-
-C     2-dim.
-#ifdef DIAGNOSTICS_OB_2D_STATE
-        DO j=1-Oly,sNy+OLy
-         DO i=1-Olx,sNx+Olx
-          diagOB_Surf1(i,j,bi,bj) = 0. _d 0
-          diagOB_Surf2(i,j,bi,bj) = 0. _d 0
-         ENDDO
-        ENDDO
-#endif /* DIAGNOSTICS_OB_2D_STATE */
-
-C- end bi,bj loops
-       ENDDO
-      ENDDO
-
-
-C ----END OF DIAG_OB_EXTRACT COMMON block initializing ---------------
-
       IF ( startTime.EQ.baseTime .AND. nIter0.EQ.0
      &                           .AND. pickupSuff.EQ.' ' ) THEN
-
-C     Prevent loading of new data before everyone has finished initialisation
-C     this is done within IO routines => no longer needed
-c      _BARRIER
-
-#ifdef DIAGNOSTICS_OB_3D_STATE
-       IF ( diagOB_Scal1File .NE. ' ' ) THEN
-         CALL READ_FLD_XYZ_RL( diagOB_Scal1File, ' ',
-     &                         diagOB_StatScal1, 0, myThid )
-         CALL EXCH_3D_RL( diagOB_StatScal1, Nr, myThid )
-       ENDIF
-       IF ( diagOB_Scal2File .NE. ' ' ) THEN
-         CALL READ_FLD_XYZ_RL( diagOB_Scal2File, ' ',
-     &                         diagOB_StatScal2, 0, myThid )
-         CALL EXCH_3D_RL( diagOB_StatScal2, Nr, myThid )
-       ENDIF
-
-       IF ( diagOB_VelUFile .NE. ' ' ) THEN
-         CALL READ_FLD_XYZ_RL( diagOB_VelUFile, ' ',
-     &                         diagOB_StatVelU, 0, myThid )
-       ENDIF
-       IF ( diagOB_VelVFile .NE. ' ' ) THEN
-         CALL READ_FLD_XYZ_RL( diagOB_VelVFile, ' ',
-     &                         diagOB_StatVelV, 0, myThid )
-       ENDIF
-       IF ( diagOB_VelUFile .NE. ' ' .OR.
-     &      diagOB_VelVFile .NE. ' ' ) THEN
-        IF ( diagOB_StaV_Cgrid ) THEN
-         CALL EXCH_UV_3D_RL( diagOB_StatVelU, diagOB_StatVelV,
-     &                       .TRUE., Nr, myThid )
-        ELSE
-C-      Assume Agrid position:
-         CALL EXCH_UV_AGRID_3D_RL( diagOB_StatVelU, diagOB_StatVelV,
-     &                       .TRUE., Nr, myThid )
-        ENDIF
-       ENDIF
-#endif /* DIAGNOSTICS_OB_3D_STATE */
-
-#ifdef DIAGNOSTICS_OB_2D_STATE
-       IF ( diagOB_Surf1File .NE. ' ' ) THEN
-         CALL READ_FLD_XY_RL( diagOB_Surf1File,' ',
-     &                        diagOB_Surf1, 0, myThid )
-         CALL EXCH_XY_RL( diagOB_Surf1, myThid )
-       ENDIF
-       IF ( diagOB_Surf2File .NE. ' ' ) THEN
-         CALL READ_FLD_XY_RL( diagOB_Surf2File,' ',
-     &                        diagOB_Surf2, 0, myThid )
-         CALL EXCH_XY_RL( diagOB_Surf2, myThid )
-       ENDIF
-#endif /* DIAGNOSTICS_OB_2D_STATE */
 
 C      ELSE
 C--   restart from a pickup:
@@ -132,7 +41,7 @@ C         CALL DIAGNOSTICS_OB_READ_PICKUP( nIter0, myThid )
 C--   end start-from-iter-zero if/else block
       ENDIF
 
-#endif /* ALLOW_DIAGNOSTICS_OB */      
+#endif /* ALLOW_DIAGNOSTICS_OB */
 
 
       RETURN

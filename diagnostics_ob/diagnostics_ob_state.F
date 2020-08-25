@@ -36,24 +36,6 @@ C     !LOCAL VARIABLES:
 #ifdef ALLOW_DIAGNOSTICS
       IF ( useDiagnostics ) THEN
 
-#ifdef DIAGNOSTICS_OB_3D_STATE
-         CALL DIAGNOSTICS_FILL( diagOB_StatScal1,'diagOBSta1',
-     &                          0,Nr, 0, 1, 1, myThid )
-         CALL DIAGNOSTICS_FILL( diagOB_StatScal2,'diagOBSta2',
-     &                          0,Nr, 0, 1, 1, myThid )
-         CALL DIAGNOSTICS_FILL( diagOB_StatVelU, 'diagOBStaU',
-     &                          0,Nr, 0, 1, 1, myThid )
-         CALL DIAGNOSTICS_FILL( diagOB_StatVelV, 'diagOBStaV',
-     &                          0,Nr, 0, 1, 1, myThid )
-#endif /* DIAGNOSTICS_OB_3D_STATE */
-
-#ifdef DIAGNOSTICS_OB_2D_STATE
-         CALL DIAGNOSTICS_FILL( diagOB_Surf1 ,   'diagOBSur1',
-     &                          0, 1, 0, 1, 1, myThid )
-         CALL DIAGNOSTICS_FILL( diagOB_Surf2 ,   'diagOBSur2',
-     &                          0, 1, 0, 1, 1, myThid )
-#endif /* DIAGNOSTICS_OB_2D_STATE */
-
       ENDIF
 #endif /* ALLOW_DIAGNOSTICS */
 

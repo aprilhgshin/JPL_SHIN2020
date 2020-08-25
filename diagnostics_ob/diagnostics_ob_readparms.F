@@ -30,19 +30,6 @@ C     iUnit      :: Work variable for IO unit number
       INTEGER iUnit
       INTEGER bi,bj,i,j,k,l, ob, fld, counter3D
 
-      NAMELIST /DIAGNOSTICS_OB_PARM01/
-     &       diagOB_MNC,
-     &       diagOB_StaV_Cgrid, diagOB_Tend_Cgrid,
-     &       diagOB_applyTendT, diagOB_applyTendS,
-     &       diagOB_applyTendU, diagOB_applyTendV,
-     &       diagOB_doSwitch1,  diagOB_doSwitch2,
-     &       diagOB_index1,     diagOB_index2,
-     &       diagOB_param1,     diagOB_param2,
-     &       diagOB_string1,    diagOB_string2,
-     &       diagOB_Scal1File,  diagOB_Scal2File,
-     &       diagOB_VelUFile,   diagOB_VelVFile,
-     &       diagOB_Surf1File,  diagOB_Surf2File
-
 C ----------------------------
 C     Open Boundary Extraction Namelist:
 C     nml_fldNames : field names for ocean state and flux variables
@@ -81,30 +68,6 @@ C     print a (weak) warning if data.DIAGNOSTICS_OB is found
 
       _BEGIN_MASTER(myThid)
 
-C--   Default values for DIAGNOSTICS_OB
-      diagOB_MNC         = useMNC
-      diagOB_StaV_Cgrid  = .TRUE.
-      diagOB_Tend_Cgrid  = .TRUE.
-      diagOB_applyTendT  = .FALSE.
-      diagOB_applyTendS  = .FALSE.
-      diagOB_applyTendU  = .FALSE.
-      diagOB_applyTendV  = .FALSE.
-C-    additional parameters:
-      diagOB_doSwitch1   = .FALSE.
-      diagOB_doSwitch2   = .FALSE.
-      diagOB_index1      = 0
-      diagOB_index2      = 0
-      diagOB_param1      = 0. _d 0
-      diagOB_param2      = 0. _d 0
-      diagOB_string1     = ' '
-      diagOB_string2     = ' '
-C-    file names for initial conditions:
-      diagOB_Scal1File   = ' '
-      diagOB_Scal2File   = ' '
-      diagOB_VelUFile    = ' '
-      diagOB_VelVFile    = ' '
-      diagOB_Surf1File   = ' '
-      diagOB_Surf2File   = ' '
 
 C-------------------------------------------------------------------------------
 C       Initializing local variables and variables from DIAG_OB_EXTRACT COMMON block:
@@ -167,15 +130,6 @@ C     Close the open data file
 #else
       CLOSE(iUnit,STATUS='DELETE')
 #endif /* SINGLE_DISK_IO */
-
-C     Make sure that we locally honor the global MNC on/off flag
-      diagOB_MNC = diagOB_MNC .AND. useMNC
-#ifndef ALLOW_MNC
-C     Fix to avoid running without getting any output:
-      diagOB_MNC = .FALSE.
-#endif
-      diagOB_MDSIO = (.NOT. diagOB_MNC) .OR. outputTypesInclusive
-
 
 C     Fill DIAGNOSTICS_OB.h Common Block with Namelist Info
 

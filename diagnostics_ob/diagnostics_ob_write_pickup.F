@@ -70,44 +70,9 @@ CEOP
 
 C       Firstly, write 3-D fields as consecutive records,
 
-#ifdef DIAGNOSTICS_OB_3D_STATE
-C     record number < 0 : a hack not to write meta files now:
-        j = j + 1
-        CALL WRITE_REC_3D_RL( fn, fp, Nr,
-     &                        diagOB_StatScal1, -j, myIter, myThid )
-        IF (j.LE.listDim) wrFldList(j) = 'diagOBSta1'
-
-        j = j + 1
-        CALL WRITE_REC_3D_RL( fn, fp, Nr,
-     &                        diagOB_StatScal2, -j, myIter, myThid )
-        IF (j.LE.listDim) wrFldList(j) = 'diagOBSta2'
-
-        j = j + 1
-        CALL WRITE_REC_3D_RL( fn, fp, Nr,
-     &                        diagOB_StatVelU, -j, myIter, myThid )
-        IF (j.LE.listDim) wrFldList(j) = 'diagOBStaU'
-        j = j + 1
-        CALL WRITE_REC_3D_RL( fn, fp, Nr,
-     &                        diagOB_StatVelV, -j, myIter, myThid )
-        IF (j.LE.listDim) wrFldList(j) = 'diagOBStaV'
-#endif /* DIAGNOSTICS_OB_3D_STATE */
 
 C-    switch to 2-D fields:
         nj = -j*Nr
-
-#ifdef DIAGNOSTICS_OB_2D_STATE
-        j = j + 1
-        nj = nj-1
-        CALL WRITE_REC_3D_RL( fn, fp, 1,
-     &                        diagOB_Surf1, nj, myIter, myThid )
-        IF (j.LE.listDim) wrFldList(j) = 'diagOBSur1'
-
-        j = j + 1
-        nj = nj-1
-        CALL WRITE_REC_3D_RL( fn, fp, 1,
-     &                        diagOB_Surf2, nj, myIter, myThid )
-        IF (j.LE.listDim) wrFldList(j) = 'diagOBSur2'
-#endif /* DIAGNOSTICS_OB_2D_STATE */
 
 C--------------------------
         nWrFlds = j

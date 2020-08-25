@@ -123,34 +123,6 @@ c         CALL PRINT_MESSAGE( msgBuf, ioUnit, SQUEEZE_RIGHT, myThid )
 
 C---+----1----+----2----+----3----+----4----+----5----+----6----+----7-|--+----|
 
-       IF ( nbFields.EQ.0 ) THEN
-C---   Old way to read pickup:
-
-       ELSE
-C---   New way to read DIAGNOSTICS_OB pickup:
-        nj = 0
-C---    read DIAGNOSTICS_OB 3-D fields for restart
-#ifdef DIAGNOSTICS_OB_3D_STATE
-        CALL READ_MFLDS_3D_RL( 'diagOBSta1', diagOB_StatScal1,
-     &                                 nj, fp, Nr, myIter, myThid )
-        CALL READ_MFLDS_3D_RL( 'diagOBSta2', diagOB_StatScal2,
-     &                                 nj, fp, Nr, myIter, myThid )
-        CALL READ_MFLDS_3D_RL( 'diagOBStaU', diagOB_StatVelU,
-     &                                 nj, fp, Nr, myIter, myThid )
-        CALL READ_MFLDS_3D_RL( 'diagOBStaV', diagOB_StatVelV,
-     &                                 nj, fp, Nr, myIter, myThid )
-#endif /* DIAGNOSTICS_OB_3D_STATE */
-        nj = nj*Nr
-C---    read DIAGNOSTICS_OB 2-D fields for restart
-#ifdef DIAGNOSTICS_OB_2D_STATE
-        CALL READ_MFLDS_3D_RL( 'diagOBSur1', diagOB_Surf1,
-     &                                 nj, fp, 1 , myIter, myThid )
-        CALL READ_MFLDS_3D_RL( 'diagOBSur2', diagOB_Surf2,
-     &                                 nj, fp, 1 , myIter, myThid )
-#endif /* DIAGNOSTICS_OB_2D_STATE */
-
-C--    end: new way to read pickup file
-       ENDIF
 
 C--    Check for missing fields:
        nMissing = missFldDim
@@ -177,23 +149,6 @@ C--    Check for missing fields:
         STOP 'ABNORMAL END: S/R DIAGNOSTICS_OB_READ_PICKUP'
        ENDIF
 
-C--    Update overlap regions:
-#ifdef DIAGNOSTICS_OB_3D_STATE
-        CALL EXCH_3D_RL( diagOB_StatScal1, Nr, myThid )
-        CALL EXCH_3D_RL( diagOB_StatScal2, Nr, myThid )
-        IF ( diagOB_StaV_Cgrid ) THEN
-         CALL EXCH_UV_3D_RL( diagOB_StatVelU, diagOB_StatVelV,
-     &                       .TRUE., Nr, myThid )
-        ELSE
-C-      Assume Agrid position:
-         CALL EXCH_UV_AGRID_3D_RL( diagOB_StatVelU, diagOB_StatVelV,
-     &                       .TRUE., Nr, myThid )
-        ENDIF
-#endif /* DIAGNOSTICS_OB_3D_STATE */
-#ifdef DIAGNOSTICS_OB_2D_STATE
-        CALL EXCH_XY_RL( diagOB_Surf1, myThid )
-        CALL EXCH_XY_RL( diagOB_Surf2, myThid )
-#endif /* DIAGNOSTICS_OB_2D_STATE */
 
 #endif /* DIAGNOSTICS_OB_3D_STATE or DIAGNOSTICS_OB_2D_STATE */
 #endif /* ALLOW_DIAGNOSTICS_OB */

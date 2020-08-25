@@ -63,25 +63,6 @@ c     IF ( useDiagnotics ) THEN
         CALL DIAGNOSTICS_ADDTOLIST( diagNum,
      I          diagName, diagCode, diagUnits, diagTitle, 0, myThid )
 
-        diagName  = 'diOBStaU'
-        diagTitle =
-     &        'uVel-type state variable for package diagnostics_ob'
-        diagUnits = 'unit            '
-        diagCode  = 'UM      MR      '
-        diagMate  = diagNum + 2
-        IF ( diagOB_StaV_Cgrid ) diagCode(2:2) = 'U'
-        CALL DIAGNOSTICS_ADDTOLIST( diagNum,
-     I   diagName, diagCode, diagUnits, diagTitle, diagMate, myThid )
-
-        diagName  = 'diOBStaV'
-        diagTitle =
-     &        'vVel-type state variable for package diagnostics_ob'
-        diagUnits = 'unit            '
-        diagCode  = 'VM      MR      '
-        diagMate  = diagNum
-        IF ( diagOB_StaV_Cgrid ) diagCode(2:2) = 'V'
-        CALL DIAGNOSTICS_ADDTOLIST( diagNum,
-     I   diagName, diagCode, diagUnits, diagTitle, diagMate, myThid )
 
         diagName  = 'diOBSur1'
         diagTitle = 'Surface field 1 for package diagnostics_ob'
@@ -110,24 +91,6 @@ c     IF ( useDiagnotics ) THEN
         diagCode  = 'SMR     MR      '
         CALL DIAGNOSTICS_ADDTOLIST( diagNum,
      I          diagName, diagCode, diagUnits, diagTitle, 0, myThid )
-
-        diagName  = 'diOBdUdt'
-        diagTitle = 'u-Velocity tendency from package diagnostics_ob'
-        diagUnits = 'm/s^2           '
-        diagCode  = 'UMR     MR      '
-        diagMate  = diagNum + 2
-        IF ( diagOB_Tend_Cgrid ) diagCode(2:2) = 'U'
-        CALL DIAGNOSTICS_ADDTOLIST( diagNum,
-     I   diagName, diagCode, diagUnits, diagTitle, diagMate, myThid )
-
-        diagName  = 'diOBdVdt'
-        diagTitle = 'v-Velocity tendency from package diagnostics_ob'
-        diagUnits = 'm/s^2           '
-        diagCode  = 'VMR     MR      '
-        diagMate  = diagNum
-        IF ( diagOB_Tend_Cgrid ) diagCode(2:2) = 'V'
-        CALL DIAGNOSTICS_ADDTOLIST( diagNum,
-     I   diagName, diagCode, diagUnits, diagTitle, diagMate, myThid )
 
 C--     an example of how to set "free levels option" diagnostics
         diagName  = 'diOBLev3'
