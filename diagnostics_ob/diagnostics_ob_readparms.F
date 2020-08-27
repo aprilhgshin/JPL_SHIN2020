@@ -73,9 +73,8 @@ C-------------------------------------------------------------------------------
 C       Initializing local variables and variables from DIAG_OB_EXTRACT COMMON block:
 C-------------------------------------------------------------------------------
 
-      avgPeriod_nml = undefRL
-      startTime_nml = undefRL
-      endTime_nml = undefRL
+      startTime_nml = endTime
+      endTime_nml = startTime
       time_passed = 0.0
       nml_filePrec = 64
       nml_combMaskTimeLevels = .TRUE.

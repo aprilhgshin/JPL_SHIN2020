@@ -75,7 +75,7 @@ C       |-- LAYERS_CALC
 C       |-- LAYERS_OUTPUT
 C       |
 C       |-- DIAGNOSTICS_WRITE
-C       |-- DIAGNOSTICS_OB_WRITE
+C       |-- DIAGNOSTICS_OB_OUTPUT
 
 
 C     !USES:

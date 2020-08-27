@@ -137,10 +137,13 @@ def test_ob_outputs3D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, 
         plt.title("OB Output VS. Original Field For Each Depth")
         plt.legend(loc="center right")
 
-        plt.subplot(212)
-        plt.plot(diff[k])
+        plt.figure(num=31,clear=True, figsize=(3,10));
+        plt.imshow(diff[k])
+        plt.axis('auto');plt.colorbar()
         plt.title("Abs Difference between Output and Original field:")
         plt.show()
+
+        print(diff[k])
 
 
 def test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, depth, nx, ny, basename):
@@ -268,9 +271,12 @@ def test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, ob_mask, ob_output,
 #    plt.show()
 
 
-    plt.figure(num=4,clear=True, figsize=(7,6))
+    plt.figure(num=31,clear=True, figsize=(3,10));
+
     plt.imshow(diff, origin='lower')#, vmin=-2, vmax=16)
     plt.colorbar()
+    plt.axis('auto');plt.colorbar()
+
     plt.title("Difference")
     plt.show()
 
@@ -398,12 +404,12 @@ if __name__ == "__main__":
 
     import struct
 
-    fld_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run/diags')
-    output_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run')
-    mask_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/input')
-#    fld_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/lab_sea/run_ob')
-#    output_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/lab_sea/run_ob')
-#    mask_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/lab_sea/input_ob')
+#    fld_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run/diags')
+#    output_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run')
+#    mask_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/input')
+    fld_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/lab_sea/run_ob')
+    output_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/lab_sea/run_ob')
+    mask_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/lab_sea/input_ob_1year')
     '''
     NOTE:
     1. When changing data.diagnostics_ob and rerunning model, make sure to empty the run directory first before rerunning.
@@ -440,8 +446,8 @@ if __name__ == "__main__":
 #    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask3.bin", "MASK_03_THETA.bin", 'THETA', 0, 64, 36030, 15, 1, 0)
 # Example for multiple time levels:
 #    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask1.bin", "MASK_01_THETA_00000002.bin", 'THETA', 0, 32, 2, 1, 1, 0)
-#    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask3.bin", "MASK_03_SALT.bin", 'SALT', 1, 32, 23, 20,16, 'diagsTSUVW')
-    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask4.bin", "MASK_04_THETA.bin", 'THETA', 0, 32, 1, 90,40, 'obDiag')
+    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask3.bin", "MASK_03_THETA.bin", 'THETA', 1, 32, 23, 20,16, 'diagsTSUVW')
+#    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask4.bin", "MASK_04_THETA.bin", 'THETA', 0, 32, 1, 90,40, 'obDiag')
 
 #fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, depth, nx, ny
 #    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_THETA.bin", 'THETA', 0, 32, 15, 90,40)
