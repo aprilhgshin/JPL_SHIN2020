@@ -328,7 +328,9 @@ C-------------------------------------------------------------------------------
        if (nDim .eq. 2) then
 
         call OB_PASS_RL_to_R8(buffer2D, buffer3D, ob_id, 2,fld)
+C       Append process 0's 2D time-averaged field value on OB points to final array
         call APPEND_OB_VALUE2D(ob_id, 0, buffer2D)
+C       Add onto total number of OB points
         total_valid = total_valid + numOBPnts_allproc(ob_id, 1)
 
         if (debug .eq. 1) then
@@ -344,8 +346,9 @@ C-------------------------------------------------------------------------------
         print *,"MASTER3D: 3 dimensional field appending local field",
      &           ob_flds3D(fld,ob_id)
         call OB_PASS_RL_to_R8(buffer2D, buffer3D, ob_id, 3,fld)
-
+C       Append process 0's 3D time-averaged field value on OB points to final array
         call APPEND_OB_VALUE3D(ob_id, 0, fld, buffer3D)
+C       Add onto total number of OB points
         total_valid = total_valid + numOBPnts_allproc(ob_id, 1)
 
         if (debug .eq. 1) then
@@ -385,6 +388,8 @@ C       If number of valid elements is greater than or equal to 1
 
          IF (nDim .eq. 2) then
           tag = ob_tags(ob_id, 1, fld)
+C         !MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierror
+C         Master process receiving time-averaged 2Dfield values on OB points from process pid
           call MPI_RECV(buffer2D, sNx+sNy, MPI_REAL8,
      &                   pid, tag ,MPI_COMM_MODEL, status, ierror)
 
@@ -397,13 +402,14 @@ C       If number of valid elements is greater than or equal to 1
      &                       ," valid elements"
            print *,buffer2D
           end if
-
+C         Appending the received time-averaged 2D field values on OB points from process pid
           call APPEND_OB_VALUE2D(ob_id, pid, buffer2D)
 
          ELSE IF (nDim .eq. 3) then
 
           tag = ob_tags(ob_id, 2, fld)
-
+C         !MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierror
+C         Master process receiving time-averaged 3Dfield values on OB points from process pid
           call MPI_RECV(buffer3D(:,1:ob_levels3D(fld,ob_id)),
      &           ob_levels3D(fld,ob_id)*(sNx+sNy), MPI_REAL8, pid,
      &           tag ,MPI_COMM_MODEL, status, ierror)
@@ -427,6 +433,7 @@ C         !append_ob_values3D params: ob_id, pid, fld, ob_values
          ENDDO
 
          ENDIF
+C        Keeping count of total number of OB points for each mask
          total_valid = total_valid + numOBPnts_allproc(ob_id, pid+1)
 
 C       !ENDIF for number of valid elements
@@ -437,16 +444,14 @@ C      !ENDDO for pid
 #endif
 C------End of receiving arrays through MPI and appending------------------------
 
+C      Plotting final output into a Nx by Ny array for debugging
        if (debug .eq. 1) then
         print *,"MASTER: For mask", ob_id
         print *,"Plotting final array at time", myTime
        end if
        call PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld, nDim, myIter)
 
-       if (debug .eq. 1) then
-        print*,"MASTER: myIter:",myIter
-       end if
-
+C      Writing final output to binary file
        print *,"WRITE TO FILE FOR MASK",ob_id
        call WRITE_GLOBAL_BIN(total_valid,fld,ob_id,myIter,nDim)
 
@@ -459,13 +464,15 @@ C       Appends field value corresponding to open boundary points to final globa
 C       Use values of global_indices to extract value in lookup_table at position of value of global_indices.
 C       Value in lookup_table used to identify position of current point on open boundary.
 C       Store field value at position in final global array global_ob.
+C       NOTE: for details on lookup table and global indices, look at diagnostics_ob_init_fixed.F
+
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "EESUPPORT.h"
 #include "DIAGNOSTICS_OB.h"
 
          REAL*8 ob_values(sNx+sNy)
-         integer num_valid, i, ob_index, ob_id, pid, glo
+         integer num_valid, i, ob_index, ob_id, pid
          integer, parameter :: print_debug = 0
 
          ob_index = 1
@@ -473,18 +480,12 @@ C       Store field value at position in final global array global_ob.
 
 
          do i=1, num_valid
+C          Extracting ob_index from lookup table using global index for OB point i in process pid
            ob_index = lookup_table(ob_id,
      &                 sub_glo_indices_allproc(ob_id,pid+1,i))
-            glo = sub_glo_indices_allproc(ob_id,pid+1,i)
-             if (print_debug .eq. 1) then
-               print *,"APPEND_OB_VALUE2D: glo", glo
-               print *, "APPEND_OB_VALUE2D: ob_index", ob_index
-               print *, "APPEND_OB_VALUE2D: counter i",i
-               print *, "APPEND_OB_VALUE2D: ob_value", ob_values(i)
-             end if
-             global_ob2D(ob_index) = ob_values(i)
-C           end if
-       end do
+C          Inserting time-averaged field value on OB point i in index ob_index of the final array, global_ob2D
+           global_ob2D(ob_index) = ob_values(i)
+         end do
          if (print_debug .eq. 1) then
            print *,"global_ob2D shape",shape(global_ob2D)
            print *, "APPEND_OB_VALUE2D: global_ob2D:"
@@ -500,6 +501,8 @@ C       Appends field value corresponding to open boundary points to final globa
 C       Use values of global_indices to extract value in lookup_table at position of value of global_indices.
 C       Value in lookup_table used to identify position of current point on open boundary.
 C       Store field value at position in final global array global_ob.
+C       NOTE: for details on lookup table and global indices, look at diagnostics_ob_init_fixed.F
+
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "EESUPPORT.h"
@@ -522,6 +525,7 @@ C       Store field value at position in final global array global_ob.
         endif
 
         do i=1, num_valid
+C        Extracting ob_index from lookup table using global index for OB point i in process pid
          ob_index = lookup_table(ob_id,
      &                 sub_glo_indices_allproc(ob_id,pid+1,i))
 
@@ -533,7 +537,8 @@ C       Store field value at position in final global array global_ob.
            print *, "APPEND_OB_VALUE3D: counter i",i
            print*,"ob_values at k=1",ob_values(i,1)
          endif
-
+C        Inserting time-averaged field value on OB point i in index ob_index of
+C        the final array, global_ob3D for each depth
          do k=1, ob_levels3D(fld,ob_id)
           global_ob3D(ob_index,k) = ob_values(i,k)
          enddo

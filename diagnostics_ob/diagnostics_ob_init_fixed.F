@@ -155,6 +155,10 @@ C    - Doing so essentially rehapes the global mask into a one dimensional array
 C      in the lookup table.
 C    - The indices of the elements of the global mask in each row of the lookup
 C      table starts from 1 and ends at Nx*Ny.
+C
+C    These indices are equivalent to the global indices each child process computes
+C    for the open boundaries in their sub masks. (Explained in detail in subroutine
+C    IDENTIFY_OB_POINTS)
 C----------------------------
 
 #ifdef ALLOW_USE_MPI
@@ -277,7 +281,8 @@ C       Therefore,
 C               global_index = (jG + (j-2))*Nx + iG + (i-1)
 C
 C     - These global indices will be used to extract values from the lookup table.
-
+C
+C
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "EESUPPORT.h"
@@ -326,6 +331,7 @@ C              Indices referring to process IDs begin with 1
 
       SUBROUTINE SEND_CHILD_TO_MASTER()
 C     Sending global indices and number of open boundary points from processes > 0 to master process
+
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "EESUPPORT.h"
@@ -343,8 +349,10 @@ C     Sending global indices and number of open boundary points from processes >
             print *,"INIT_FIXED: BEFORE sub_glo_indices_allproc",
      &              sub_glo_indices_allproc(ob_id,mpiMyId+1,:)
 C           !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
+C           Child process sending global indices of OB points
             call MPI_SEND(sub_glo_indices_allproc(ob_id,mpiMyId+1,:),
      &             sNx+sNy, MPI_INT,0, ob_id, MPI_COMM_MODEL, ierror)
+C           Child process sending count of OB points
             call MPI_SEND(numOBPnts_allproc(ob_id,mpiMyId+1),
      &             1, MPI_INT,0, ob_id*100, MPI_COMM_MODEL, ierror)
           ENDDO
@@ -354,8 +362,10 @@ C           !MPI_SEND params: data_to_send, send_count, send_type, destination_I
           DO pid=1, nPx*nPy-1
             DO ob_id=1, nOB_mask
 C             !MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierror
+C             Master process receiving global indices from child process pid 
               call MPI_RECV(g_indices, sNx+sNy, MPI_INT,
      &                   pid, ob_id ,MPI_COMM_MODEL, status, ierror)
+C             Master process receiving count of OB points from child process pid
               call MPI_RECV(num_pts, 1, MPI_INT,
      &                   pid, ob_id*100 ,MPI_COMM_MODEL, status, ierror)
 
