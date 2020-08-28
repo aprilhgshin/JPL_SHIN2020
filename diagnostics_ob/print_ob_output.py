@@ -283,6 +283,8 @@ def test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, ob_mask, ob_output,
 
 def test_ob_outputs2D(fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, myIter, nTimeLevels, tLevel):
     '''
+    NOTE: Unlike the 3D outputting functions, this function only compares one time level at a time 
+
     Some params:
     ob_mask :: filename of file containing open boundary mask
     ob_output :: filename of file containing open boundary output
@@ -404,12 +406,12 @@ if __name__ == "__main__":
 
     import struct
 
-#    fld_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run/diags')
-#    output_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run')
-#    mask_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/input')
-    fld_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/lab_sea/run_ob')
-    output_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/lab_sea/run_ob')
-    mask_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/lab_sea/input_ob_1year')
+    fld_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run/diags')
+    output_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/run')
+    mask_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/global_ocean.90x40x15/input')
+#    fld_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/lab_sea/run_ob')
+#    output_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/lab_sea/run_ob')
+#    mask_dir = Path('/home/mitgcm/Work/JPL_SHIN2020/MITgcm_configurations/lab_sea/input_ob_1year')
     '''
     NOTE:
     1. When changing data.diagnostics_ob and rerunning model, make sure to empty the run directory first before rerunning.
@@ -437,17 +439,17 @@ if __name__ == "__main__":
     #    fname :: field name
     #    fieldNum :: Index to extract field from field array outputted from the diagnostics package (in data.diagnostics)
     #    filePrec :: file precision
-    #    myIter :: iter number at which file was outputted
     #    depth :: Depth of field
-    #    nTimeLevels :: number of time levels included in output binary file
-    #    tLevel :: time level to compare (index from 0 through n time levels)
+    #    nx :: x dimension of global mask
+    #    ny :: y dimension of global mask
+    #    basename :: location of diagnostics package output
     '''
 # Example for one time level: Always set nTimeLevels to 1
 #    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask3.bin", "MASK_03_THETA.bin", 'THETA', 0, 64, 36030, 15, 1, 0)
 # Example for multiple time levels:
 #    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask1.bin", "MASK_01_THETA_00000002.bin", 'THETA', 0, 32, 2, 1, 1, 0)
-    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask3.bin", "MASK_03_THETA.bin", 'THETA', 1, 32, 23, 20,16, 'diagsTSUVW')
-#    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask4.bin", "MASK_04_THETA.bin", 'THETA', 0, 32, 1, 90,40, 'obDiag')
+#    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask3.bin", "MASK_03_THETA.bin", 'THETA', 1, 32, 23, 20,16, 'diagsTSUVW')
+    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask3.bin", "MASK_03_THETA.bin", 'THETA', 0, 32, 15, 90,40, 'obDiag')
 
-#fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, depth, nx, ny
+# test_ob_outputs2D params: fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, depth, nx, ny
 #    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_THETA.bin", 'THETA', 0, 32, 15, 90,40)

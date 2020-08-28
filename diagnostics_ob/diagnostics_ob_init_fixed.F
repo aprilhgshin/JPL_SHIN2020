@@ -100,18 +100,17 @@ C---------------------------------------------------------
 
       time_level = 1
 
-
       DO ob_id=1, nOB_mask
-        print *,"INIT_VARIA: nOB_mask",nOB_mask
+        print *,"INIT_FIXED: nOB_mask",nOB_mask
         print*,"ob_id,",ob_id
         print*,"ob_fnames", ob_fnames(ob_id)
         CALL READ_REC_XY_RL( ob_fnames(ob_id),
      &               ob_subMask(ob_id,:,:,:,:),1, 0, myThid )
         _EXCH_XY_RL(ob_subMask(ob_id,:,:,:,:), myThid)
 C       Plotting for debugging
-        print *,"INIT_VARIA: ob_id", ob_id
+        print *,"INIT_FIXED: ob_id", ob_id
         CALL PLOT_FIELD_XYRL( ob_subMask(ob_id,:,:,:,:),
-     &                'init_varia:Open Boundary Submask', -1, myThid )
+     &                'INIT_FIXED:Open Boundary Submask', -1, myThid )
         print *,"IDENTIFY OB POINTS BEFORE1: mask", ob_id
 
 #ifdef ALLOW_USE_MPI
@@ -127,12 +126,12 @@ C       Plotting for debugging
 
 C     Using GATHER_2D_R8 to correctly combine sub masks into a single global mask
       DO ob_id=1, nOB_mask
-        print *,"INIT_VARIA: ob_id in loop", ob_id
+        print *,"INIT_FIXED: ob_id in loop", ob_id
         CALL GATHER_2D_R8(global_ob_mask(ob_id,:,:,1,1),
      &                  ob_subMask(ob_id,1:sNx,1:sNy,1,1),
      &                  Nx, Ny, .true., .true., myThid)
       CALL PLOT_GLO_FIELD_XYRL(global_ob_mask(ob_id,:,:,:,:),
-     &                    "INIT_VARIA: global mask", myThid)
+     &                    "INIT_FIXED: global mask", myThid)
 
        write(write_fname, "(A1,I1,A4)") "m",ob_id,".bin"
 
@@ -206,7 +205,7 @@ C     &                       j*(iG-1)+i)
      &                       j*(iG-1)+i)+((jG-1)*Nx))
 C             print *,"IDENTIFY_OB_POINTS: global_index:", global_index
 C             IF (ob_id .eq. 2) then
-C              print *,"INIT_VARIA: ob_subMask:",
+C              print *,"INIT_FIXED: ob_subMask:",
 C     &                (ob_subMask(ob_id,i,j,bi,bj)),
 C     &              "num_valid:",num_valid
 C             ENDIF
@@ -236,10 +235,10 @@ C     &            sub_glo_indices_allproc(ob_id,mpiMyId+1,counter)
       print*,"IDENTIFY_OB_POINTS: pid", mpiMyId
       print *,"IDENTIFY_OB_POINTS: sub_glo_indices_allproc",
      &    sub_glo_indices_allproc(ob_id,mpiMyId+1,:)
-      print *,"INIT_VARIA: num_valid for mask",ob_id,":", num_valid
+      print *,"INIT_FIXED: num_valid for mask",ob_id,":", num_valid
       numOBPnts_allproc(ob_id,mpiMyId+1) = num_valid
 
-      print*,"INIT_VARIA: mask:",ob_id
+      print*,"INIT_FIXED: mask:",ob_id
       print *,"sub_local_ij_ob j" ,sub_local_ij_ob(ob_id,2,:)
       print *,"sub_local_ij_ob i" ,sub_local_ij_ob(ob_id,1,:)
       END
@@ -259,9 +258,9 @@ C     Sending global indices and number of open boundary points from processes >
 
         IF (mpiMyId .gt. 0) then
           DO ob_id=1, nOB_mask
-            print *,"init_varia: numOBPnts_allproc from proc",
+            print *,"INIT_FIXED: numOBPnts_allproc from proc",
      &              mpiMyId,":", numOBPnts_allproc
-            print *,"init_varia: BEFORE sub_glo_indices_allproc",
+            print *,"INIT_FIXED: BEFORE sub_glo_indices_allproc",
      &              sub_glo_indices_allproc(ob_id,mpiMyId+1,:)
 C           !MPI_SEND params: data_to_send, send_count, send_type, destination_ID, tag, comm, ierror
             call MPI_SEND(sub_glo_indices_allproc(ob_id,mpiMyId+1,:),
