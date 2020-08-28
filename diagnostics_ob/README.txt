@@ -17,6 +17,7 @@ USER_INPUT.h
 - Additional input parameters
 
 ob_extract_output.F
+- The driver of the Open Boundary Extraction Program
 - Contains the OB_EXTRACT_OUTPUT subroutine that executes entire Open Boundary Extraction Program
 
 diag_ob_prepare_subFieldOnMasks.F
