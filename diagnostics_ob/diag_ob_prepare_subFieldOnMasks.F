@@ -2,7 +2,7 @@
 
 
       SUBROUTINE SET_TO_INI_STATE(myThid)
-C     Initializes average fields to zero
+C     Initializes field value average  to zero
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "DIAGNOSTICS_OB.h"
@@ -12,6 +12,7 @@ C     Initializes average fields to zero
         INTEGER i, k, ob_id, fld2D, fld3D
 
         DO ob_id=1, nOB_mask
+C        Total number of 2D fields
          nFlds2D = ob_nFlds2D(ob_id)
          DO fld2D=1, nFlds2D
           DO i=1, sNx+sNy
@@ -19,6 +20,7 @@ C     Initializes average fields to zero
           ENDDO
          ENDDO
 
+c        Total number of 3D fields
          nFlds3D = ob_nFlds3D(ob_id)
          DO fld3D=1, nFlds3D
           DO i=1, sNx+sNy
@@ -54,7 +56,6 @@ C     Assign unique tags to all 2D and 3D fields for MPI_SEND
       INTEGER i, j, k, bi, bj, numValid, tag
       INTEGER nFlds2D, nFlds3D, fld2D, fld3D
       INTEGER, PARAMETER :: print_debug = 0
-      _RL AREA_TEST(Nx,Ny,nSx,nSy)
 
       IF (print_debug .eq. 1) then
        print *,"Inside SET_SUBFIELDS"
@@ -66,24 +67,29 @@ C     Assign unique tags to all 2D and 3D fields for MPI_SEND
        ENDDO
       ENDIF
 
-
+C     Initialize tag number to 1. Tag number will be incrememted after each field is extracted.
       tag = 1
       DO ob_id=1, nOB_mask
+
+C       Number of open boundary points for mask ob_id and process mpiMyId (added one because of fortran's indices starting from 1 )
         numValid = numOBPnts_allproc(ob_id,mpiMyId+1)
 
 C      Looping through 2D fields first, if any.
        nFlds2D = ob_nFlds2D(ob_id)
        DO fld2D=1, nFlds2D
+
+C       Save unique tag for field and incremement tag for next field to be extracted
         ob_tags(ob_id, 1, fld2D) =  tag
-        IF (print_debug .eq. 1) then
-         print *,"SET_SUBFIELDS: tag",tag, "in myIter",myIter
-        ENDIF
         tag = tag + 1
+
         DO bj = myByLo(myThid), myByHi(myThid)
          DO bi = myBxLo(myThid), myBxHi(myThid)
           DO loc_count=1, numValid
+C          i,j indices with respect to process' sub mask for open boundary points (Note: all processes have their own declared sub_local_ij_ob)
            j = sub_local_ij_ob(ob_id,2,loc_count)
            i = sub_local_ij_ob(ob_id,1,loc_count)
+
+C          Comparing strings provided by user to fields in diagnostics_ob
            IF (ob_flds2D(fld2D,ob_id) .eq. 'AREA') then
             subFieldOnMask_2D(ob_id,fld2D,loc_count) = AREA(i,j,bi,bj)
            ELSE IF (ob_flds2D(fld2D,ob_id) .eq. 'HEFF') then
@@ -106,22 +112,27 @@ C      Looping through 2D fields first, if any.
           ENDDO
          ENDDO
         ENDDO
+C      !end of loop for nFlds2D
        ENDDO
 
 C      Looping through 3D fields, if any.
        nFlds3D = ob_nFlds3D(ob_id)
        DO fld3D=1, nFlds3D
+
+C       Save unique tag for field and incremement tag for next field to be extracted
         ob_tags(ob_id, 2, fld3D) = tag
-        IF (print_debug .eq. 1) then
-         print *,"SET_SUBFIELDS: tag",tag, "in myIter",myIter
-        ENDIF
         tag = tag + 1
+
         DO bj = myByLo(myThid), myByHi(myThid)
          DO bi = myBxLo(myThid), myBxHi(myThid)
           DO loc_count=1, numValid
+
+C          i,j indices with respect to process' sub mask for open boundary points
            j = sub_local_ij_ob(ob_id,2,loc_count)
            i = sub_local_ij_ob(ob_id,1,loc_count)
            DO k=1, ob_levels3D(fld3D,ob_id)
+
+C          Comparing strings provided by user to fields in diagnostics_ob
             IF (ob_flds3D(fld3D,ob_id) .eq. 'UVEL') then
              subFieldOnMask_3D(ob_id,fld3D,loc_count,k) =
      &                                        uVel(i,j,k,bi,bj)
@@ -134,13 +145,9 @@ C      Looping through 3D fields, if any.
             ELSE IF (ob_flds3D(fld3D,ob_id) .eq. 'THETA') then
               subFieldOnMask_3D(ob_id,fld3D,loc_count,k) =
      &                                        theta(i,j,k,bi,bj)
-C     &            subFieldOnMask_3D(ob_id,fld3D,loc_count,k)
             ELSE IF (ob_flds3D(fld3D,ob_id) .eq. 'SALT') then
-C              print *,"SET_SUBFIELDS: ij",i,j,"salt:",salt(i,j,k,bi,bj)
               subFieldOnMask_3D(ob_id,fld3D,loc_count,k)=
      &                                       salt(i,j,k,bi,bj)
-C              print *,"SET_SUBFIELDS:subFieldOnMask_3D",
-C     &                subFieldOnMask_3D(ob_id,fld3D,loc_count,k)
             ELSE IF (ob_flds3D(fld3D,ob_id) .eq. 'GU') then
               subFieldOnMask_3D(ob_id,fld3D,loc_count,k) =
      &                                        gU(i,j,k,bi,bj)
@@ -164,9 +171,11 @@ C     &                subFieldOnMask_3D(ob_id,fld3D,loc_count,k)
           print*,"i", sub_local_ij_ob(ob_id,1,:)
           print*,"j",  sub_local_ij_ob(ob_id,2,:)
         ENDIF
-       ENDDO
-      ENDDO
 
+C       !End of loop for nFlds3D
+       ENDDO
+C     !End of loop for nOB_mask
+      ENDDO
 
       IF (print_debug .eq. 1) then
        print *, "FINAL set 2D:"
@@ -179,7 +188,8 @@ C     &                subFieldOnMask_3D(ob_id,fld3D,loc_count,k)
 
 
       SUBROUTINE CUMULATE_FLD_TIME(myThid)
-C       Cumulate Diagnostics_ob fields
+C     Accumulate extracted field values on OB points
+C       - Add extracted field values on OB points to all extracted field values on OB points
 #include "SIZE.h"
 #include "EEPARAMS.h"
 #include "PARAMS.h"
@@ -187,11 +197,6 @@ C       Cumulate Diagnostics_ob fields
 
       INTEGER myThid
       INTEGER i, k, ob_id, fld, fld2D, fld3D
-      INTEGER, PARAMETER :: print_debug = 0
-
-      IF (print_debug .eq. 1) then
-       print *,"Cumulating at ",nTimeSteps_ob
-      ENDIF
 
       DO ob_id=1, nOB_mask
        DO i=1, sNx+sNy
@@ -223,7 +228,6 @@ C       Computes average of Diagnostics_ob fields using the number of time steps
         INTEGER myThid
         INTEGER i, k,fld, ob_id, fld2D, fld3D
         _RL myTime
-        INTEGER, PARAMETER :: debug = 0
 
         DO ob_id=1, nOB_mask
           DO i=1, sNx+sNy
@@ -240,9 +244,6 @@ C       Computes average of Diagnostics_ob fields using the number of time steps
           ENDDO
 
        ENDDO
-C       Set number of time steps wihtin averaging period back to zero
-       IF (debug .eq. 1) then
-        print *, "setting nTimeSteps_ob back to zero at avg"
-       ENDIF
+C       Set number of time steps within averaging period back to zero for the next averaging period
        nTimeSteps_ob = 0
       END

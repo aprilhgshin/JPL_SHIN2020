@@ -82,7 +82,7 @@ C      Although we read REAL*4 values, most built in functions have _RS input wh
        real*8 buffer2D(sNx+sNy)
        real*8 buffer3D(sNx+sNy, Nr)
 
-       integer, parameter :: debug = 1
+       integer, parameter :: debug = 0
        integer, parameter :: print_debug = 0
        integer, parameter :: send_debug = 0
 
@@ -168,8 +168,8 @@ C       Now looping through each mask and communicating fields between master pr
 
 #ifdef ALLOW_USE_MPI
          if (mpiMyId .gt. 0) then
-
-C        Processes 1 and onward send sub fields to Parent process
+C         Processes 1 and onward send sub fields to master process
+C         if they have open boundary points
           if (numOBPnts_allproc(ob_id,mpiMyId+1) .ge. 1) then
 
            print *,"Yes going to send for mask", ob_id
@@ -188,6 +188,7 @@ C           Convert _RL array to R8 array
              print *,buffer2D
             endif
 
+C           Send R8 array to master process
             call MPI_SEND(buffer2D, sNx+sNy, MPI_REAL8, 0, tag,
      &                    MPI_COMM_MODEL, ierror)
 
@@ -196,6 +197,7 @@ C           Convert _RL array to R8 array
 
            DO fld3D=1, ob_nFlds3D(ob_id)
             tag = ob_tags(ob_id, 2, fld3D)
+C           Convert _RL array to R8 array
             call OB_PASS_RL_to_R8(buffer2D,buffer3D,ob_id,3,fld3D)
 
             if (send_debug .eq. 1) then
@@ -206,6 +208,7 @@ C           Convert _RL array to R8 array
              print *,"Sending array shape: ", shape(buffer3D)
             endif
 
+C           Send R8 array to master process
             call MPI_SEND(buffer3D, ob_levels3D(fld3D,ob_id)*(sNx+sNy),
      &                    MPI_REAL8, 0, tag, MPI_COMM_MODEL, ierror)
 
@@ -293,7 +296,7 @@ C     myTime :: current time in model
       _RS dummyRS(1)
       INTEGER pid, status(MPI_STATUS_SIZE), ierror, tag
       INTEGER total_valid, i, k, count
-      INTEGER, PARAMETER :: debug = 1
+      INTEGER, PARAMETER :: debug = 0
       INTEGER, PARAMETER :: recv_debug = 0
       integer, parameter :: write_to_binary = 0
 
@@ -310,7 +313,6 @@ C     myTime :: current time in model
 
       total_valid = 0
 
-      print *,"ENTERED MASTER PROCESS"
 C-----Append Local Array--------------------------------------------------------
 C     - First append process 0 local arrays to final global array if number of
 C          valid elements in those local arrays > 0
@@ -350,7 +352,6 @@ C-------------------------------------------------------------------------------
          print *,"MASTER 3D: mask number:", ob_id
          print *,"MASTER 3D: appended local field to global array"
      &          ," with ",numOBPnts_allproc(ob_id, 1),"valid elements:"
-C        print *,"MASTER 3D: num_ob_points(ob_id)",num_ob_points(ob_id)
          do k=1, ob_levels3D(fld,ob_id)
           print *,"MASTER 3D: global_ob3D at depth",k,"with total_valid"
      &            ,total_valid
@@ -398,7 +399,6 @@ C       If number of valid elements is greater than or equal to 1
           end if
 
           call APPEND_OB_VALUE2D(ob_id, pid, buffer2D)
-C          print *,"MASTER: global_ob2D",global_ob2D
 
          ELSE IF (nDim .eq. 3) then
 
@@ -423,11 +423,7 @@ C          print *,"MASTER: global_ob2D",global_ob2D
 
 C         !append_ob_values3D params: ob_id, pid, fld, ob_values
           call APPEND_OB_VALUE3D(ob_id,pid, fld, buffer3D)
-          print *,"MASTER: global_ob3D"
-          print *,"shape(global_ob3D)",shape(global_ob3D)
-          DO k=1, ob_levels3D(fld,ob_id)
-           print *,"printing at level k", k
-           print*,global_ob3D(:,k)
+
          ENDDO
 
          ENDIF
@@ -435,10 +431,6 @@ C         !append_ob_values3D params: ob_id, pid, fld, ob_values
 
 C       !ENDIF for number of valid elements
         ENDIF
-
-        if (debug .eq. 1) then
-         print *,"MASTER: total_valid", total_valid
-        end if
 
 C      !ENDDO for pid
        ENDDO
@@ -474,19 +466,15 @@ C       Store field value at position in final global array global_ob.
 
          REAL*8 ob_values(sNx+sNy)
          integer num_valid, i, ob_index, ob_id, pid, glo
-         integer, parameter :: print_debug = 1
+         integer, parameter :: print_debug = 0
 
          ob_index = 1
          num_valid = numOBPnts_allproc(ob_id,pid+1)
 
-         if (print_debug .eq. 1) then
-           print *, "APPEND_OB_VALUE2D: num_valid", num_valid
-         end if
 
          do i=1, num_valid
            ob_index = lookup_table(ob_id,
      &                 sub_glo_indices_allproc(ob_id,pid+1,i))
-C           if (ob_index .le. (sNy+sNx)*(nPx*nPy)) then
             glo = sub_glo_indices_allproc(ob_id,pid+1,i)
              if (print_debug .eq. 1) then
                print *,"APPEND_OB_VALUE2D: glo", glo
@@ -519,7 +507,7 @@ C       Store field value at position in final global array global_ob.
 
         REAL*8 ob_values(sNx+sNy, Nr)
         integer num_valid, i, k, ob_index, ob_id, pid, fld, glo
-        integer, parameter :: print_debug = 1
+        integer, parameter :: print_debug = 0
 
         ob_index = 1
         num_valid = numOBPnts_allproc(ob_id,pid+1)
@@ -546,12 +534,8 @@ C       Store field value at position in final global array global_ob.
            print*,"ob_values at k=1",ob_values(i,1)
          endif
 
-C         if (print_debug .eq. 1) then
-C           print*,"APPEND_OB_VALUE3D: ob_index",ob_index
-C         endif
          do k=1, ob_levels3D(fld,ob_id)
           global_ob3D(ob_index,k) = ob_values(i,k)
-C          print*,"ob_values",ob_values(i,k),"at k",k,"i",i
          enddo
        enddo
 

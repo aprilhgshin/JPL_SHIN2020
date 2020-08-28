@@ -56,12 +56,20 @@ C -----------------------------
      &     nml_fileNames, nml_levels3D,
      &     nml_combMaskTimeLevels
 
-      IF ( .NOT.useDIAGNOSTICS_OB ) THEN
+      IF ( .NOT.useDiagnostics_ob ) THEN
 C-    pkg DIAGNOSTICS_OB is not used
         _BEGIN_MASTER(myThid)
 C-    Track pkg activation status:
 C     print a (weak) warning if data.DIAGNOSTICS_OB is found
-         CALL PACKAGES_UNUSED_MSG( 'useDIAGNOSTICS_OB', ' ', ' ' )
+         CALL PACKAGES_UNUSED_MSG( 'useDiagnostics_ob', ' ', ' ' )
+        _END_MASTER(myThid)
+        RETURN
+      ENDIF
+
+      IF (.NOT. useSEAICE ) then
+        _BEGIN_MASTER(myThid)
+
+         CALL PACKAGES_UNUSED_MSG( 'useSEAICE', ' ', ' ' )
         _END_MASTER(myThid)
         RETURN
       ENDIF
@@ -75,7 +83,6 @@ C-------------------------------------------------------------------------------
 
       startTime_nml = endTime
       endTime_nml = startTime
-      time_passed = 0.0
       nml_filePrec = 64
       nml_combMaskTimeLevels = .TRUE.
 
