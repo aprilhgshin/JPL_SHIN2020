@@ -274,8 +274,8 @@ def test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, ob_mask, ob_output,
     plt.figure(num=31,clear=True, figsize=(3,10));
 
     plt.imshow(diff, origin='lower')#, vmin=-2, vmax=16)
-    plt.colorbar()
     plt.axis('auto');plt.colorbar()
+
 
     plt.title("Difference")
     plt.show()
@@ -449,7 +449,7 @@ if __name__ == "__main__":
 # Example for multiple time levels:
 #    test_ob_outputs3D(fld_dir, output_dir, mask_dir, "flt32_mask1.bin", "MASK_01_THETA_00000002.bin", 'THETA', 0, 32, 2, 1, 1, 0)
 #    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_THETA.bin", 'THETA', 1, 32, 23, 20,16, 'diagsTSUVW')
-    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_SALT.bin", 'SALT', 1, 32, 15, 90,40, 'obDiag')
+    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_THETA.bin", 'THETA', 0, 32, 15, 90,40, 'obDiag')
 
 # test_ob_outputs2D params: fld_dir, output_dir, mask_dir, ob_mask, ob_output, fname, fieldNum, filePrec, depth, nx, ny
 #    test_ob_outputs3D_allTime(fld_dir, output_dir, mask_dir, "flt32_mask2.bin", "MASK_02_THETA.bin", 'THETA', 0, 32, 15, 90,40)
