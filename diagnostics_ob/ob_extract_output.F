@@ -296,7 +296,7 @@ C     myTime :: current time in model
       _RS dummyRS(1)
       INTEGER pid, status(MPI_STATUS_SIZE), ierror, tag
       INTEGER total_valid, i, k, count
-      INTEGER, PARAMETER :: debug = 0
+      INTEGER, PARAMETER :: debug = 1
       INTEGER, PARAMETER :: recv_debug = 0
       integer, parameter :: write_to_binary = 0
 
@@ -424,13 +424,13 @@ C         Master process receiving time-averaged 3Dfield values on OB points fro
             DO k=1, ob_levels3D(fld,ob_id)
              print *,"printing at level k", k
              print*,buffer3D(:,k)
-           ENDDO
+            ENDDO
           end if
 
 C         !append_ob_values3D params: ob_id, pid, fld, ob_values
           call APPEND_OB_VALUE3D(ob_id,pid, fld, buffer3D)
 
-         ENDDO
+
 
          ENDIF
 C        Keeping count of total number of OB points for each mask

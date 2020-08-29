@@ -326,6 +326,7 @@ C              Indices referring to process IDs begin with 1
         ENDDO
       ENDDO
 
+      numOBPnts_allproc(ob_id,mpiMyId+1) = num_valid 
       END
 
 
@@ -362,7 +363,7 @@ C           Child process sending count of OB points
           DO pid=1, nPx*nPy-1
             DO ob_id=1, nOB_mask
 C             !MPI_RECV params: received_data, receive_count, receive_type, sender_ID, tag, comm, status, ierror
-C             Master process receiving global indices from child process pid 
+C             Master process receiving global indices from child process pid
               call MPI_RECV(g_indices, sNx+sNy, MPI_INT,
      &                   pid, ob_id ,MPI_COMM_MODEL, status, ierror)
 C             Master process receiving count of OB points from child process pid

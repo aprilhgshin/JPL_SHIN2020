@@ -34,7 +34,7 @@ C ----------------------------
 C     Open Boundary Extraction Namelist:
 C
 C     nml_fields2D :: 2D field names for ocean state and flux variables
-C     nml_fields2D :: 3D field names for ocean state and flux variables
+C     nml_fields3D :: 3D field names for ocean state and flux variables
 C     nml_fileNames :: OB mask filenames
 C     nml_levels3D :: depths starting from surface for each 3D field chosen by user
 C     nml_combMaskTimeLevels :: Logical for either writing all time levels to binary file
@@ -46,7 +46,7 @@ C
 C -----------------------------
 
       CHARACTER*8 nml_fields2D(MAX_NFLDS, nOB_mask)
-      CHARACTER*8 nml_fields2D(MAX_NFLDS, nOB_mask)
+      CHARACTER*8 nml_fields3D(MAX_NFLDS, nOB_mask)
 
       CHARACTER*30 nml_fileNames(nOB_mask)
       INTEGER nml_levels3D(MAX_NFLDS, nOB_mask)
@@ -79,9 +79,10 @@ C     print a (weak) warning if data.diagnostics_ob is found
       IF (.NOT. useSEAICE ) then
 C     if pkg SEAICE is not used, print warning
         _BEGIN_MASTER(myThid)
-         CALL PACKAGES_UNUSED_MSG( 'useSEAICE', ' ', ' ' )
+        CALL PACKAGES_UNUSED_MSG( 'useSEAICE', ' ', ' ' )
+C        CALL ALL_PROC_DIE( myThid )
+C        STOP 'ABNORMAL END: S/R DIAG_OB: SEAICE PACKAGE NOT ACTIVATED'
         _END_MASTER(myThid)
-        RETURN
       ENDIF
 
       _BEGIN_MASTER(myThid)

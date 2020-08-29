@@ -39,6 +39,7 @@ C-------------------------------------------------------------------------------
        logical exists
        integer LEN, i
 
+       LEN = 1
        dir = "./"
 
        IF (ob_filePrec .eq. 32) then
@@ -52,15 +53,15 @@ C       --------------------------------
          call CREATE_FILENAME(dir, ob_flds2D(fld,ob_id), ob_id,filename
      &                      ,0, myIter)
          IF (combineMaskTimeLevels) then
-C        Writing all time levels into a single binary file
+C         Writing all time levels into a single binary file
           INQUIRE (IOLENGTH = LEN) bufferR4_2D(1:total_valid)
           INQUIRE (FILE=filename, EXIST=exists)
 C         If file already exists, set status as 'old'. Otherwise, 'replace'
           if (exists) then
-           open( 1, FILE=filename, STATUS='OLD', ACCESS='DIRECT',
+           open(1, FILE=filename, STATUS='OLD', ACCESS='DIRECT',
      &          RECL = LEN )
           else
-           open( 1, FILE=filename, STATUS='REPLACE', ACCESS='DIRECT',
+           open(1, FILE=filename, STATUS='REPLACE', ACCESS='DIRECT',
      &          RECL = LEN )
           endif
           write(1, REC=time_level) bufferR4_2D(1:total_valid)
@@ -88,10 +89,10 @@ C        Writing all time levels into a single binary file
 C         If file already exists, set status as 'old'. Otherwise, 'replace'
           if (exists) then
            open( 1, FILE=filename, STATUS='OLD', ACCESS='DIRECT',
-     &          RECL = LEN )
+     &          RECL = LEN)
           else
            open( 1, FILE=filename, STATUS='REPLACE', ACCESS='DIRECT',
-     &          RECL = LEN )
+     &          RECL =  LEN)
           endif
           write(1, REC=time_level) bufferR4_3D(1:total_valid,
      &          1:ob_levels3D(fld,ob_id))
@@ -149,10 +150,10 @@ C       --------------------------------
 C         If file already exists, set status as 'old'. Otherwise, 'replace'
           if (exists) then
            open( 1, FILE=filename, STATUS='OLD', ACCESS='DIRECT',
-     &          RECL = LEN )
+     &          RECL = LEN)
           else
            open( 1, FILE=filename, STATUS='REPLACE', ACCESS='DIRECT',
-     &          RECL = LEN )
+     &          RECL = LEN)
           endif
           write(1, REC=time_level) global_ob3D(1:total_valid,
      &                                      1:ob_levels3D(fld,ob_id))
