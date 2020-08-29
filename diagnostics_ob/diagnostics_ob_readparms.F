@@ -32,12 +32,21 @@ C     iUnit      :: Work variable for IO unit number
 
 C ----------------------------
 C     Open Boundary Extraction Namelist:
-C     nml_fldNames : field names for ocean state and flux variables
-
+C
+C     nml_fields2D :: 2D field names for ocean state and flux variables
+C     nml_fields2D :: 3D field names for ocean state and flux variables
+C     nml_fileNames :: OB mask filenames
+C     nml_levels3D :: depths starting from surface for each 3D field chosen by user
+C     nml_combMaskTimeLevels :: Logical for either writing all time levels to binary file
+C                               or write in separate binary files
+C     avgPeriod_nml :: averaging period (frequency) of output
+C     startTime_nml :: start time for output
+C     endTime_nml :: end time for output
+C
 C -----------------------------
 
       CHARACTER*8 nml_fields2D(MAX_NFLDS, nOB_mask)
-      CHARACTER*8 nml_fields3D(MAX_NFLDS, nOB_mask)
+      CHARACTER*8 nml_fields2D(MAX_NFLDS, nOB_mask)
 
       CHARACTER*30 nml_fileNames(nOB_mask)
       INTEGER nml_levels3D(MAX_NFLDS, nOB_mask)
@@ -60,15 +69,16 @@ C -----------------------------
 C-    pkg DIAGNOSTICS_OB is not used
         _BEGIN_MASTER(myThid)
 C-    Track pkg activation status:
-C     print a (weak) warning if data.DIAGNOSTICS_OB is found
+C     print a (weak) warning if data.diagnostics_ob is found
          CALL PACKAGES_UNUSED_MSG( 'useDiagnostics_ob', ' ', ' ' )
         _END_MASTER(myThid)
         RETURN
       ENDIF
 
-      IF (.NOT. useSEAICE ) then
-        _BEGIN_MASTER(myThid)
 
+      IF (.NOT. useSEAICE ) then
+C     if pkg SEAICE is not used, print warning
+        _BEGIN_MASTER(myThid)
          CALL PACKAGES_UNUSED_MSG( 'useSEAICE', ' ', ' ' )
         _END_MASTER(myThid)
         RETURN
@@ -137,7 +147,9 @@ C     Close the open data file
       CLOSE(iUnit,STATUS='DELETE')
 #endif /* SINGLE_DISK_IO */
 
+C------------------------------------------------------------------------------
 C     Fill DIAGNOSTICS_OB.h Common Block with Namelist Info
+C------------------------------------------------------------------------------
 
       DO ob=1, nOB_mask
         ob_fnames(ob) = nml_fileNames(ob)
@@ -155,26 +167,28 @@ C     Fill DIAGNOSTICS_OB.h Common Block with Namelist Info
         ENDDO
       ENDDO
 
-      print *,"ob_flds2D",ob_flds2D(1,:)
+      avgPeriod_ob = avgPeriod_nml
+      startTime_ob = startTime_nml
+      endTime_ob = endTime_nml
 
+C     If startTime, endTime, and avgPeriod are not specified by user then:
+C      IF (avgPeriod_nml .eq. undefRL) then
+C        avgPeriod_ob = deltaTClock
+C      ELSE
+C        avgPeriod_ob = avgPeriod_nml
+C      ENDIF
 
-      IF (avgPeriod_nml .eq. undefRL) then
-        avgPeriod_ob = deltaTClock
-      ELSE
-        avgPeriod_ob = avgPeriod_nml
-      ENDIF
+C      IF (startTime_nml .eq. undefRL) then
+C        startTime_ob = startTime
+C      ELSE
+C        startTime_ob = startTime_nml
+C      ENDIF
 
-      IF (startTime_nml .eq. undefRL) then
-        startTime_ob = startTime
-      ELSE
-        startTime_ob = startTime_nml
-      ENDIF
-
-      IF (endTime_nml .eq. undefRL) then
-        endTime_ob = endTime
-      ELSE
-        endTime_ob = endTime_nml
-      ENDIF
+C      IF (endTime_nml .eq. undefRL) then
+C        endTime_ob = endTime
+C      ELSE
+C        endTime_ob = endTime_nml
+C      ENDIF
 
       ob_filePrec = nml_filePrec
       combineMaskTimeLevels = nml_combMaskTimeLevels

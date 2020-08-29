@@ -18,13 +18,13 @@ USER_INPUT.h
 
 ob_extract_output.F
 - The driver of the Open Boundary Extraction Program
-- Contains the OB_EXTRACT_OUTPUT subroutine that executes entire Open Boundary Extraction Program
+- Contains the OB_EXTRACT_OUTPUT subroutine and other supporting subroutines that executes entire Open Boundary Extraction Program
 
 diag_ob_prepare_subFieldOnMasks.F
-- Contains all subroutines that extract field values on open boundary points, accumulates the extracted values, and compute time averaged fields.
+- Contains all supporting subroutines that extract field values on open boundary points, accumulates the extracted values, and compute time averaged fields.
 
 diagnostics_ob_write_bin.F
-- Writes final output to binary file
+- Writes final output to binary file.
 
 print_ob_output.py
 - python test script to compare outputs with expected outputs

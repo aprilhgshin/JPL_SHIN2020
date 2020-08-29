@@ -598,53 +598,6 @@ C        the final array, global_ob3D for each depth
        END
 
 
-
-       SUBROUTINE OB_R8_to_R4(bufferR4_2D, bufferR4_3D,nDim,fld,ob_id)
-#include "SIZE.h"
-#include "EEPARAMS.h"
-#include "EESUPPORT.h"
-#include "DIAGNOSTICS_OB.h"
-
-         real*4 bufferR4_2D((sNy+sNx)*(nPx*nPy))
-         real*4 bufferR4_3D((sNy+sNx)*(nPx*nPy), Nr)
-         integer nDim, fld, ob_id
-         integer, parameter :: debug = 0
-         integer i, k
-
-C        Initialize buffer arrays:
-        do i=1, (sNy+sNx)*(nPx*nPy)
-          bufferR4_2D(i) = 0.0
-          do k=1, Nr
-            bufferR4_3D(i,k) = 0.0
-          enddo
-        enddo
-
-C        Set real*8 values to real*4
-
-         if (nDim .eq. 2) then
-           do i=1, (sNy+sNx)*(nPx*nPy)
-             bufferR4_2D(i) = global_ob2D(i)
-           enddo
-
-         else if (nDim .eq. 3) then
-           do i=1, (sNy+sNx)*(nPx*nPy)
-             do k=1, ob_levels3D(fld,ob_id)
-               bufferR4_3D(i,k) = global_ob3D(i,k)
-             enddo
-           enddo
-
-           if (debug .eq. 1) then
-            do k=1,ob_levels3D(fld,ob_id)
-             print *,"OB: bufferR4_3D:",bufferR4_3D(:,k)
-             print *,"OB: global_ob3D:",global_ob3D(:,k)
-            enddo
-           endif
-
-         endif
-
-       END
-
-
        SUBROUTINE PLOT_TEST_GLOBAL_OB(myThid, ob_id, fld, nDim, myIter)
 c      Unravels global_ob and plots onto an array with dimensions Nx by Ny
 
