@@ -67,22 +67,18 @@ C -----------------------------
 
       IF ( .NOT.useDiagnostics_ob ) THEN
 C-    pkg DIAGNOSTICS_OB is not used
-        _BEGIN_MASTER(myThid)
 C-    Track pkg activation status:
 C     print a (weak) warning if data.diagnostics_ob is found
          CALL PACKAGES_UNUSED_MSG( 'useDiagnostics_ob', ' ', ' ' )
-        _END_MASTER(myThid)
         RETURN
       ENDIF
 
 
       IF (.NOT. useSEAICE ) then
 C     if pkg SEAICE is not used, print warning
-        _BEGIN_MASTER(myThid)
         CALL PACKAGES_UNUSED_MSG( 'useSEAICE', ' ', ' ' )
 C        CALL ALL_PROC_DIE( myThid )
-C        STOP 'ABNORMAL END: S/R DIAG_OB: SEAICE PACKAGE NOT ACTIVATED'
-        _END_MASTER(myThid)
+        STOP 'ABNORMAL END: S/R DIAG_OB: SEAICE PACKAGE NOT ACTIVATED'
       ENDIF
 
       _BEGIN_MASTER(myThid)
