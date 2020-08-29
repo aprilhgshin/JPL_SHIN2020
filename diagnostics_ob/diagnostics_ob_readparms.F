@@ -58,6 +58,8 @@ C -----------------------------
       _RL endTime_nml
       _RL undefRL
 
+      LOGICAL check_pkg
+
       NAMELIST / DIAG_OB_EXTRACT /
      &     avgPeriod_nml, startTime_nml, endTime_nml,
      &     nml_filePrec,
@@ -71,14 +73,6 @@ C-    Track pkg activation status:
 C     print a (weak) warning if data.diagnostics_ob is found
          CALL PACKAGES_UNUSED_MSG( 'useDiagnostics_ob', ' ', ' ' )
         RETURN
-      ENDIF
-
-
-      IF (.NOT. useSEAICE ) then
-C     if pkg SEAICE is not used, print warning
-        CALL PACKAGES_UNUSED_MSG( 'useSEAICE', ' ', ' ' )
-C        CALL ALL_PROC_DIE( myThid )
-        STOP 'ABNORMAL END: S/R DIAG_OB: SEAICE PACKAGE NOT ACTIVATED'
       ENDIF
 
       _BEGIN_MASTER(myThid)
@@ -190,7 +184,41 @@ C      ENDIF
       ob_filePrec = nml_filePrec
       combineMaskTimeLevels = nml_combMaskTimeLevels
 
+c-------------------------------------------------------------------------------
+C Check if sea ice variables are used. if so, then check if sea ice package is
+C turned on
+C sea ice fields: AREA, HEFF, HSNOW, UICE, VICE
+      DO ob=1, nOB_mask
+        DO i=1, ob_nFlds2D(ob)
+          if (ob_flds2D(i,ob) .eq. 'AREA') then
+             check_pkg = .TRUE.
+             exit
+          else if (ob_flds2D(i,ob) .eq. 'HEFF') then
+            check_pkg = .TRUE.
+            exit
+          else if (ob_flds2D(i,ob) .eq. 'HSNOW') then
+            check_pkg = .TRUE.
+            exit
+          else if (ob_flds2D(i,ob) .eq. 'UICE') then
+            check_pkg = .TRUE.
+            exit
+          else if (ob_flds2D(i,ob) .eq. 'VICE') then
+            check_pkg = .TRUE.
+            exit
+          end if
+        ENDDO
+      ENDDO
 
+      IF (check_pkg) then
+        IF (.NOT. useSEAICE ) then
+C        if pkg SEAICE is not used, print warning
+         CALL PACKAGES_UNUSED_MSG( 'useSEAICE', ' ', ' ' )
+C        CALL ALL_PROC_DIE( myThid )
+         STOP 'ABNORMAL END: S/R DIAG_OB: SEAICE PACKAGE NOT ACTIVATED'
+        ENDIF
+      ENDIF
+
+c-------------------------------------------------------------------------------
 
 
       _END_MASTER(myThid)
